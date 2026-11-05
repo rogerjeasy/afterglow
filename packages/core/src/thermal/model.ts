@@ -1,9 +1,9 @@
-import {
-  type CompartmentState,
-  type CrossingTime,
-  type DiscardResult,
-  type DoorEvent,
-  type PerishableItem,
+import type {
+  CompartmentState,
+  CrossingTime,
+  DiscardResult,
+  DoorEvent,
+  PerishableItem,
 } from './types.js';
 
 /** Thrown when a thermal input is invalid. */
@@ -64,6 +64,12 @@ export function crossingTime(state: CompartmentState, thresholdC: number): Cross
   }
 
   const minute = -tauMinutes * Math.log((ambientC - thresholdC) / (ambientC - startC));
+  // Fail closed: when the threshold is numerically indistinguishable from
+  // ambient the ratio underflows and the result is Infinity or NaN. That is not
+  // a crossing time, so report `never` rather than a non-finite "at".
+  if (!Number.isFinite(minute)) {
+    return { kind: 'never', reason: 'threshold is numerically indistinguishable from ambient' };
+  }
   return { kind: 'at', minute: Math.max(0, minute) };
 }
 

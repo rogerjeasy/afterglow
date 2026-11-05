@@ -39,7 +39,22 @@ describe('Schedule properties', () => {
         expect(b).toEqual(a);
         expect(dup).toEqual(a);
       }),
+      { numRuns: 5000 },
     );
+  });
+
+  // SC-01 regression: windows identical except areaId must merge identically in any
+  // order (shrunken counterexample, recorded in docs/kiro/pbt-catches.md).
+  it('SC-01 regression: same span and source, different areas, any order', () => {
+    const a: ScheduleWindow = {
+      areaId: 'area-2',
+      startMinute: 151,
+      endMinute: 209,
+      source: 'eskomsepush',
+      fetchedAt: 0,
+    };
+    const b: ScheduleWindow = { ...a, areaId: 'area-1' };
+    expect(mergeSchedule([a, b])).toEqual(mergeSchedule([b, a]));
   });
 
   // SC-01b: the merged timeline is sorted by startMinute.

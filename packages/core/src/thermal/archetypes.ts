@@ -12,7 +12,7 @@ import type { BuildingCrossing, CompartmentState, CrossingTime } from './types.j
  * passive-survivability figures (buildings). See the data files for sources.
  */
 
-export const APPLIANCE_MODEL_VERSION = 'thermal-appliance-v1';
+export const APPLIANCE_MODEL_VERSION = 'thermal-appliance-v2';
 export const BUILDING_MODEL_VERSION = 'thermal-building-v1';
 
 export type Fullness = 'full' | 'half';
@@ -24,13 +24,16 @@ interface ApplianceTau {
   readonly startC: number;
 }
 
-/** Appliance tau (minutes), anchored to USDA 4 h fridge / 48 h full / 24 h half-full freezer. */
+/**
+ * Appliance tau (minutes), anchored to USDA 4 h fridge / 48 h full / 24 h half-full freezer.
+ * Refrigerated danger is 40 F = 4.4 C (USDA), not 5 C.
+ */
 const APPLIANCE_CLASSES = {
-  fridge: { full: 2163, half: 1700, dangerC: 5, startC: 3 },
-  fridgeFreezerCombo: { full: 2400, half: 1900, dangerC: 5, startC: 3 },
+  fridge: { full: 3136, half: 2464, dangerC: 4.4, startC: 3 },
+  fridgeFreezerCombo: { full: 3479, half: 2754, dangerC: 4.4, startC: 3 },
   freezer: { full: 4815, half: 2408, dangerC: 0, startC: -18 },
   chestFreezer: { full: 6000, half: 3000, dangerC: 0, startC: -18 },
-  coolerBox: { full: 900, half: 600, dangerC: 5, startC: 3 },
+  coolerBox: { full: 900, half: 600, dangerC: 4.4, startC: 3 },
   pharmacyFridge: { full: 2000, half: 1600, dangerC: 8, startC: 5 },
   vaccineColdBox: { full: 2880, half: 2000, dangerC: 8, startC: 4 },
 } as const satisfies Record<string, ApplianceTau>;
@@ -80,16 +83,83 @@ interface Archetype {
 
 /** Building archetype tau (hours), anchored to passive-survivability literature. */
 const ARCHETYPES: readonly Archetype[] = [
-  { type: 'apartment', vintage: 'pre1980', insulation: 'poor', climate: 'cold', tauHours: 24, tauMinHours: 16, tauMaxHours: 36 },
-  { type: 'apartment', vintage: 'post2000', insulation: 'good', climate: 'cold', tauHours: 60, tauMinHours: 45, tauMaxHours: 80 },
-  { type: 'detachedHouse', vintage: 'pre1980', insulation: 'poor', climate: 'cold', tauHours: 18, tauMinHours: 12, tauMaxHours: 28 },
-  { type: 'detachedHouse', vintage: 'post2000', insulation: 'good', climate: 'cold', tauHours: 90, tauMinHours: 70, tauMaxHours: 120 },
-  { type: 'detachedHouse', vintage: 'post2010', insulation: 'passive', climate: 'cold', tauHours: 180, tauMinHours: 140, tauMaxHours: 220 },
-  { type: 'townhouse', vintage: '1980to2000', insulation: 'medium', climate: 'temperate', tauHours: 48, tauMinHours: 32, tauMaxHours: 64 },
-  { type: 'informalDwelling', vintage: 'any', insulation: 'poor', climate: 'hot', tauHours: 6, tauMinHours: 3, tauMaxHours: 12 },
+  {
+    type: 'apartment',
+    vintage: 'pre1980',
+    insulation: 'poor',
+    climate: 'cold',
+    tauHours: 24,
+    tauMinHours: 16,
+    tauMaxHours: 36,
+  },
+  {
+    type: 'apartment',
+    vintage: 'post2000',
+    insulation: 'good',
+    climate: 'cold',
+    tauHours: 60,
+    tauMinHours: 45,
+    tauMaxHours: 80,
+  },
+  {
+    type: 'detachedHouse',
+    vintage: 'pre1980',
+    insulation: 'poor',
+    climate: 'cold',
+    tauHours: 18,
+    tauMinHours: 12,
+    tauMaxHours: 28,
+  },
+  {
+    type: 'detachedHouse',
+    vintage: 'post2000',
+    insulation: 'good',
+    climate: 'cold',
+    tauHours: 90,
+    tauMinHours: 70,
+    tauMaxHours: 120,
+  },
+  {
+    type: 'detachedHouse',
+    vintage: 'post2010',
+    insulation: 'passive',
+    climate: 'cold',
+    tauHours: 180,
+    tauMinHours: 140,
+    tauMaxHours: 220,
+  },
+  {
+    type: 'townhouse',
+    vintage: '1980to2000',
+    insulation: 'medium',
+    climate: 'temperate',
+    tauHours: 48,
+    tauMinHours: 32,
+    tauMaxHours: 64,
+  },
+  {
+    type: 'informalDwelling',
+    vintage: 'any',
+    insulation: 'poor',
+    climate: 'hot',
+    tauHours: 6,
+    tauMinHours: 3,
+    tauMaxHours: 12,
+  },
 ];
 
 const DEFAULT_BAND = { tauMinHours: 12, tauMaxHours: 48 } as const;
+
+/** The archetypes the table knows, so a UI can offer only combinations that have data. */
+export function listArchetypes(): readonly (ArchetypeQuery & { readonly tauHours: number })[] {
+  return ARCHETYPES.map((a) => ({
+    type: a.type,
+    vintage: a.vintage,
+    insulation: a.insulation,
+    climate: a.climate,
+    tauHours: a.tauHours,
+  }));
+}
 
 /** Find the best-matching building archetype, or null if none matches. */
 export function findArchetype(q: ArchetypeQuery): Archetype | null {

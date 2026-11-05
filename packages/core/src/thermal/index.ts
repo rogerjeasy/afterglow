@@ -12,6 +12,7 @@ export {
   applianceDefaults,
   compartmentFor,
   findArchetype,
+  listArchetypes,
   buildingCrossing,
   type ApplianceClass,
   type Fullness,

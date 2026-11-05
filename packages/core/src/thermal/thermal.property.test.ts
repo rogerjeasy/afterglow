@@ -2,10 +2,10 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { buildingCrossing, compartmentFor } from './archetypes.js';
 import {
+  InvalidThermalInputError,
   applyDoorEvents,
   crossingTime,
   discardTime,
-  InvalidThermalInputError,
   temperatureAt,
 } from './model.js';
 import type { CompartmentState, DoorEvent } from './types.js';
@@ -64,6 +64,25 @@ describe('Thermal properties', () => {
         }
       }),
     );
+  });
+
+  // TH-02c: an 'at' result is always a finite, non-negative minute.
+  it('TH-02c crossing minute is finite and non-negative whenever it is reported', () => {
+    fc.assert(
+      fc.property(stateArb(), fc.double({ min: -30, max: 40, noNaN: true }), (state, threshold) => {
+        const cr = crossingTime(state, threshold);
+        if (cr.kind === 'at') {
+          expect(Number.isFinite(cr.minute)).toBe(true);
+          expect(cr.minute).toBeGreaterThanOrEqual(0);
+        }
+      }),
+      { numRuns: 5000 },
+    );
+  });
+  // TH-02c regression: denormal-scale threshold next to ambient (shrunken counterexample).
+  it('TH-02c regression: threshold within an ulp of ambient is never, not Infinity', () => {
+    const cr = crossingTime({ startC: -2, ambientC: 3e-323, tauMinutes: 1 }, 2.5e-323);
+    expect(cr.kind).toBe('never');
   });
 
   // TH-02b: unreachable thresholds (beyond ambient) return never.

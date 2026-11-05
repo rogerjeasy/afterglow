@@ -23,12 +23,21 @@ function validateWindow(w: ScheduleWindow): void {
   }
 }
 
-/** Deterministic ordering for windows (SC-01). */
+/**
+ * Deterministic TOTAL ordering for windows (SC-01). Every field that can differ
+ * between two windows takes part, so no two distinct windows ever compare equal
+ * and the sort result cannot depend on input order. (A partial order left ties
+ * to the stable sort, which preserved arrival order: see pbt-catches.md.)
+ */
 function compareWindows(a: ScheduleWindow, b: ScheduleWindow): number {
   if (a.startMinute !== b.startMinute) return a.startMinute - b.startMinute;
   if (a.endMinute !== b.endMinute) return a.endMinute - b.endMinute;
   if (a.source !== b.source) return a.source < b.source ? -1 : 1;
-  return 0;
+  if (a.areaId !== b.areaId) return a.areaId < b.areaId ? -1 : 1;
+  if (a.fetchedAt !== b.fetchedAt) return a.fetchedAt - b.fetchedAt;
+  const sa = a.stage === undefined ? -1 : a.stage;
+  const sb = b.stage === undefined ? -1 : b.stage;
+  return sa === sb ? 0 : sa < sb ? -1 : 1;
 }
 
 /**
