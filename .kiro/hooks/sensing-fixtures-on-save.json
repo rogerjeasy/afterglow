@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Sensing fixtures on save",
+      "trigger": "PostFileSave",
+      "description": "Runs the Grid Sense fusion property and example tests whenever any fusion source changes, enforcing fail-closed behaviour.",
+      "matcher": "packages/core/src/fusion/.*\\.ts$",
+      "action": {
+        "type": "command",
+        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && pnpm --filter @afterglow/core test",
+        "timeout": 120
+      }
+    }
+  ]
+}

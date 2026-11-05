@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Agent stop gate",
+      "trigger": "Stop",
+      "description": "Blocks completion while any property/invariant test in the workspace is failing. Runs the full turbo test suite on Stop and exits non-zero if red.",
+      "action": {
+        "type": "command",
+        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && pnpm test >/tmp/afterglow-stop-gate.log 2>&1 || { echo \"Agent stop gate: invariant tests are RED. Fix before completing.\" >&2; tail -40 /tmp/afterglow-stop-gate.log >&2; exit 2; }",
+        "timeout": 300
+      }
+    }
+  ]
+}

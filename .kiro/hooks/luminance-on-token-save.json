@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Luminance on token save",
+      "trigger": "PostFileSave",
+      "description": "Runs the Night Shell luminance property tests whenever theme.night.json changes, so no token can exceed its mode ceiling (night-vision invariant).",
+      "matcher": "theme\\.night\\.json$",
+      "action": {
+        "type": "command",
+        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && pnpm --filter @afterglow/design-system test",
+        "timeout": 120
+      }
+    }
+  ]
+}
