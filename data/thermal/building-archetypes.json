@@ -1,0 +1,78 @@
+{
+  "$description": "Building thermal time constants (tau, hours) by archetype, with uncertainty bands. Anchored to building-science literature and NREL ResStock-style typologies. tau is the time to decay ~63% of the way to ambient; larger = more thermally resilient.",
+  "modelVersion": "thermal-building-v1",
+  "reference": {
+    "notes": "Ranges anchored to published passive-survivability figures: a light, poorly insulated home decays toward outdoor temperature within roughly a day; a well-insulated / air-sealed home has a time constant near 90 h; heavy masonry with exterior insulation approaches ~200 h. Content rephrased for compliance.",
+    "sources": [
+      "https://emupassive.com/whats-the-time-constant-of-a-building/",
+      "https://www.cell.com/cell-reports-physical-science/fulltext/S2666-3864(24)00246-7",
+      "https://build-construct.com/sustainability/passive-survivability-in-building-design-keeping-homes-livable-when-power-fails/"
+    ]
+  },
+  "defaultBand": { "tauMinHours": 12, "tauMaxHours": 48, "isDefault": true },
+  "archetypes": [
+    {
+      "type": "apartment",
+      "vintage": "pre1980",
+      "insulation": "poor",
+      "climate": "cold",
+      "tauHours": 24,
+      "tauMinHours": 16,
+      "tauMaxHours": 36
+    },
+    {
+      "type": "apartment",
+      "vintage": "post2000",
+      "insulation": "good",
+      "climate": "cold",
+      "tauHours": 60,
+      "tauMinHours": 45,
+      "tauMaxHours": 80
+    },
+    {
+      "type": "detachedHouse",
+      "vintage": "pre1980",
+      "insulation": "poor",
+      "climate": "cold",
+      "tauHours": 18,
+      "tauMinHours": 12,
+      "tauMaxHours": 28
+    },
+    {
+      "type": "detachedHouse",
+      "vintage": "post2000",
+      "insulation": "good",
+      "climate": "cold",
+      "tauHours": 90,
+      "tauMinHours": 70,
+      "tauMaxHours": 120
+    },
+    {
+      "type": "detachedHouse",
+      "vintage": "post2010",
+      "insulation": "passive",
+      "climate": "cold",
+      "tauHours": 180,
+      "tauMinHours": 140,
+      "tauMaxHours": 220
+    },
+    {
+      "type": "townhouse",
+      "vintage": "1980to2000",
+      "insulation": "medium",
+      "climate": "temperate",
+      "tauHours": 48,
+      "tauMinHours": 32,
+      "tauMaxHours": 64
+    },
+    {
+      "type": "informalDwelling",
+      "vintage": "any",
+      "insulation": "poor",
+      "climate": "hot",
+      "tauHours": 6,
+      "tauMinHours": 3,
+      "tauMaxHours": 12
+    }
+  ]
+}

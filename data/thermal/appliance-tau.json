@@ -1,0 +1,26 @@
+{
+  "$description": "Thermal time constants (tau, minutes) for cold compartments, anchored to USDA power-outage guidance. These are defaults; a household's own measured events override them (TH-07).",
+  "modelVersion": "thermal-appliance-v1",
+  "reference": {
+    "ambientC": 22,
+    "notes": "tau values derived so the RC model T(t)=T_amb+(T_0-T_amb)e^(-t/tau) reproduces USDA rules of thumb at the reference ambient. USDA: a refrigerator keeps food safe ~4 h; a full freezer ~48 h; a half-full freezer ~24 h (fsis.usda.gov; foodsafety.gov). Content rephrased for compliance.",
+    "sources": [
+      "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/emergencies/keep-your-food-safe-during-emergencies",
+      "https://www.foodsafety.gov/food-safety-charts/food-safety-during-power-outage"
+    ]
+  },
+  "derivation": {
+    "fridge": "Start 3C, ambient 22C, perishable danger 5C. Reaching 5C in 240 min => tau = -240 / ln((22-5)/(22-3)) = -240 / ln(17/19) ~= 2163 min.",
+    "freezerFull": "Start -18C, ambient 22C, frozen-danger 0C (ice crystals rule). Reaching 0C in 2880 min (48 h) => tau = -2880 / ln((22-0)/(22-(-18))) = -2880 / ln(22/40) ~= 4815 min.",
+    "freezerHalf": "Same bounds, reaching 0C in 1440 min (24 h) => tau = -1440 / ln(22/40) ~= 2408 min."
+  },
+  "classes": {
+    "fridge": { "full": 2163, "half": 1700, "unit": "minutes", "dangerC": 5, "startC": 3 },
+    "fridgeFreezerCombo": { "full": 2400, "half": 1900, "unit": "minutes", "dangerC": 5, "startC": 3 },
+    "freezer": { "full": 4815, "half": 2408, "unit": "minutes", "dangerC": 0, "startC": -18 },
+    "chestFreezer": { "full": 6000, "half": 3000, "unit": "minutes", "dangerC": 0, "startC": -18 },
+    "coolerBox": { "full": 900, "half": 600, "unit": "minutes", "dangerC": 5, "startC": 3 },
+    "pharmacyFridge": { "full": 2000, "half": 1600, "unit": "minutes", "dangerC": 8, "startC": 5 },
+    "vaccineColdBox": { "full": 2880, "half": 2000, "unit": "minutes", "dangerC": 8, "startC": 4 }
+  }
+}
