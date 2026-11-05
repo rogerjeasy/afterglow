@@ -3,3 +3,5 @@ export * as events from './events/index.js';
 export * as cells from './cells/index.js';
 export * as schedule from './schedule/index.js';
 export * as thermal from './thermal/index.js';
+export * as foodkeeper from './foodkeeper/index.js';
+export * as household from './household/index.js';

@@ -1,0 +1,195 @@
+{
+  "$description": "Power-outage discard rules for FoodKeeper products, curated from USDA FSIS 'Power Outages & Food Safety'. FoodKeeper itself holds shelf-life data, not outage rules; this file maps products to the USDA outage lists. Rules are evaluated top to bottom, first match wins. A product matched by no rule is treated as a perishable and flagged as unlisted (fail closed). Safe classes are an explicit allowlist: every one cites a named USDA list item.",
+  "rulesVersion": "foodkeeper-outage-v1",
+  "source": {
+    "title": "Power Outages & Food Safety",
+    "publisher": "USDA Food Safety and Inspection Service",
+    "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/emergencies/keep-your-food-safe-during-emergencies",
+    "document": "https://www.govinfo.gov/content/pkg/GOVPUB-A110-PURL-gpo45056/pdf/GOVPUB-A110-PURL-gpo45056.pdf",
+    "retrieved": "2026-11-05",
+    "licence": "US Government work (public domain)"
+  },
+  "thresholds": {
+    "refrigeratedDangerC": 4.4,
+    "refrigeratorHoldMinutes": 240,
+    "warmHeldDangerC": 10,
+    "warmHeldMinutes": 480,
+    "frozenIceDangerC": 0
+  },
+  "fallback": {
+    "class": "discardAfterFourHours",
+    "ruleId": "unlisted-default",
+    "usdaItem": "Not named in USDA's outage lists. Treated like a perishable: when in doubt, throw it out."
+  },
+  "rules": [
+    {
+      "id": "mayonnaise-horseradish",
+      "class": "discardIfWarmEightHours",
+      "usdaItem": "Opened mayonnaise, tartar sauce and horseradish: discard if held above 50 F for over 8 hours.",
+      "caveat": "Applies to opened jars.",
+      "match": { "namePatterns": ["^Mayonnaise", "^Horseradish"] }
+    },
+    {
+      "id": "garlic-in-oil",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Garlic stored in oil: discard after 4 hours without power.",
+      "match": { "categoryIds": [3], "namePatterns": ["^Garlic \\(chopped"] }
+    },
+    {
+      "id": "gravy-creamy-sauces",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Gravy and stuffing; creamy-based salad dressings: discard after 4 hours without power.",
+      "match": {
+        "categoryIds": [6],
+        "namePatterns": ["^Gravy", "^Cream sauces", "^Salad dressing \\(creamy\\)", "^Aioli"]
+      }
+    },
+    {
+      "id": "whole-fresh-produce",
+      "class": "safeNoRefrigeration",
+      "usdaItem": "Whole fresh fruits and vegetables do not require refrigeration.",
+      "caveat": "Whole, uncut produce only. Cut fruit and vegetables are discarded after 4 hours.",
+      "match": {
+        "categoryIds": [18, 19],
+        "excludeNamePatterns": [
+          "Bagged",
+          "(bean|alfalfa) sprouts",
+          "Baby carrots",
+          "Marinated",
+          "Kimchi",
+          "Applesauce",
+          "\\bcut\\b"
+        ]
+      }
+    },
+    {
+      "id": "herbs-spices-flour",
+      "class": "safeNoRefrigeration",
+      "usdaItem": "Fresh herbs and spices, and flour, do not require refrigeration.",
+      "alsoSafeInFreezer": true,
+      "match": {
+        "categoryIds": [3],
+        "namePatterns": ["^Herbs", "^Spice/spices", "^Flour", "^Whole wheat flour"]
+      }
+    },
+    {
+      "id": "dried-fruit-and-nuts",
+      "class": "safeNoRefrigeration",
+      "usdaItem": "Dried fruits and nuts do not require refrigeration or freezing.",
+      "alsoSafeInFreezer": true,
+      "match": {
+        "categoryIds": [23],
+        "namePatterns": [
+          "^Fruits, dried",
+          "^Nuts",
+          "^Almonds",
+          "^Cashews",
+          "^Macadamias",
+          "^Peanuts",
+          "^Pecans",
+          "^Pistachios",
+          "^Walnuts",
+          "^Pine nuts"
+        ]
+      }
+    },
+    {
+      "id": "butter-margarine",
+      "class": "safeNoRefrigeration",
+      "usdaItem": "Butter and margarine do not require refrigeration or freezing.",
+      "alsoSafeInFreezer": true,
+      "match": { "categoryIds": [7], "namePatterns": ["^Butter$", "^Margarine$"] }
+    },
+    {
+      "id": "hard-processed-cheese",
+      "class": "safeNoRefrigeration",
+      "usdaItem": "Hard and processed cheeses do not require refrigeration or freezing.",
+      "alsoSafeInFreezer": true,
+      "match": {
+        "categoryIds": [7],
+        "namePatterns": ["^Cheese \\(hard", "^Cheese \\(parmesan", "^Cheese \\(processed"]
+      }
+    },
+    {
+      "id": "bread-muffins-fruit-pies",
+      "class": "safeNoRefrigeration",
+      "usdaItem": "Baked goods such as bread, rolls, muffins and fruit pies do not require refrigeration or freezing.",
+      "caveat": "Not for items with cream cheese frosting or cream fillings.",
+      "alsoSafeInFreezer": true,
+      "match": {
+        "categoryIds": [2, 9],
+        "namePatterns": [
+          "^Commercial bread products",
+          "^Bread",
+          "^Whole wheat bread",
+          "^Bagel",
+          "^Muffin",
+          "^Fruit pies"
+        ]
+      }
+    },
+    {
+      "id": "high-acid-condiments",
+      "class": "safeHighAcid",
+      "usdaItem": "High-acid foods such as mustard, ketchup, relishes, pickles, non-creamy salad dressings, jams and jellies are safe to use, though they may spoil sooner.",
+      "match": {
+        "categoryIds": [6, 23],
+        "namePatterns": [
+          "^Mustard",
+          "^Ketchup",
+          "^Relish",
+          "^Pickles",
+          "^Jams, jellies",
+          "^Salad dressing \\(vinaigrette\\)$"
+        ]
+      }
+    },
+    {
+      "id": "meat-poultry-fish",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Raw, cooked or leftover meat, poultry, fish and eggs; luncheon meat and hot dogs: discard after 4 hours without power.",
+      "match": { "categoryIds": [10, 12, 13, 14, 15, 17, 20, 21, 22] }
+    },
+    {
+      "id": "eggs",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Eggs and egg substitutes: discard after 4 hours without power.",
+      "match": { "categoryIds": [7], "namePatterns": ["^Egg"] }
+    },
+    {
+      "id": "dairy",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Milk, cream, yogurt, sour cream and soft cheeses: discard after 4 hours without power.",
+      "match": { "categoryIds": [7] }
+    },
+    {
+      "id": "deli-prepared-leftovers",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Casseroles, soups, stews, pizza, mixed salads, cooked vegetables, cut fruit and leftovers: discard after 4 hours without power.",
+      "match": { "categoryIds": [25] }
+    },
+    {
+      "id": "batters-and-doughs",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Batters and doughs: discard after 4 hours without power.",
+      "match": { "categoryIds": [4] }
+    },
+    {
+      "id": "cream-filled-bakery",
+      "class": "discardAfterFourHours",
+      "usdaItem": "Custard, chiffon or cheese pies and cream-filled pastries: discard after 4 hours without power.",
+      "match": {
+        "categoryIds": [2],
+        "namePatterns": [
+          "^Cream pies",
+          "^Chiffon pies",
+          "^Cheesecake",
+          "^Dairy filled",
+          "^Quiche",
+          "^Pastries",
+          "^Pies \\(pumpkin"
+        ]
+      }
+    }
+  ]
+}

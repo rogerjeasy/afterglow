@@ -13,7 +13,9 @@
     "./events": "./src/events/index.ts",
     "./cells": "./src/cells/index.ts",
     "./schedule": "./src/schedule/index.ts",
-    "./thermal": "./src/thermal/index.ts"
+    "./thermal": "./src/thermal/index.ts",
+    "./foodkeeper": "./src/foodkeeper/index.ts",
+    "./household": "./src/household/index.ts"
   },
   "scripts": {
     "test": "vitest run",
