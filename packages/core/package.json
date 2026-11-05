@@ -1,0 +1,25 @@
+{
+  "name": "@afterglow/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Afterglow deterministic domain core: pure TypeScript, no I/O, property-tested.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fusion": "./src/fusion/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src"
+  },
+  "devDependencies": {
+    "fast-check": "3.23.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}
