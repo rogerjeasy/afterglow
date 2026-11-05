@@ -11,7 +11,9 @@
     ".": "./src/index.ts",
     "./fusion": "./src/fusion/index.ts",
     "./events": "./src/events/index.ts",
-    "./cells": "./src/cells/index.ts"
+    "./cells": "./src/cells/index.ts",
+    "./schedule": "./src/schedule/index.ts",
+    "./thermal": "./src/thermal/index.ts"
   },
   "scripts": {
     "test": "vitest run",
