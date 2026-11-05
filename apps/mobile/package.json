@@ -1,0 +1,30 @@
+{
+  "name": "@afterglow/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Afterglow consumer app — web PWA shell rendering the Night Shell. Native (Expo) targets added in a later wave.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src"
+  },
+  "dependencies": {
+    "@afterglow/core": "workspace:*",
+    "@afterglow/design-system": "workspace:*",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.1",
+    "@types/react-dom": "19.0.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "typescript": "5.7.2",
+    "vite": "6.0.5",
+    "vitest": "2.1.8"
+  }
+}
