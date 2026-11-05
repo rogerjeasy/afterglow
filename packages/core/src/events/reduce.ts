@@ -6,11 +6,7 @@ import type { AfterglowEvent, Reducer } from './types.js';
  * ordered events and the reducer. Replaying the same log reproduces the same
  * view; arrival order does not matter because the log is already ordered.
  */
-export function reduce<TState>(
-  log: EventLog,
-  reducer: Reducer<TState>,
-  initial: TState,
-): TState {
+export function reduce<TState>(log: EventLog, reducer: Reducer<TState>, initial: TState): TState {
   let state = initial;
   for (const event of log.toArray()) {
     state = reducer(state, event);

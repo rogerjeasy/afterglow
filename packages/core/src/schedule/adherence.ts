@@ -28,10 +28,7 @@ function unionLength(intervals: readonly Interval[]): number {
 }
 
 /** Length of the intersection of two interval sets, de-overlapping each first. */
-function intersectionLength(
-  a: readonly Interval[],
-  b: readonly Interval[],
-): number {
+function intersectionLength(a: readonly Interval[], b: readonly Interval[]): number {
   // Build merged (de-overlapped) copies, then sum pairwise intersections.
   const mergeIntervals = (xs: readonly Interval[]): Interval[] => {
     const valid = xs.filter((i) => i.endMinute > i.startMinute);

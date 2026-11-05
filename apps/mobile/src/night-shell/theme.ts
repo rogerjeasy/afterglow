@@ -1,7 +1,7 @@
 import {
   type LuminanceMode,
-  resolveToken,
   type SemanticToken,
+  resolveToken,
   semanticTokenNames,
 } from '@afterglow/design-system';
 

@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { fuse, IllegalNegativeVoteError } from './fuse.js';
+import { IllegalNegativeVoteError, fuse } from './fuse.js';
 import {
   DEFAULT_K,
   type FusionContext,

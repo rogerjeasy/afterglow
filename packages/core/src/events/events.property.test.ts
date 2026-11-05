@@ -1,8 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { createClock, observe, tick } from './clock.js';
-import { compareEvents, EventLog, InvalidEventError, validateEvent } from './log.js';
-import { appendOnly, lwwField, reduce, type Versioned } from './reduce.js';
+import { EventLog, InvalidEventError, compareEvents, validateEvent } from './log.js';
+import { type Versioned, appendOnly, lwwField, reduce } from './reduce.js';
 import type { AfterglowEvent } from './types.js';
 
 /** Arbitrary for a well-formed event. */
@@ -26,12 +26,12 @@ describe('Events properties', () => {
     expect(() => validateEvent({ deviceEpoch: '', lamport: 1, type: 't', payload: 0 })).toThrow(
       InvalidEventError,
     );
-    expect(() =>
-      validateEvent({ deviceEpoch: 'd', lamport: -1, type: 't', payload: 0 }),
-    ).toThrow(InvalidEventError);
-    expect(() =>
-      validateEvent({ deviceEpoch: 'd', lamport: 1, type: '', payload: 0 }),
-    ).toThrow(InvalidEventError);
+    expect(() => validateEvent({ deviceEpoch: 'd', lamport: -1, type: 't', payload: 0 })).toThrow(
+      InvalidEventError,
+    );
+    expect(() => validateEvent({ deviceEpoch: 'd', lamport: 1, type: '', payload: 0 })).toThrow(
+      InvalidEventError,
+    );
   });
 
   // EV-02: total order is deterministic and independent of insertion order.
@@ -43,7 +43,9 @@ describe('Events properties', () => {
         expect(b).toEqual(a);
         // and the order obeys compareEvents
         for (let i = 1; i < a.length; i++) {
-          expect(compareEvents(a[i - 1] as AfterglowEvent, a[i] as AfterglowEvent)).toBeLessThanOrEqual(0);
+          expect(
+            compareEvents(a[i - 1] as AfterglowEvent, a[i] as AfterglowEvent),
+          ).toBeLessThanOrEqual(0);
         }
       }),
     );
@@ -132,13 +134,17 @@ describe('Events properties', () => {
   // EV-07: the lamport clock strictly advances on tick and observe.
   it('EV-07 lamport clock advances strictly', () => {
     fc.assert(
-      fc.property(fc.integer({ min: 0, max: 1000 }), fc.integer({ min: 0, max: 1000 }), (start, ext) => {
-        const c = createClock(start);
-        expect(tick(c).value).toBeGreaterThan(c.value);
-        const o = observe(c, ext);
-        expect(o.value).toBeGreaterThan(c.value);
-        expect(o.value).toBeGreaterThan(ext);
-      }),
+      fc.property(
+        fc.integer({ min: 0, max: 1000 }),
+        fc.integer({ min: 0, max: 1000 }),
+        (start, ext) => {
+          const c = createClock(start);
+          expect(tick(c).value).toBeGreaterThan(c.value);
+          const o = observe(c, ext);
+          expect(o.value).toBeGreaterThan(c.value);
+          expect(o.value).toBeGreaterThan(ext);
+        },
+      ),
     );
   });
 

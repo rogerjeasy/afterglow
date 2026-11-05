@@ -17,10 +17,7 @@ describe('Grid Sense fusion examples', () => {
   });
 
   it('stays unknown on a lone charging-edge drop with no corroboration', () => {
-    const res = fuse(
-      [{ sense: 'chargingEdge', direction: 'absent', confidence: 1 }],
-      noNeighbours,
-    );
+    const res = fuse([{ sense: 'chargingEdge', direction: 'absent', confidence: 1 }], noNeighbours);
     expect(res.verdict).toBe('unknown');
   });
 

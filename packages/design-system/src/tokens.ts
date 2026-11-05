@@ -12,8 +12,10 @@ export const MODES: readonly LuminanceMode[] = ['night', 'dusk', 'ember'];
 
 export const ramp: Readonly<Record<string, string>> = theme.ramp;
 export const amberRamp: Readonly<Record<string, string>> = theme.amberRamp;
-export const textCeiling: Readonly<Record<LuminanceMode, RampKey>> =
-  theme.textCeiling as Record<LuminanceMode, RampKey>;
+export const textCeiling: Readonly<Record<LuminanceMode, RampKey>> = theme.textCeiling as Record<
+  LuminanceMode,
+  RampKey
+>;
 
 /** Text-carrying semantic tokens, which are bounded by the mode's text ceiling. */
 export const TEXT_TOKENS: readonly SemanticToken[] = [

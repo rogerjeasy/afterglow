@@ -4,12 +4,12 @@ import { contrastOnBlack, isRedDominant, parseHex, relativeLuminance } from './l
 import {
   type LuminanceMode,
   MODES,
-  ramp,
   type RampKey,
-  resolveToken,
   type SemanticToken,
-  semanticTokenNames,
   TEXT_TOKENS,
+  ramp,
+  resolveToken,
+  semanticTokenNames,
   textCeiling,
 } from './tokens.js';
 
@@ -80,16 +80,12 @@ describe('Night Shell luminance properties', () => {
   // Checked as a property over arbitrary pure-red intensities.
   it('NS-07 contrast on black is monotone in red intensity', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: 255 }),
-        fc.integer({ min: 0, max: 255 }),
-        (a, b) => {
-          const toHex = (n: number) => `#${n.toString(16).padStart(2, '0')}0000`;
-          const lo = Math.min(a, b);
-          const hi = Math.max(a, b);
-          expect(contrastOnBlack(toHex(hi))).toBeGreaterThanOrEqual(contrastOnBlack(toHex(lo)));
-        },
-      ),
+      fc.property(fc.integer({ min: 0, max: 255 }), fc.integer({ min: 0, max: 255 }), (a, b) => {
+        const toHex = (n: number) => `#${n.toString(16).padStart(2, '0')}0000`;
+        const lo = Math.min(a, b);
+        const hi = Math.max(a, b);
+        expect(contrastOnBlack(toHex(hi))).toBeGreaterThanOrEqual(contrastOnBlack(toHex(lo)));
+      }),
     );
   });
 

@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { aggregateCell, InvalidReportError } from './aggregate.js';
+import { InvalidReportError, aggregateCell } from './aggregate.js';
 import { decodeBounds, encodeGeohash, isGeohash6 } from './geohash.js';
 import { type AggregateContext, type CellReport, K_ANONYMITY } from './types.js';
 
@@ -92,7 +92,13 @@ describe('Cells properties', () => {
     });
     const fiveAbsent = ['a', 'b', 'c', 'd', 'e'].map((d) => mk(d, 'absent'));
     const fivePresent = ['a', 'b', 'c', 'd', 'e'].map((d) => mk(d, 'present'));
-    const mixed = [mk('a', 'absent'), mk('b', 'absent'), mk('c', 'absent'), mk('d', 'present'), mk('e', 'present')];
+    const mixed = [
+      mk('a', 'absent'),
+      mk('b', 'absent'),
+      mk('c', 'absent'),
+      mk('d', 'present'),
+      mk('e', 'present'),
+    ];
     expect(aggregateCell(fiveAbsent, ctx()).state).toBe('dark');
     expect(aggregateCell(fivePresent, ctx()).state).toBe('lit');
     expect(aggregateCell(mixed, ctx()).state).toBe('mixed');
