@@ -1,0 +1,20 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import { applyMode } from './night-shell/theme';
+import './night-shell/night-shell.css';
+
+// Resolve the initial mode's tokens before first paint so there is never a
+// flash of unstyled (or light) content.
+applyMode('ember');
+
+const container = document.getElementById('root');
+if (!container) {
+  throw new Error('Root container #root not found');
+}
+
+createRoot(container).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
