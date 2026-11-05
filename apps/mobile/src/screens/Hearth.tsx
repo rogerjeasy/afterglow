@@ -1,81 +1,194 @@
-import type { ReactNode } from 'react';
-import { PrimaryButton, SourceChip, StatusLine, Tile } from '../night-shell/components';
+import { household, thermal } from '@afterglow/core';
+import { type ReactNode, useMemo, useState } from 'react';
+import { foodIndex } from '../data/foodkeeper';
+import { simulatedNeighbourhood } from '../demo/household';
+import { type DemoPhase, runScenario } from '../demo/scenario';
+import { formatClockTime, formatTimer } from '../format';
+import {
+  MODEL_SOURCE,
+  applianceSources,
+  applianceTileText,
+  hoursOfSafetyText,
+} from '../household/present';
+import { useHousehold } from '../household/useHousehold';
+import { SourceChip, StatusLine, Tile } from '../night-shell/components';
+import { Button, Notice, Section } from '../night-shell/controls';
+import { WardCard } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
-import type { ScenarioResult } from '../demo/scenario';
+import { HomeSetup } from './HomeSetup';
 
 /**
- * The Hearth: the one line of truth plus the tiles. Numbers shown here are the
- * demo scenario's; each tile carries a source chip (every number shows its
- * source — fail-closed.md rule 9). The verdict line is driven by the real
- * fusion result, including the honest "unknown" case.
+ * The Hearth: the one line of truth plus the tiles. Every number on this screen
+ * is computed by the deterministic core from the household's own data, and each
+ * tile names its source (fail-closed.md rule 9). Where the app does not know
+ * something, the tile is an invitation or says "Unknown" in plain words.
  */
 
-const OUTAGE_SINCE = '20:07';
+export function Hearth({
+  nowMs,
+  onOpenCold,
+}: {
+  nowMs: number;
+  onOpenCold: (applianceId: string | null) => void;
+}): ReactNode {
+  const { store, state } = useHousehold();
+  const { view, demo } = state;
+  const [settingUpHome, setSettingUpHome] = useState(false);
 
-function verdictLine(scenario: ScenarioResult): { timer: string; line: string } {
-  switch (scenario.verdict) {
-    case 'absent':
-      return {
-        timer: 'GRID DOWN 00:07:12',
-        line: `${scenario.neighboursAbsent} neighbours lost power at ${OUTAGE_SINCE} · ESP says 22:30 · crowd says 22:50`,
-      };
-    case 'present':
-      return {
-        timer: 'POWER ON',
-        line: 'Mains present · next load-shedding window 22:00–00:30',
-      };
-    default:
-      return {
-        timer: 'LISTENING…',
-        line: "I can't tell yet whether the power is out here. Plug in the phone or let me hear the room.",
-      };
-  }
-}
+  const assessments = useMemo(() => household.assessAll(view, foodIndex, nowMs), [view, nowMs]);
+  const hours = useMemo(() => household.hoursOfSafety(view, nowMs), [view, nowMs]);
+  const elapsed = household.elapsedMinutes(view, nowMs);
+  const outage = view.outageStartedAtMs !== null;
 
-export function Hearth({ scenario }: { scenario: ScenarioResult }): ReactNode {
-  const { timer, line } = verdictLine(scenario);
-  const dark = scenario.verdict === 'absent';
+  // Demo only: the sense votes go through the real fusion core, with a simulated
+  // neighbourhood standing in for the crowd network that does not exist yet.
+  const phase: DemoPhase = outage ? 'outage' : 'powered';
+  const scenario = runScenario(phase);
+  const sim = outage && demo ? simulatedNeighbourhood(view.outageStartedAtMs as number) : null;
+
+  const timer = outage
+    ? `GRID DOWN ${formatTimer(nowMs - (view.outageStartedAtMs as number))}`
+    : demo
+      ? scenario.verdict === 'present'
+        ? 'POWER ON'
+        : 'LISTENING…'
+      : 'POWER ON';
+
+  const line = outage
+    ? sim
+      ? `${sim.neighboursAbsent} neighbours lost power at ${formatClockTime(
+          view.outageStartedAtMs as number,
+        )} · provider says ${formatClockTime(sim.providerRestoreAtMs)} · crowd says ${formatClockTime(
+          sim.crowdRestoreAtMs,
+        )}`
+      : `You reported the power out at ${formatClockTime(
+          view.outageStartedAtMs as number,
+        )}. Not enough neighbour reports to compare yet: a cell needs at least 5 devices.`
+    : 'No outage reported. On a phone, Grid Sense listens for it. On the web you can tell the app.';
+
+  const homeText = hoursOfSafetyText(hours);
+  const homeKnown = hours.kind !== 'unknown';
 
   return (
     <main
       style={{
         maxWidth: 520,
         margin: '0 auto',
-        padding: '20px',
+        padding: '8px 20px 120px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 24,
-        minHeight: '100vh',
+        gap: 28,
       }}
     >
-      <StatusLine timer={timer} line={line} live={dark} />
-
-      <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
-        Verdict from Grid Sense fusion:{' '}
-        <span style={{ color: token('text.primary') }}>{scenario.verdict}</span>
-        <div style={{ marginTop: 6 }}>{scenario.result.reason}</div>
-        <SourceChip
-          label={`senses: ${[...scenario.result.votedPositive, ...scenario.result.votedNegative].join(', ') || 'none'}`}
-        />
+      <div>
+        <StatusLine timer={timer} line={line} live={outage} />
+        {sim ? <SourceChip label="simulated neighbourhood (demo)" /> : null}
+        {demo && (outage || scenario.verdict) ? (
+          <div
+            style={{
+              marginTop: 14,
+              fontSize: 'var(--type-caption)',
+              color: token('text.secondary'),
+            }}
+          >
+            Grid Sense verdict from the fusion core:{' '}
+            <span style={{ color: token('text.primary') }}>{scenario.verdict}</span>
+            <div style={{ marginTop: 6 }}>{scenario.result.reason}</div>
+            <SourceChip
+              label={`demo votes: ${
+                [...scenario.result.votedPositive, ...scenario.result.votedNegative].join(', ') ||
+                'none'
+              }`}
+            />
+          </div>
+        ) : null}
       </div>
 
-      {dark ? (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 12,
-          }}
-        >
-          <Tile title="Fridge" value="3 h 10 m" source="USDA FoodKeeper" live />
-          <Tile title="Freezer" value="22 h 40 m" source="USDA FoodKeeper" live />
-          <Tile title="Hours of safety" value="7 h" source="NREL archetype" />
-          <Tile title="Insulin" value="27 d left" source="FDA label" />
+      <Section title={outage ? 'What the dark is doing' : 'If the power fails'}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+          {assessments.map((a) => {
+            const text = applianceTileText(a);
+            return (
+              <Tile
+                key={a.model.appliance.id}
+                title={a.model.appliance.name}
+                value={text.value}
+                note={text.note}
+                sources={applianceSources(a, thermal.APPLIANCE_MODEL_VERSION)}
+                live={outage}
+                onClick={() => onOpenCold(a.model.appliance.id)}
+              />
+            );
+          })}
+          {assessments.length === 0 ? (
+            <Tile
+              title="Fridge and freezer"
+              value="Add yours"
+              note="Then I can say how long your food is covered."
+              onClick={() => onOpenCold(null)}
+            />
+          ) : null}
+
+          <Tile
+            title="Hours of safety"
+            value={homeText.value}
+            note={homeKnown ? homeText.note : 'Tell me about your home to get a band, not a guess.'}
+            sources={[...homeText.sources, ...(homeKnown ? [MODEL_SOURCE] : [])]}
+            live={outage && homeKnown}
+            onClick={() => setSettingUpHome(true)}
+          />
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <WardCard
+              title="Medicines"
+              refusal="No medicine clock. I will not estimate how long your medicine lasts."
+            >
+              <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
+                Storage limits come only from a pharmacist-approved label table, and this build has
+                none loaded. Ask your pharmacist. This is not medical advice.
+              </div>
+              <SourceChip label="label-only rule" />
+            </WardCard>
+          </div>
         </div>
+      </Section>
+
+      {settingUpHome ? (
+        <HomeSetup
+          current={view.home}
+          onCancel={() => setSettingUpHome(false)}
+          onSave={(home) => {
+            store.setHome(home);
+            setSettingUpHome(false);
+          }}
+        />
       ) : null}
 
-      <div style={{ marginTop: 'auto', paddingTop: 16 }}>
-        <PrimaryButton>◉ I'M SAFE</PrimaryButton>
+      {elapsed !== null && assessments.some((a) => a.needAttention > 0) ? (
+        <Notice>
+          {assessments.reduce((n, a) => n + a.needAttention, 0)} food item(s) need a decision. Open
+          Cold to see which.
+        </Notice>
+      ) : null}
+
+      <div style={{ marginTop: 'auto' }}>
+        {outage ? (
+          <Button
+            variant="primary"
+            style={{ width: '100%', minHeight: 72 }}
+            onClick={() => store.endOutage()}
+          >
+            Power is back
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            style={{ width: '100%', minHeight: 72 }}
+            onClick={() => store.startOutage(Date.now())}
+          >
+            Power just went out
+          </Button>
+        )}
       </div>
     </main>
   );

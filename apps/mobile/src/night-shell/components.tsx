@@ -50,24 +50,22 @@ export function StatusLine({
 export function Tile({
   title,
   value,
-  source,
+  note,
+  sources,
   live,
+  onClick,
 }: {
   title: string;
   value: string;
-  source?: string;
+  /** One plain-language line under the number. */
+  note?: string;
+  /** Where the number comes from; every number shows its source. */
+  sources?: readonly string[];
   live?: boolean;
+  onClick?: () => void;
 }): ReactNode {
-  return (
-    <div
-      style={{
-        padding: '16px',
-        borderRadius: 'var(--radius-tile)',
-        background: token('surface.2'),
-        borderTop: live ? `1px solid ${token('glow')}` : '1px solid transparent',
-        minWidth: 0,
-      }}
-    >
+  const body = (
+    <>
       <div
         style={{
           fontSize: 'var(--type-label)',
@@ -87,8 +85,56 @@ export function Tile({
       >
         {value}
       </div>
-      {source ? <SourceChip label={source} /> : null}
-    </div>
+      {note ? (
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: 'var(--type-caption)',
+            color: token('text.secondary'),
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {note}
+        </div>
+      ) : null}
+      {sources && sources.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {sources.map((label) => (
+            <SourceChip key={label} label={label} />
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+  const frame: CSSProperties = {
+    padding: '16px',
+    borderRadius: 'var(--radius-tile)',
+    background: token('surface.2'),
+    borderTop: live ? `1px solid ${token('glow')}` : '1px solid transparent',
+    minWidth: 0,
+    textAlign: 'left',
+    // Top-aligned content, so tiles in a row line up even when a button centres its children.
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  };
+  if (!onClick) return <div style={frame}>{body}</div>;
+  return (
+    <button
+      type="button"
+      className="press"
+      onClick={onClick}
+      style={{
+        ...frame,
+        border: 'none',
+        borderTop: frame.borderTop,
+        color: 'inherit',
+        font: 'inherit',
+      }}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -99,7 +145,7 @@ export function SourceChip({ label }: { label: string }): ReactNode {
         display: 'inline-block',
         marginTop: 10,
         padding: '4px 10px',
-        borderRadius: 999,
+        borderRadius: 14,
         fontSize: 'var(--type-caption)',
         color: token('text.secondary'),
         border: `1px solid ${token('hairline')}`,

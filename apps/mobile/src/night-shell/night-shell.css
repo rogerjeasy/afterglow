@@ -16,14 +16,14 @@
   --type-caption: 16px;
   --type-title: 28px;
   --type-display: 40px;
-  --type-clock-xl: 56px;
-  --type-clock-lg: 32px;
+  --type-clock-xl: clamp(36px, 10vw, 56px);
+  --type-clock-lg: clamp(20px, 5.6vw, 32px);
+  --type-clock-md: 24px;
+  --type-headline: 22px;
 
-  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
-    Arial, sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   /* Tabular figures so clocks never jump as they tick. */
-  --font-clock: ui-monospace, 'SF Mono', 'Roboto Mono', Menlo, Consolas,
-    monospace;
+  --font-clock: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
 
   --radius-control: 12px;
   --radius-tile: 16px;
@@ -104,4 +104,43 @@ button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Press feedback: scale 0.97 over 120 ms on press-in (design 8.3). Transform only. */
+.press {
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+/* Full-width rows step down one surface tier instead of scaling. */
+.press-row:active {
+  background: var(--surface-3) !important;
+}
+/* Keyboard focus: 2 px focus ring token with a 2 px offset on every operable control. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+input::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+/* The ward: a bar closes across the card in 250 ms (transform only). */
+.ward-bar {
+  transform-origin: left center;
+  animation: ward-close 250ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes ward-close {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+h1,
+h2,
+h3 {
+  font-weight: 700;
 }

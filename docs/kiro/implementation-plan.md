@@ -23,6 +23,11 @@ The fusion module and tokens are not demo artifacts; they are the first two real
 
 ---
 
+- [x] Wave 1.5 slice: `foodkeeper`, `household`, `thermal-appliance-v2` (corrected the refrigerated danger threshold from 5 °C to USDA's 40 °F / 4.4 °C), Cold screen, computed Hearth tiles, medicine ward (fail-closed refusal; no formulary yet).
+- [x] Two further PBT catches recorded (schedule merge ordering; non-finite crossing time) plus one from foodkeeper.
+
+---
+
 ## Build principles (apply to every wave)
 
 1. **Dependencies point downward** (`structure.md`): UI → feature modules → `packages/core` → adapters → OS. The core imports nothing but itself.
@@ -39,10 +44,10 @@ The fusion module and tokens are not demo artifacts; they are the first two real
 Close the gaps the current scaffold left before the core grows.
 
 - [ ] **0.1 Core test runtimes.** Run the `packages/core` property suite on Node, in a headless browser, and on a Hermes runner in CI (architecture ADR-002), so the core is verified on every runtime it ships to.
-- [ ] **0.2 Shared types package / core barrel.** Establish `packages/core` module layout (`events`, `cells`, `schedule`, `thermal`, `foodkeeper`, `formulary`, `energy`, `heliograph`, `acoustic`, `alerts`, `policy`, `fusion`) with a stable public surface and per-module property-test convention.
-- [ ] **0.3 `AGENTS.md`** at repo root — the universal contract (deterministic core, fail closed, no raw media, k ≥ 5, no light mode).
-- [ ] **0.4 `.kiroignore`** — env files, keys, raw audio fixtures under `data/fixtures/audio/raw/`.
-- [ ] **0.5 CI pipeline** (GitHub Actions, OIDC-ready) — path-filtered test/lint/typecheck; property suite on every push; Playwright pixel-scan job stub.
+- [x] **0.2 Shared types package / core barrel.** Establish `packages/core` module layout (`events`, `cells`, `schedule`, `thermal`, `foodkeeper`, `formulary`, `energy`, `heliograph`, `acoustic`, `alerts`, `policy`, `fusion`) with a stable public surface and per-module property-test convention.
+- [x] **0.3 `AGENTS.md`** at repo root — the universal contract (deterministic core, fail closed, no raw media, k ≥ 5, no light mode).
+- [~] **0.4 `.kiroignore`** (content ready; the workspace write-deny rule blocks agent writes to it, so a human adds it) — env files, keys, raw audio fixtures under `data/fixtures/audio/raw/`.
+- [~] **0.5 CI pipeline** — `ci.yml` (lint, typecheck, property suite, build) and `deploy-pages.yml` written; not yet run on GitHub. Playwright pixel-scan job still to add.
 - [ ] **0.6 Responsive/overflow pass** on the app shell (close the "nothing overflows" design rule).
 
 ---
@@ -55,7 +60,7 @@ Pure TypeScript, no I/O. Built in dependency order. Each is a real product modul
 - [x] **1.2 `cells`** — geohash-6 encode/decode, k-anonymity aggregation (≥5 distinct devices or unknown), restoration detector, provenance tagging. _Properties:_ k never breached; restoration never below k; aggregation commutative/idempotent; cell-granular outputs only. (CE-01..CE-08 green.)
 - [x] **1.3 `schedule`** — provider-merge (deterministic, idempotent, commutative), adherence scoring (promised vs observed). _Properties:_ merge order-independence; adherence monotonicity. (SC-01..SC-07 green.)
 - [x] **1.4 `thermal`** — RC compartment model `T(t)=T_amb+(T_0−T_amb)e^(−t/τ)` and building model; `temperatureAt`, `crossingTime`, `discardTimes`; door-event steps. Real USDA/archetype constants vendored. _Properties:_ boundedness, monotonicity toward ambient, order-independence of door events, model versioned. (TH-01..TH-07 green.)
-- [ ] **1.5 `foodkeeper`** — rules engine over the real USDA FoodKeeper snapshot; the 4-hour perishable clock starts at the 4 °C crossing, not the outage; frozen ice-crystals rule. _Properties:_ clocks never exceed source; "can I eat the…" deterministic with citation; conservative defaults labelled.
+- [x] **1.5 `foodkeeper`** — rules engine over the real USDA FoodKeeper snapshot (661 products, CC0) and USDA outage guidance. Refrigerated window = `min(240 min, modelled 40 °F crossing)`; frozen ice-crystals flow; unlisted foods fall back to perishable. (FK-01..FK-11 green.) Also: `household` event-sourced view and derivations (HH-01..HH-07 green); Cold screen and computed Hearth tiles. See `.kiro/specs/foodkeeper`, `.kiro/specs/household`.
 - [ ] **1.6 `formulary`** — excursion clocks over *validated* entries only (`{product,labelVersion,condition,maxTempC,maxDays,notes,source,approver,approvedAt,signature}`); signature verification; "ask your pharmacist" when absent; stop at label allowance. _Properties:_ clock never exceeds budget; unvalidated/unsigned entry never yields a clock; monotonic while outside range. (The validated table itself lives in the separate `afterglow-formulary` repo; see §Separate repos.)
 - [ ] **1.7 `energy`** — store/load priority planner (medical > communication > light > food > comfort), feasibility checks, schedule awareness, generator fuel/runtime. _Properties:_ never schedules a medical load on a store that can't sustain it for the forecast; infeasible loads stated; deterministic given inputs.
 - [ ] **1.8 `heliograph`** — frame encoder/decoder, Manchester clock recovery on sampled brightness series, Hamming(12,8)+CRC-4, three-repeat majority vote. _Properties:_ codec round-trip under bounded bit flips; never displays a best-effort decode (repeat requested on FEC+CRC fail).
