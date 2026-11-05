@@ -1,0 +1,73 @@
+name: Infrastructure checks
+
+# Runs on any change under infra/. It needs NO AWS credentials and creates
+# nothing: formatting, validation, the offline test suites (mocked provider),
+# and a static security scan. Deploying (`terraform apply`) is a human step.
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    name: fmt, validate, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.x
+          terraform_wrapper: false
+
+      - name: Format
+        run: terraform fmt -check -recursive -diff infra
+
+      - name: Validate and test the two roots (provider versions locked)
+        run: |
+          set -euo pipefail
+          for dir in infra/bootstrap infra/regional; do
+            echo "::group::$dir"
+            (cd "$dir" && terraform init -backend=false -input=false -lockfile=readonly >/dev/null \
+              && terraform validate \
+              && terraform test)
+            echo "::endgroup::"
+          done
+
+      # The modules are only ever used through the two roots above, which pin the
+      # provider. They are tested on their own here, resolving the provider fresh.
+      - name: Test each module on its own
+        run: |
+          set -euo pipefail
+          for dir in infra/modules/s3-bucket infra/modules/dynamodb-table \
+                     infra/modules/edge infra/modules/identity; do
+            echo "::group::$dir"
+            (cd "$dir" && terraform init -backend=false -input=false >/dev/null && terraform test)
+            echo "::endgroup::"
+          done
+
+  security-scan:
+    name: static security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          framework: terraform
+          skip_path: 'infra/.*/tests/.*'
+          soft_fail: false
+          quiet: true
