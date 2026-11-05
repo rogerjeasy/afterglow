@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+
+aws_account_id = "123456789012"
+region         = "eu-central-1"
+
+alert_emails       = ["you@example.com"]
+monthly_budget_usd = 50
+
+# Off until you want GitHub Actions to run `terraform plan`.
+enable_github_ci  = false
+github_repository = "rogerjeasy/afterglow"
+
+enable_guardduty = false

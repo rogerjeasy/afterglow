@@ -1,0 +1,18 @@
+# Step 3 of infra/README.md: after the first apply, move bootstrap's own state
+# into the bucket it just created.
+#
+#   1. Copy this file to backend.tf and replace <ACCOUNT_ID> and, if you changed it, the region.
+#   2. Run: terraform init -migrate-state
+#   3. Answer "yes" when asked to copy the existing state.
+#   4. Delete the local terraform.tfstate files once you have confirmed the remote copy.
+
+terraform {
+  backend "s3" {
+    bucket       = "afterglow-tfstate-<ACCOUNT_ID>"
+    key          = "bootstrap/terraform.tfstate"
+    region       = "eu-central-1"
+    encrypt      = true
+    kms_key_id   = "alias/afterglow-account"
+    use_lockfile = true
+  }
+}

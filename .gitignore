@@ -29,3 +29,20 @@ pnpm-debug.log*
 !.env.example
 *.pem
 *.key
+
+# Terraform: state and real values never enter git. Example files and the lock file do.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+*.backend.hcl
+!backend.hcl.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info

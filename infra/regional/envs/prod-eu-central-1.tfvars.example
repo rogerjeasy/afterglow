@@ -1,0 +1,18 @@
+aws_account_id = "123456789012"
+environment    = "prod"
+region         = "eu-central-1"
+
+protect_resources = true
+
+web_origins               = ["https://afterglow.example"]
+webauthn_relying_party_id = "afterglow.example"
+
+alert_emails = ["oncall@example.com"]
+
+# Real account email needs a verified Amazon SES identity in this region.
+# ses_source_arn   = "arn:aws:ses:eu-central-1:123456789012:identity/afterglow.example"
+# ses_from_address = "no-reply@afterglow.example"
+# enable_email_otp = true
+
+# Africa, Asia and the Middle East edges are where many users are.
+cdn_price_class = "PriceClass_All"

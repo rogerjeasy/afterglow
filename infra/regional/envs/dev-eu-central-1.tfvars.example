@@ -1,0 +1,23 @@
+# Copy to dev-eu-central-1.tfvars (git-ignored) and fill in. Never commit the real file.
+
+aws_account_id = "123456789012"
+environment    = "dev"
+region         = "eu-central-1"
+
+# Dev may be torn down while iterating. Production never sets this to false.
+protect_resources = false
+
+# Exact https origins of the web app (no wildcards, no trailing slash).
+web_origins = ["https://afterglow-flax.vercel.app"]
+
+# The domain passkeys are bound to. Choose the domain you will KEEP before anyone registers a passkey.
+webauthn_relying_party_id = "afterglow-flax.vercel.app"
+
+alert_emails = ["you@example.com"]
+
+# Cheaper edges (North America and Europe only) while testing from there.
+cdn_price_class = "PriceClass_100"
+
+# Cost brakes against runaway clients, in request units per second.
+table_max_write_units = 200
+table_max_read_units  = 400
