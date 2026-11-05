@@ -1,32 +1,17 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import {
-  type HouseholdStore,
-  type StoreState,
-  browserStorage,
-  createHouseholdStore,
-} from './store';
+import { useSpace } from '../spaces/useSpace';
+import type { HouseholdStore, StoreState } from './store';
 
-let singleton: HouseholdStore | null = null;
-
-/** The one store for the running app, created on first use. */
-export function getHouseholdStore(): HouseholdStore {
-  if (!singleton) {
-    singleton = createHouseholdStore({
-      storage: browserStorage(),
-      now: () => Date.now(),
-      randomId: () =>
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID().slice(0, 12)
-          : Math.random().toString(36).slice(2, 14),
-    });
-  }
-  return singleton;
-}
-
-export function useHousehold(): { store: HouseholdStore; state: StoreState } {
-  const store = getHouseholdStore();
+/**
+ * The household store of the ACTIVE space (guest, demo or the unlocked
+ * account). When the space changes the previous store is no longer reachable
+ * from any component.
+ */
+export function useHousehold(): { store: HouseholdStore; state: StoreState; demo: boolean } {
+  const { space } = useSpace();
+  const store = space.store;
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);
-  return { store, state };
+  return { store, state, demo: space.kind === 'demo' };
 }
 
 /** Wall-clock time, refreshed every `intervalMs`, for live clocks. */

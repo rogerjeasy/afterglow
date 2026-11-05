@@ -2,7 +2,7 @@
   "name": "@afterglow/mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "Afterglow consumer app — web PWA shell rendering the Night Shell. Native (Expo) targets added in a later wave.",
+  "description": "Afterglow consumer app \u2014 web PWA shell rendering the Night Shell. Native (Expo) targets added in a later wave.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
     "lint": "biome check src"
   },
   "dependencies": {
+    "@afterglow/adapters": "workspace:*",
     "@afterglow/core": "workspace:*",
     "@afterglow/design-system": "workspace:*",
     "react": "19.0.0",

@@ -28,6 +28,10 @@ The fusion module and tokens are not demo artifacts; they are the first two real
 
 ---
 
+- [x] Accounts and spaces slice (ACC-01..ACC-18): demo is an isolated in-memory sandbox; optional encrypted local accounts; strict CSP and hardening headers.
+
+---
+
 ## Build principles (apply to every wave)
 
 1. **Dependencies point downward** (`structure.md`): UI → feature modules → `packages/core` → adapters → OS. The core imports nothing but itself.
@@ -78,6 +82,7 @@ The seam between the pure core and the impure world.
 - [ ] **2.2 SQLite everywhere** — `expo-sqlite` (native) / `wa-sqlite` on OPFS (web); one schema; the `events` log + reducer views; SQLCipher where the keystore holds the key.
 - [ ] **2.3 Sync** — idempotent, jittered (0–120 s), batched, watermark-acked; LWW by device-epoch; roster append-only; reports immutable. No sync required for any safety function.
 - [ ] **2.4 Crypto** — libsodium / WebCrypto; Ed25519 device identity; X25519 pairing; HKDF daily-rotating roster ids; sealed-box roster payloads.
+  - [x] _Slice done:_ WebCrypto vault (AES-256-GCM, PBKDF2-SHA256 >= 600k, wrapped data key, recovery wrap, AAD binding) in `@afterglow/adapters`. Ed25519 device identity, X25519 pairing and HKDF roster ids remain.
 - [ ] **2.5 Snapshots on device** — FoodKeeper, archetype tables, device table, provider schedules, PMTiles city packs.
 
 ---
@@ -133,6 +138,7 @@ TypeScript Lambda (Node 24), Python 3.13 jobs, Java 17 Flink. Real code, real Ia
 - [ ] **6.7 Alerting service** — SNS → FCM/APNs/Web Push, Twilio/Africa's Talking SMS, Amazon Connect IVR; dedup; storm priorities.
 - [ ] **6.8 Roster relay** — WebSocket + DynamoDB TTL queue; ciphertext + routing only; ≤7-day retention.
 - [ ] **6.9 Identity** — Ed25519 device tokens + Play Integrity/App Attest; optional Cognito accounts; institutional SSO.
+  - [x] _Slice done (local, zero-knowledge):_ optional accounts with encrypted per-account vaults, isolated spaces (guest, demo, account), recovery code, throttling, idle lock, page-hardening headers. See `.kiro/specs/accounts`. Server accounts (Cognito, passkeys, OTP, ciphertext sync, per-account authorisation) are the remaining human-gated part.
 - [ ] **6.10 Open-data publisher** — Glue/Athena over S3 Parquet; nightly k-anonymous export with DCAT.
 - [ ] **6.11 Infra** — Terraform modules + per-region stacks (af-south-1, eu-central-1, us-east-1, ap-south-1, me-south-1); AppConfig flags; OpenTelemetry; SLO alarms; storm-mode control plane; chaos drill harness.
 

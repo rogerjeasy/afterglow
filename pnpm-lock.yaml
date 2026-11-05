@@ -20,6 +20,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@afterglow/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
       '@afterglow/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -54,6 +57,18 @@ importers:
       vite:
         specifier: 6.0.5
         version: 6.0.5(@types/node@22.20.5)
+      vitest:
+        specifier: 2.1.8
+        version: 2.1.8(@types/node@22.20.5)
+
+  packages/adapters:
+    devDependencies:
+      fast-check:
+        specifier: 3.23.2
+        version: 3.23.2
+      typescript:
+        specifier: 5.7.2
+        version: 5.7.2
       vitest:
         specifier: 2.1.8
         version: 2.1.8(@types/node@22.20.5)

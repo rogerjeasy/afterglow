@@ -89,3 +89,21 @@ A compartment at (about) 0 C in a 0 C room, with 4.4 C as the danger threshold.
 **Fix:** `assess.ts` uses `minutesUntilAtLeast`, the first time the temperature reaches the threshold **from below** (0 if already at or above it; none if the ambient is at or below it). The test now checks against an independent bisection oracle on `temperatureAt` instead of reusing a crossing formula. The thermal module is unchanged; its meaning is right for its own requirements.
 
 **What was wrong:** the test oracle (first) and the implementation (latent). Neither the requirement nor the thermal module.
+
+---
+
+## 2026-11-05 · Accounts · what the tests missed and the browser audit found
+
+Not property-test shrinks, but the same discipline: passing tests are not enough until they have been made to fail. Each item below changed the code.
+
+**1. A test that could not fail (ACC-06).** The first cross-account test swapped a ciphertext between two accounts that also had different keys, so it failed whatever the associated data was. Removing the account id from the AAD (a deliberate mutation) left all 35 tests green. Added `ACC-06c`, which uses the *same key* with a different account id, revision and purpose; with the mutation applied it now fails. Other mutations checked: KDF ignoring the passphrase (11 tests fail), throttling disabled (2 fail), demo store writing to real storage, lock keeping the account store, idle lock ignoring the outage exemption, and sign-in from inside another account (each caught by at least one test).
+
+**2. The lockout was invisible (ACC-11).** In a real browser the fifth wrong attempt locked the account, but the screen said nothing until a sixth was refused. Unit tests asserted that the service threw; nobody asserted the UI was told. `run()` now reads the lockout from the service after every failure, with a test that the failure that starts the lockout reports it.
+
+**3. The lockout was forgotten on navigation.** Tapping "I forgot my passphrase" cleared the on-screen messages, and the lockout with them, leaving an enabled button that would be refused. The lockout is now read from the service for the account in view (`controller.retryUntil`), not remembered as a message.
+
+**4. A context switch brightened the screen in a blackout (night vision).** The pixel scan flagged full-red pixels on the demo screen: opening the demo (a space with no outage) was read as "power restored" and the app switched Night to Ember. Locking an account mid-outage would have done the same. The decision now lives in a pure, property-tested function (`night-shell/modePolicy.ts`): a change of space never brightens and never replays Lights-Out. The failure appeared once more after the first fix and then not in six reruns, so the policy was moved out of effect timing rather than trusting the fix.
+
+**5. Focused inputs hid under the fixed tab bar.** Scripted interaction with a lower form field landed on the tab bar. Fixed with `scroll-padding-bottom` so focus scrolling clears the bar.
+
+**6. Browser autofill paints a pale background** that would break the night-vision rule. The autofill pseudo-class is overridden with the surface token and the create form is covered by the pixel scan.

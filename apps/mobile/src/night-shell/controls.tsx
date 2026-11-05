@@ -191,6 +191,80 @@ export function SearchField({
   );
 }
 
+/**
+ * A labelled text input. Password fields use the platform's password semantics
+ * (so a password manager can help) and never echo; autofill is restyled in CSS
+ * so it cannot flash a light background in the dark.
+ */
+export function TextField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  autoComplete,
+  hint,
+  error,
+  disabled,
+  name,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: 'text' | 'password';
+  autoComplete?: string;
+  hint?: string;
+  error?: string | null;
+  disabled?: boolean;
+  name?: string;
+}): ReactNode {
+  return (
+    <label style={{ display: 'block' }}>
+      <span style={{ fontSize: 'var(--type-label)', color: token('text.secondary') }}>{label}</span>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete ?? 'off'}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        aria-invalid={error ? true : undefined}
+        style={{
+          display: 'block',
+          width: '100%',
+          marginTop: 8,
+          minHeight: 56,
+          padding: '0 16px',
+          borderRadius: 'var(--radius-control)',
+          border: `1px solid ${error ? token('focus.ring') : token('hairline')}`,
+          background: token('surface.2'),
+          color: token('text.primary'),
+          caretColor: token('text.emphasis'),
+          fontSize: 'var(--type-body)',
+          fontFamily: 'inherit',
+          fontWeight: 600,
+          letterSpacing: 'inherit',
+        }}
+      />
+      {error || hint ? (
+        <span
+          style={{
+            display: 'block',
+            marginTop: 6,
+            fontSize: 'var(--type-caption)',
+            color: error ? token('text.emphasis') : token('text.secondary'),
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {error ?? hint}
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
 export function Section({
   title,
   children,
@@ -241,7 +315,7 @@ export function Notice({ children }: { children: ReactNode }): ReactNode {
   );
 }
 
-export type TabId = 'hearth' | 'cold';
+export type TabId = 'hearth' | 'cold' | 'you';
 
 function Glyph({ children }: { children: ReactNode }): ReactNode {
   return (
@@ -277,9 +351,18 @@ const TombstoneGlyph = (): ReactNode => (
   </Glyph>
 );
 
+/** You: a head and shoulders. */
+const YouGlyph = (): ReactNode => (
+  <Glyph>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </Glyph>
+);
+
 const TABS: readonly { id: TabId; label: string; glyph: () => ReactNode }[] = [
   { id: 'hearth', label: 'Hearth', glyph: HearthGlyph },
   { id: 'cold', label: 'Cold', glyph: TombstoneGlyph },
+  { id: 'you', label: 'You', glyph: YouGlyph },
 ];
 
 /** The platform-style tab bar. Tabs are peers and never slide (design 10.1). */

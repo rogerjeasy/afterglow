@@ -144,3 +144,21 @@ h2,
 h3 {
   font-weight: 700;
 }
+
+/*
+ * Browser autofill paints a pale background. Cover it with the surface token so
+ * no light pixel can appear, and keep the text colour on token (night-vision rule 1).
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-2) inset;
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-emphasis);
+  transition: background-color 600000s 0s;
+}
+
+/* A focused or scrolled-to control must clear the fixed tab bar (64 px + safe area). */
+html {
+  scroll-padding-bottom: 112px;
+}

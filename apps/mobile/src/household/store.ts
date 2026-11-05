@@ -19,14 +19,11 @@ export interface StorageLike {
 export const KEYS = {
   events: 'afterglow.household.events.v1',
   epoch: 'afterglow.household.epoch.v1',
-  demo: 'afterglow.household.demo.v1',
 } as const;
 
 export interface StoreState {
   readonly log: events.EventLog;
   readonly view: household.HouseholdView;
-  /** True while the simulated neighbourhood and demo household are in use. */
-  readonly demo: boolean;
 }
 
 export interface ApplianceInput {
@@ -49,7 +46,8 @@ export interface HouseholdStore {
   endOutage(): void;
   checkIce(itemId: string, answer: 'present' | 'absent'): void;
   setHome(home: household.HomePayload): void;
-  setDemo(on: boolean): void;
+  /** Give this store a new anonymous device identity, keeping its data (used after account deletion). */
+  rotateIdentity(): void;
   deleteAllData(): void;
 }
 
@@ -110,18 +108,11 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
 
   let log = loadLog(storage);
   let lamport = log.toArray().reduce((max, e) => Math.max(max, e.lamport), 0);
-  let demo = ((): boolean => {
-    try {
-      return storage.getItem(KEYS.demo) === '1';
-    } catch {
-      return false;
-    }
-  })();
-  let state: StoreState = { log, view: household.buildHouseholdView(log), demo };
+  let state: StoreState = { log, view: household.buildHouseholdView(log) };
   const listeners = new Set<() => void>();
 
   const emit = (): void => {
-    state = { log, view: household.buildHouseholdView(log), demo };
+    state = { log, view: household.buildHouseholdView(log) };
     for (const l of listeners) l();
   };
   const persist = (): void => safeSet(storage, KEYS.events, JSON.stringify(log.toArray()));
@@ -183,13 +174,12 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
     setHome(home) {
       append(E.homeSet, home);
     },
-    setDemo(on) {
-      demo = on;
-      safeSet(storage, KEYS.demo, on ? '1' : '0');
-      emit();
+    rotateIdentity() {
+      epoch = `dev-${deps.randomId()}`;
+      safeSet(storage, KEYS.epoch, epoch);
     },
     deleteAllData() {
-      for (const key of [KEYS.events, KEYS.demo]) {
+      for (const key of [KEYS.events]) {
         try {
           storage.removeItem(key);
         } catch {
@@ -198,7 +188,6 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
       }
       log = events.EventLog.empty();
       lamport = 0;
-      demo = false;
       // A fresh epoch: after deletion the device does not keep its old identity.
       epoch = `dev-${deps.randomId()}`;
       safeSet(storage, KEYS.epoch, epoch);

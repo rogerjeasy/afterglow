@@ -31,8 +31,8 @@ export function Hearth({
   nowMs: number;
   onOpenCold: (applianceId: string | null) => void;
 }): ReactNode {
-  const { store, state } = useHousehold();
-  const { view, demo } = state;
+  const { store, state, demo } = useHousehold();
+  const { view } = state;
   const [settingUpHome, setSettingUpHome] = useState(false);
 
   const assessments = useMemo(() => household.assessAll(view, foodIndex, nowMs), [view, nowMs]);

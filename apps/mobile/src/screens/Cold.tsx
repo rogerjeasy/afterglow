@@ -506,8 +506,8 @@ export function Cold({
 
       <Section title="Your data">
         <Notice>
-          Everything here is stored only on this device. Deleting it also gives this device a new
-          anonymous identity.
+          This clears every appliance, food and clock in the space you are in now. It does not
+          delete your account (use You for that).
         </Notice>
         <Button
           variant="ghost"
@@ -516,7 +516,7 @@ export function Cold({
             onSelect(null);
           }}
         >
-          Delete all my data on this device
+          Clear all household data here
         </Button>
       </Section>
 

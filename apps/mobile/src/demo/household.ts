@@ -2,7 +2,8 @@ import type { foodkeeper } from '@afterglow/core';
 import type { HouseholdStore } from '../household/store';
 
 /**
- * A simulated household for trying the app without typing in a kitchen.
+ * A simulated household for demo mode. It is written to an in-memory demo store
+ * that is never persisted, so it can never mix with a real household (ACC-03).
  *
  * It is plain user data (appliances, food, a home profile) entered through the
  * same store actions a person would use, so every number the app shows for it
@@ -55,7 +56,6 @@ export function loadDemoHousehold(store: HouseholdStore, index: foodkeeper.FoodI
       thresholdC: 15,
     });
   }
-  store.setDemo(true);
 }
 
 /**
