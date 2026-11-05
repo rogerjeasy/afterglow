@@ -1,0 +1,101 @@
+{
+  "$description": "Afterglow Night Shell tokens. Single source of colour for native, web, print and Figma. Values are from docs/afterglow-design.md section 4. Red-only (G=B=0) by construction; raw hex appears only here.",
+  "meta": {
+    "hue": "red",
+    "background": "#000000",
+    "modes": ["night", "dusk", "ember"]
+  },
+  "ramp": {
+    "red.000": "#000000",
+    "red.005": "#080000",
+    "red.010": "#100000",
+    "red.020": "#1A0000",
+    "red.050": "#2A0000",
+    "red.100": "#3D0000",
+    "red.200": "#560000",
+    "red.300": "#6A0000",
+    "red.400": "#780000",
+    "red.500": "#8F0000",
+    "red.600": "#910000",
+    "red.700": "#A50000",
+    "red.800": "#B70000",
+    "red.900": "#EB0000",
+    "red.950": "#F20000",
+    "red.1000": "#FF0000"
+  },
+  "amberRamp": {
+    "red.000": "#000000",
+    "red.005": "#0A0600",
+    "red.010": "#140C00",
+    "red.020": "#1E1100",
+    "red.050": "#2A1700",
+    "red.100": "#3B2100",
+    "red.200": "#553000",
+    "red.400": "#683A00",
+    "red.700": "#784300",
+    "red.800": "#864B00",
+    "red.900": "#AE6100",
+    "red.950": "#B86700"
+  },
+  "textCeiling": {
+    "night": "red.700",
+    "dusk": "red.800",
+    "ember": "red.1000"
+  },
+  "semantic": {
+    "night": {
+      "bg": "red.000",
+      "surface.1": "red.005",
+      "surface.2": "red.010",
+      "surface.3": "red.020",
+      "hairline": "red.050",
+      "glow": "red.100",
+      "nontext.muted": "red.200",
+      "text.secondary": "red.400",
+      "text.primary": "red.600",
+      "text.emphasis": "red.700",
+      "icon.primary": "red.600",
+      "control.fill": "red.020",
+      "control.fill.primary": "red.100",
+      "control.label.primary": "red.700",
+      "focus.ring": "red.700",
+      "alert.help": "red.700"
+    },
+    "dusk": {
+      "bg": "red.000",
+      "surface.1": "red.005",
+      "surface.2": "red.010",
+      "surface.3": "red.020",
+      "hairline": "red.050",
+      "glow": "red.100",
+      "nontext.muted": "red.500",
+      "text.secondary": "red.800",
+      "text.primary": "red.800",
+      "text.emphasis": "red.800",
+      "icon.primary": "red.700",
+      "control.fill": "red.020",
+      "control.fill.primary": "red.100",
+      "control.label.primary": "red.800",
+      "focus.ring": "red.800",
+      "alert.help": "red.800"
+    },
+    "ember": {
+      "bg": "red.000",
+      "surface.1": "red.005",
+      "surface.2": "red.010",
+      "surface.3": "red.020",
+      "hairline": "red.050",
+      "glow": "red.200",
+      "nontext.muted": "red.800",
+      "text.secondary": "red.900",
+      "text.primary": "red.950",
+      "text.emphasis": "red.1000",
+      "icon.primary": "red.900",
+      "control.fill": "red.050",
+      "control.fill.primary": "red.200",
+      "control.label.primary": "red.950",
+      "focus.ring": "red.950",
+      "alert.help": "red.1000"
+    }
+  }
+}
