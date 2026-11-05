@@ -1,16 +1,11 @@
 name: Deploy PWA to GitHub Pages
 
-# Hosts the web build of apps/mobile. Triggered on main, or manually. The
-# repository must be public (or on a plan with Pages for private repos) and
-# Pages must be set to "GitHub Actions" in Settings -> Pages.
+# Hosts the web build of apps/mobile. MANUAL ONLY for now: the repository is
+# private, and GitHub Pages for a private repository needs a paid plan. Run it
+# from the Actions tab once Pages is enabled (Settings -> Pages -> Source:
+# "GitHub Actions"), or switch to another host. Do not re-add a push trigger
+# until Pages is available, or every push shows a failed run.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/**'
-      - 'data/**'
-      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
