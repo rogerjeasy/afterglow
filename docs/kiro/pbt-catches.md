@@ -134,3 +134,8 @@ All four were found by the property suite during the first runs of `heliograph.p
 
 **Not a bug but worth stating:** HL-04 measures that two flips in one Hamming word slip past both Hamming and CRC-4 in a small but real fraction of cases (the test asserts it is non-zero and under 8%). That number is why HL-08 requires two agreeing repeats. HL-09 (never a different message) held over about 20 000 corrupted recordings.
 **Test gap found by mutation:** removing the repeat-spacing rule survived the first suite. A test now sends two frames at gaps that are not a whole number of frame lengths and requires `repeatRequested`.
+---
+## 2026-11-23 · HL-12 · the fast-profile speed limit excluded exactly 40 fps
+**Property:** `HL-12 a noisy, jittery fast recording is read at 40 to 120 fps`. **Shrunken counterexample:** `SAFE, slot 0, sequence 0, 40 fps, jitter ~0, sender clock 0.97, no noise` returned `noSignal`.
+**Root cause (implementation):** the eligibility test was `median interval <= 1000/40`. A 40 fps recording's median interval is `25.000000000000004` ms in floating point, so the very speed the rule names was refused. **Fix:** a 5% margin (`SPEED_TOLERANCE`) stated in HL-12, and a test at 40, 39 and 36 fps.
+**Test gap found by mutation:** ignoring a disagreement between the two profiles survived the first suite. A test now joins a fast and a standard transmission of different messages and requires `repeatRequested`.

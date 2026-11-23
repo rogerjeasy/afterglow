@@ -237,18 +237,18 @@ flowchart LR
 
 | Layer | Optical | Acoustic | BLE | Local high-bandwidth | SMS / voice |
 |---|---|---|---|---|---|
-| Physical | torch or screen, on-off keying, 5 symbols/s, Manchester-coded for clock recovery; receiver samples brightness per frame at ≥ 30 fps | ggwave multi-frequency FSK, audible or near-ultrasonic, 8–16 bytes/s | advertising payloads (≤ 31 bytes legacy, extended where available) | Wi-Fi Aware / Multipeer Connectivity | carrier SMS, IVR |
-| Link | frame = preamble (8) · sequence (4) · payload (8) · parity (Hamming(12,8) + CRC-4); three repeats; receiver majority-votes repeats | ggwave's own framing and ECC | frame in manufacturer data; store-and-forward with TTL and dedup | TLS-like session, full roster snapshot | code text with roster id |
-| Application | message code + roster id → "Mrs Dlamini: SAFE" | same | same plus relay | same plus map snapshot | same |
+| Physical | torch or screen, on-off keying, Manchester-coded for clock recovery; two profiles: **standard** 5 symbols/s (12.8 s per 32-bit frame, any camera) and **fast** 10 symbols/s (6.4 s per frame, camera ≥ 40 fps); the receiver picks by measured frame rate | ggwave multi-frequency FSK, audible or near-ultrasonic, 8–16 bytes/s | advertising payloads (≤ 31 bytes legacy, extended where available) | Wi-Fi Aware / Multipeer Connectivity | carrier SMS, IVR |
+| Link | frame = preamble (8) · two Hamming(12,8) words carrying sequence (2) · code (4) · slot (6) · CRC-4 (32 bits in all); three repeats; a message is shown only when two repeats agree (or three vote), otherwise "repeat requested" | ggwave's own framing and ECC | frame in manufacturer data; store-and-forward with TTL and dedup | TLS-like session, full roster snapshot | code text with roster id |
+| Application | message code + roster slot (0–63, pair-local) → "Mrs Dlamini: SAFE" | same | same plus relay | same plus map snapshot | same |
 | Security | codes are intentionally public (light is visible); roster ids are pair-local and rotate daily from a shared secret | same | same | end-to-end encrypted with pair keys (libsodium) | end-to-end encrypted text where both ends run the app; plain code otherwise |
 
 ```mermaid
 sequenceDiagram
   participant A as Phone A (torch)
   participant B as Phone B (camera)
-  A->>A: encode(code=SAFE, rosterId=0x2F) → bits → Manchester symbols
+  A->>A: encode(code=SAFE, slot=0x2F) → bits → Manchester symbols
   loop 3 repeats
-    A->>B: blink frame at 5 sym/s (6.4 s)
+    A->>B: blink frame (12.8 s standard at 5 sym/s, 6.4 s fast at 10 sym/s)
   end
   B->>B: brightness series → clock recovery → symbols → Hamming correct → CRC
   alt CRC ok
@@ -258,7 +258,7 @@ sequenceDiagram
   end
 ```
 
-The receiver pipeline: per-frame luminance of candidate blobs (temporal differencing selects blinking regions; the brightest periodic blob is tracked), a brightness series resampled to symbol rate, Manchester clock recovery tolerant to ±20% frame-rate jitter, then decoding in the shared core. The same decoder is fed recorded fixtures in CI.
+The receiver pipeline: per-frame luminance of candidate blobs (temporal differencing selects blinking regions; the brightest periodic blob is tracked), a brightness series resampled to symbol rate, Manchester clock recovery tolerant to ±20% frame-rate jitter, then decoding in the shared core (`packages/core/src/heliograph`, spec `.kiro/specs/heliograph`). The same decoder is fed recorded fixtures in CI.
 
 ## 7. Physics engines
 

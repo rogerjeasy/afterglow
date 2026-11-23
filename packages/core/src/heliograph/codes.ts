@@ -28,10 +28,10 @@ export function nameOfCode(n: number): MessageName | null {
   return BY_NUMBER.get(n) ?? null;
 }
 
-/** Roster slots are 4 bits: a receiver tells at most 16 senders apart (spec Analysis). */
-export const MAX_SLOT = 15;
-/** The sequence counter is 4 bits and wraps; it only groups the repeats of one message. */
-export const MAX_SEQUENCE = 15;
+/** Roster slots are 6 bits: a receiver tells 64 senders apart (spec Analysis). */
+export const MAX_SLOT = 63;
+/** The sequence counter is 2 bits and wraps; it only tells consecutive messages apart. */
+export const MAX_SEQUENCE = 3;
 
 /** What a frame carries. `slot` is the sender's pair-local roster slot on the receiver. */
 export interface HeliographMessage {

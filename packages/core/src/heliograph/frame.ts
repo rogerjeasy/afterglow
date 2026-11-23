@@ -31,9 +31,9 @@ export function encodeCoded(msg: HeliographMessage): Bit[] | null {
     return null;
   }
   const head = [
-    ...numberToBits(msg.sequence, 4),
+    ...numberToBits(msg.sequence, 2),
     ...numberToBits(code, 4),
-    ...numberToBits(msg.slot, 4),
+    ...numberToBits(msg.slot, 6),
   ];
   const body = [...head, ...numberToBits(crc4(head), 4)];
   return [
@@ -68,14 +68,14 @@ export function decodeCoded(coded: readonly number[]): FrameDecode {
   const body = [...a.data, ...b.data];
   const head = body.slice(0, 12);
   if (crc4(head) !== bitsToNumber(body.slice(12, 16))) return { ok: false, reason: 'crc' };
-  const code = nameOfCode(bitsToNumber(head.slice(4, 8)));
+  const code = nameOfCode(bitsToNumber(head.slice(2, 6)));
   if (code === null) return { ok: false, reason: 'reservedCode' };
   return {
     ok: true,
     message: {
       code,
-      slot: bitsToNumber(head.slice(8, 12)),
-      sequence: bitsToNumber(head.slice(0, 4)),
+      slot: bitsToNumber(head.slice(6, 12)),
+      sequence: bitsToNumber(head.slice(0, 2)),
     },
     correctedWords: (a.corrected ? 1 : 0) + (b.corrected ? 1 : 0),
   };

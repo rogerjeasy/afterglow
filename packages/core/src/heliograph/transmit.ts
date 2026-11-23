@@ -1,6 +1,7 @@
 import type { HeliographMessage } from './codes.js';
-import { FRAME_SYMBOLS, SYMBOL_MS, encodeFrame } from './frame.js';
+import { FRAME_SYMBOLS, encodeFrame } from './frame.js';
 import { manchesterEncode } from './manchester.js';
+import { PROFILES, type Profile } from './profiles.js';
 
 export interface Run {
   readonly lit: boolean;
@@ -13,6 +14,7 @@ export interface TransmitPlan {
   readonly totalMs: number;
   readonly repeats: number;
   readonly symbols: number;
+  readonly profile: Profile['name'];
 }
 
 export const MAX_REPEATS = 5;
@@ -26,7 +28,10 @@ export const DEFAULT_REPEATS = 3;
 export function planTransmission(
   msg: HeliographMessage,
   repeats: number = DEFAULT_REPEATS,
+  profile: Profile = PROFILES.standard,
 ): TransmitPlan | null {
+  const symbolMs = profile?.symbolMs;
+  if (typeof symbolMs !== 'number' || !Number.isFinite(symbolMs) || symbolMs <= 0) return null;
   if (!Number.isInteger(repeats) || repeats < 1 || repeats > MAX_REPEATS) return null;
   const frame = encodeFrame(msg);
   if (frame === null) return null;
@@ -36,8 +41,8 @@ export function planTransmission(
     for (const s of one) {
       const lit = s === 1;
       const last = runs[runs.length - 1];
-      if (last && last.lit === lit) last.ms += SYMBOL_MS;
-      else runs.push({ lit, ms: SYMBOL_MS });
+      if (last && last.lit === lit) last.ms += symbolMs;
+      else runs.push({ lit, ms: symbolMs });
     }
   }
   return {
@@ -45,5 +50,6 @@ export function planTransmission(
     totalMs: runs.reduce((n, r) => n + r.ms, 0),
     repeats,
     symbols: FRAME_SYMBOLS * repeats,
+    profile: profile.name,
   };
 }

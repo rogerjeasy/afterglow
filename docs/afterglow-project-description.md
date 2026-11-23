@@ -191,7 +191,7 @@ Each module lists purpose, capabilities, rules, data, and behaviour on failure. 
 
 ### 7.4 Heliograph
 *Communication when every radio is down.* Resurrects the 1867 Aldis signal lamp.
-- **Optical channel**: torch (or screen) on-off-keyed symbols at 5 symbols per second; frames carry a sync preamble, sequence, an 8-bit payload (message code + roster id) and forward-error-correction parity; frames repeat; the camera receiver tracks the brightest periodic source, decodes and corrects. Tens of metres at night; window to window, courtyard to courtyard; night is the ideal condition.
+- **Optical channel**: torch (or screen) on-off-keyed symbols at 5 symbols per second (a fast 10-per-second profile is used when the camera runs at 40 fps or more); frames carry a sync preamble, a 2-bit sequence, a 12-bit payload (4-bit message code + 6-bit roster slot) and forward-error-correction and CRC parity, and a message is shown only after two repeats agree; frames repeat; the camera receiver tracks the brightest periodic source, decodes and corrects. Tens of metres at night; window to window, courtyard to courtyard; night is the ideal condition.
 - **Acoustic channel**: frequency-shift-keyed tones (audible or near-ultrasonic) carry the same codes room to room and through thin walls.
 - **BLE channel** (native): background advertising and scanning for roster check-ins and codes; store-and-forward relay through any phone that later regains connectivity (epidemic routing with TTL and deduplication).
 - **Wi-Fi Aware / local hotspot channel** (native, Android): higher-bandwidth local exchange of roster status and map snapshots when phones are within range.

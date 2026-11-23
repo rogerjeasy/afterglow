@@ -340,7 +340,7 @@ Ghost board:
 │ ──────────────────────────────────────────
 │ [ Send a code ]        [ Receive ]
 ```
-Send a code: six oversized `CodeButton`s (SAFE, HELP, NEED MEDS, NEED WATER, CHARGE HERE, COMING) on a 2-column grid, each 96 px tall with glyph and word; a recipient chip row; a channel row showing what will be used (light · sound · SMS · BLE) with unavailable channels greyed and explained. Pressing SAFE starts the torch: a symbol stream renders as blocks lighting in time; "Point the torch at their window · 20 s". HELP always shows the official emergency number above the button.
+Send a code: six oversized `CodeButton`s (SAFE, HELP, NEED MEDS, NEED WATER, CHARGE HERE, COMING) on a 2-column grid, each 96 px tall with glyph and word; a recipient chip row; a channel row showing what will be used (light · sound · SMS · BLE) with unavailable channels greyed and explained. Pressing SAFE starts the torch: a symbol stream renders as blocks lighting in time; "Point the torch at their window · 19 s" (fast, three repeats) or "· 38 s" (standard); the time is shown from the active profile. HELP always shows the official emergency number above the button.
 Receive: a camera viewfinder in red tint, a reticle, a decoding ring that fills; result card "Mrs Dlamini: SAFE · 20:44 · via light" with a solidifying ghost; failure "Could not read · ask them to repeat" (never a guess).
 States: no roster yet (teach pairing with one QR illustration), camera denied, torch unavailable (screen-as-lamp fallback explained).
 

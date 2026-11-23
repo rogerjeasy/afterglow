@@ -1,15 +1,8 @@
 import type { HeliographMessage } from './codes.js';
 import type { Bit } from './fec.js';
-import {
-  CODED_BITS,
-  FRAME_MS,
-  FRAME_SYMBOLS,
-  PREAMBLE,
-  SYMBOL_MS,
-  decodeCoded,
-  sameMessage,
-} from './frame.js';
+import { CODED_BITS, FRAME_SYMBOLS, PREAMBLE, decodeCoded, sameMessage } from './frame.js';
 import { manchesterPair } from './manchester.js';
+import { PROFILE_LIST, type Profile, frameMsOf, maxFrameIntervalMs } from './profiles.js';
 
 /** One camera frame: when it was taken and how bright the tracked source was (any non-negative scale). */
 export interface BrightnessSample {
@@ -25,6 +18,8 @@ export type HeliographResult =
       readonly repeatsAgreed: number;
       /** True when the message was recovered by a bitwise vote across three repeats. */
       readonly voted: boolean;
+      /** Which physical rate carried it. */
+      readonly profile: Profile['name'];
       readonly correctedWords: number;
     }
   /** A frame was seen but not enough was read. Ask the sender to repeat. Never a guess. */
@@ -44,9 +39,9 @@ const WINDOW_SYMBOLS = FRAME_SYMBOLS + 16;
 const WINDOW_STEP_SYMBOLS = 8;
 const MIN_EDGES_IN_WINDOW = 6;
 const MAX_EDGES_IN_WINDOW = 2 * WINDOW_SYMBOLS;
-/** Two repeats are the same frame when closer than this, and consecutive when this far from a multiple. */
-const SAME_FRAME_MS = 2 * SYMBOL_MS;
-const SPACING_TOLERANCE_MS = 0.08 * FRAME_MS;
+/** Two repeats are the same frame when closer than 2 symbols, and consecutive within 8% of a frame. */
+const SAME_FRAME_SYMBOLS = 2;
+const SPACING_TOLERANCE = 0.08;
 
 const noSignal = (reason: string): HeliographResult => ({ kind: 'noSignal', reason });
 
@@ -119,7 +114,12 @@ interface Timing {
  * at this rate cannot make more than about one edge per symbol, so a busier
  * window is noise and is refused cheaply (fail closed).
  */
-function estimateTiming(edges: readonly number[], from: number, to: number): Timing | null {
+function estimateTiming(
+  edges: readonly number[],
+  from: number,
+  to: number,
+  symbolMs: number,
+): Timing | null {
   const inside = edges.filter((e) => e >= from && e < to);
   if (inside.length < MIN_EDGES_IN_WINDOW || inside.length > MAX_EDGES_IN_WINDOW) return null;
   const centre = (from + to) / 2;
@@ -128,7 +128,7 @@ function estimateTiming(edges: readonly number[], from: number, to: number): Tim
   let bestScore = Number.NEGATIVE_INFINITY;
   const periodSteps = Math.round((2 * PERIOD_TOLERANCE) / 0.01);
   for (let i = 0; i <= periodSteps; i++) {
-    const period = SYMBOL_MS * (1 - PERIOD_TOLERANCE + i * 0.01);
+    const period = symbolMs * (1 - PERIOD_TOLERANCE + i * 0.01);
     for (let ph = 0; ph < 12; ph++) {
       const origin = centre + (ph / 12) * period;
       let score = 0;
@@ -180,8 +180,7 @@ function estimateTiming(edges: readonly number[], from: number, to: number): Tim
     originMs = (se - periodMs * sn) / count;
   }
   const inRange =
-    periodMs >= SYMBOL_MS * (1 - PERIOD_TOLERANCE) &&
-    periodMs <= SYMBOL_MS * (1 + PERIOD_TOLERANCE);
+    periodMs >= symbolMs * (1 - PERIOD_TOLERANCE) && periodMs <= symbolMs * (1 + PERIOD_TOLERANCE);
   // Most edges must fit, otherwise there is no clock to follow.
   return inRange && inliers >= 0.6 * inside.length ? { periodMs, originMs } : null;
 }
@@ -246,12 +245,12 @@ function findCandidates(
 }
 
 /** Same frame seen in overlapping windows: keep one, preferring one that decodes. */
-function dedupe(c: readonly Candidate[]): Candidate[] {
+function dedupe(c: readonly Candidate[], symbolMs: number): Candidate[] {
   const sorted = [...c].sort((a, b) => a.startMs - b.startMs);
   const out: Candidate[] = [];
   for (const cand of sorted) {
     const last = out[out.length - 1];
-    if (last && cand.startMs - last.startMs < SAME_FRAME_MS) {
+    if (last && cand.startMs - last.startMs < SAME_FRAME_SYMBOLS * symbolMs) {
       if (!decodeCoded(last.coded).ok && decodeCoded(cand.coded).ok) out[out.length - 1] = cand;
     } else out.push(cand);
   }
@@ -259,10 +258,10 @@ function dedupe(c: readonly Candidate[]): Candidate[] {
 }
 
 /** True when `b` starts a whole number of frames (1 or more) after `a`. */
-function isRepeatOf(a: number, b: number): boolean {
+function isRepeatOf(a: number, b: number, frameMs: number): boolean {
   const d = b - a;
-  const k = Math.round(d / FRAME_MS);
-  return k >= 1 && Math.abs(d - k * FRAME_MS) <= SPACING_TOLERANCE_MS;
+  const k = Math.round(d / frameMs);
+  return k >= 1 && Math.abs(d - k * frameMs) <= SPACING_TOLERANCE * frameMs;
 }
 
 function majority(words: readonly (readonly Bit[])[]): Bit[] {
@@ -274,8 +273,13 @@ function majority(words: readonly (readonly Bit[])[]): Bit[] {
 }
 
 /** HL-08: turn the frames that were read into a message or an honest refusal. */
-function accept(candidates: readonly Candidate[], damaged: number): HeliographResult {
-  const found = dedupe(candidates);
+function accept(
+  candidates: readonly Candidate[],
+  damaged: number,
+  profile: Profile,
+): HeliographResult {
+  const frameMs = frameMsOf(profile);
+  const found = dedupe(candidates, profile.symbolMs);
   const decoded = found.map((c) => ({ c, d: decodeCoded(c.coded) }));
   const valid = decoded.flatMap((x) =>
     x.d.ok ? [{ start: x.c.startMs, message: x.d.message, corrected: x.d.correctedWords }] : [],
@@ -287,7 +291,7 @@ function accept(candidates: readonly Candidate[], damaged: number): HeliographRe
     const g = groups.find(
       (x) =>
         sameMessage(x.message, v.message) &&
-        x.starts.every((s) => isRepeatOf(Math.min(s, v.start), Math.max(s, v.start))),
+        x.starts.every((s) => isRepeatOf(Math.min(s, v.start), Math.max(s, v.start), frameMs)),
     );
     if (g) {
       g.starts.push(v.start);
@@ -308,6 +312,7 @@ function accept(candidates: readonly Candidate[], damaged: number): HeliographRe
       message: top.message,
       repeatsAgreed: top.starts.length,
       voted: false,
+      profile: profile.name,
       correctedWords: top.corrected,
     };
   }
@@ -315,7 +320,7 @@ function accept(candidates: readonly Candidate[], damaged: number): HeliographRe
   // Rescue: three consecutive repeats, each damaged differently, voted bit by bit.
   for (let i = 0; i + 2 < found.length; i++) {
     const [a, b, c] = [found[i], found[i + 1], found[i + 2]] as [Candidate, Candidate, Candidate];
-    if (isRepeatOf(a.startMs, b.startMs) && isRepeatOf(b.startMs, c.startMs)) {
+    if (isRepeatOf(a.startMs, b.startMs, frameMs) && isRepeatOf(b.startMs, c.startMs, frameMs)) {
       const voted = decodeCoded(majority([a.coded, b.coded, c.coded]));
       if (voted.ok) {
         return {
@@ -323,6 +328,7 @@ function accept(candidates: readonly Candidate[], damaged: number): HeliographRe
           message: voted.message,
           repeatsAgreed: 3,
           voted: true,
+          profile: profile.name,
           correctedWords: voted.correctedWords,
         };
       }
@@ -344,10 +350,48 @@ function accept(candidates: readonly Candidate[], damaged: number): HeliographRe
   return noSignal('No Heliograph frame was found.');
 }
 
+/** Median gap between camera readings, in ms. */
+function medianIntervalMs(samples: readonly BrightnessSample[]): number {
+  const gaps: number[] = [];
+  for (let i = 1; i < samples.length; i++) {
+    gaps.push((samples[i] as BrightnessSample).tMs - (samples[i - 1] as BrightnessSample).tMs);
+  }
+  gaps.sort((x, y) => x - y);
+  return gaps[Math.floor(gaps.length / 2)] as number;
+}
+
+function decodeProfile(
+  samples: readonly BrightnessSample[],
+  bin: Binary,
+  profile: Profile,
+): HeliographResult {
+  const { symbolMs } = profile;
+  const first = (samples[0] as BrightnessSample).tMs;
+  const last = (samples[samples.length - 1] as BrightnessSample).tMs;
+  const windowMs = WINDOW_SYMBOLS * symbolMs;
+  const stepMs = WINDOW_STEP_SYMBOLS * symbolMs;
+  const candidates: Candidate[] = [];
+  let damaged = 0;
+  const windows = Math.floor((last - first) / stepMs) + 1;
+  for (let w = 0; w < windows; w++) {
+    const ws = first + w * stepMs;
+    const we = Math.min(ws + windowMs, last);
+    const timing = estimateTiming(bin.edges, ws, we, symbolMs);
+    if (timing !== null) {
+      const { symbols, firstMs } = sampleSymbols(bin, timing, ws, we);
+      damaged += findCandidates(symbols, firstMs, timing.periodMs, candidates);
+    }
+    if (ws + windowMs >= last) break;
+  }
+  return accept(candidates, damaged, profile);
+}
+
 /**
- * Read a Heliograph message from a brightness series (HL-07..HL-11).
+ * Read a Heliograph message from a brightness series (HL-07..HL-12).
  *
- * Returns a message only when two repeats agree (or three vote); otherwise
+ * Each profile the camera speed allows is tried (the fast profile only at 40
+ * fps or more). A message is returned only when two repeats agree (or three
+ * vote) in one profile and no other profile disagrees; otherwise
  * `repeatRequested` or `noSignal`. It never returns a best guess and never throws.
  */
 export function decodeBrightness(samples: readonly BrightnessSample[]): HeliographResult {
@@ -357,24 +401,26 @@ export function decodeBrightness(samples: readonly BrightnessSample[]): Heliogra
     const bin = binarise(samples);
     if (bin === null) return noSignal('The light does not change enough to read.');
 
-    const first = (samples[0] as BrightnessSample).tMs;
-    const last = (samples[samples.length - 1] as BrightnessSample).tMs;
-    const windowMs = WINDOW_SYMBOLS * SYMBOL_MS;
-    const stepMs = WINDOW_STEP_SYMBOLS * SYMBOL_MS;
-    const candidates: Candidate[] = [];
-    let damaged = 0;
-    const windows = Math.floor((last - first) / stepMs) + 1;
-    for (let w = 0; w < windows; w++) {
-      const ws = first + w * stepMs;
-      const we = Math.min(ws + windowMs, last);
-      const timing = estimateTiming(bin.edges, ws, we);
-      if (timing !== null) {
-        const { symbols, firstMs } = sampleSymbols(bin, timing, ws, we);
-        damaged += findCandidates(symbols, firstMs, timing.periodMs, candidates);
-      }
-      if (ws + windowMs >= last) break;
+    const interval = medianIntervalMs(samples);
+    const results = PROFILE_LIST.filter((p) => interval <= maxFrameIntervalMs(p)).map((p) =>
+      decodeProfile(samples, bin, p),
+    );
+    const messages = results.filter(
+      (r): r is Extract<HeliographResult, { kind: 'message' }> => r.kind === 'message',
+    );
+    const [firstMessage] = messages;
+    if (firstMessage) {
+      if (messages.every((m) => sameMessage(m.message, firstMessage.message))) return firstMessage;
+      return {
+        kind: 'repeatRequested',
+        reason: 'Two readings of the signal disagree. Ask them to send again.',
+      };
     }
-    return accept(candidates, damaged);
+    return (
+      results.find((r) => r.kind === 'repeatRequested') ??
+      results[0] ??
+      noSignal('Nothing to read.')
+    );
   } catch {
     return noSignal('The recording could not be read.');
   }

@@ -7,11 +7,13 @@
 Heliograph carries a short message between two phones with a flashlight and a camera when every radio is down. This module is the deterministic part: it turns a message into a schedule of lit and dark intervals, and turns a sampled brightness series back into a message **or an honest refusal**. The torch, the camera and the blob tracking are adapters and are out of scope. Pure: no I/O, no timers, no randomness.
 
 ## Glossary (this spec)
-- **Symbol** — one lit (1) or dark (0) interval of 200 ms (5 symbols per second).
+- **Symbol** — one lit (1) or dark (0) interval. Its length depends on the profile.
+- **Profile** — `standard` (200 ms symbols, 5 per second, 12.8 s per frame) or `fast` (100 ms symbols, 10 per second, 6.4 s per frame). The fast profile needs a camera of 40 frames per second or more.
 - **Bit** — two symbols (Manchester): 1 is lit then dark, 0 is dark then lit.
 - **Frame** — 32 bits: an 8-bit preamble and 24 coded bits.
 - **Repeat** — one transmission of a frame. The sender sends three back to back.
-- **Slot** — the sender's 4-bit pair-local roster slot on the receiver. It is not a global identifier and is not a phone number.
+- **Slot** — the sender's 6-bit pair-local roster slot on the receiver (0 to 63). It is not a global identifier and is not a phone number.
+- **Sequence** — a 2-bit counter (0 to 3) that tells consecutive messages from the same sender apart. It is not a security feature.
 - **Result** — `message | repeatRequested | noSignal`. There is no "best guess".
 
 ## Requirements
@@ -21,7 +23,7 @@ Heliograph carries a short message between two phones with a flashlight and a ca
 - IF a decoded code is 0 or 12 to 15 THEN THE SYSTEM SHALL refuse the frame and SHALL NOT show it as a message.
 
 ### HL-02 — The frame round-trips
-- FOR every message, slot (0 to 15) and sequence (0 to 15) THE SYSTEM SHALL encode a 32-bit frame that decodes to the same message with no correction.
+- FOR every message, slot (0 to 63) and sequence (0 to 3) THE SYSTEM SHALL encode a 32-bit frame that decodes to the same message with no correction.
 - IF the code, slot or sequence is out of range or not a whole number THEN THE SYSTEM SHALL return no frame.
 
 ### HL-03 — One flipped bit in each coded byte is corrected
@@ -37,7 +39,7 @@ Heliograph carries a short message between two phones with a flashlight and a ca
 - FOR any bit sequence, decoding its Manchester encoding SHALL return the same bits.
 
 ### HL-06 — The transmit plan is exact
-- THE SYSTEM SHALL produce, for a message and 1 to 5 repeats, runs of `{ lit, ms }` that alternate and sum to `repeats × 64 × 200` ms.
+- THE SYSTEM SHALL produce, for a message, 1 to 5 repeats and a profile, runs of `{ lit, ms }` that alternate and sum to `repeats × 64 × symbolMs` ms (12.8 s per repeat standard, 6.4 s fast).
 - THE SYSTEM SHALL return no plan for an invalid message or repeat count.
 
 ### HL-07 — The receiver reads a real, noisy recording
@@ -58,12 +60,19 @@ Heliograph carries a short message between two phones with a flashlight and a ca
 - IF the series has fewer than 2 samples, a non-finite value, non-increasing times, more than 20 000 samples, or too little contrast between lit and dark THEN THE SYSTEM SHALL return `noSignal` with a reason.
 - THE SYSTEM SHALL NOT throw for any input.
 
+### HL-12 — Profiles, chosen by measured camera speed
+**User story:** As a person in a dark room, I want the faster message when my phone can read it and the robust one when it cannot.
+- THE SYSTEM SHALL read a recording in each profile whose minimum camera speed the recording meets (median frame interval at most 26.25 ms for `fast`, which is 40 frames per second with a 5% margin for timestamp rounding; no minimum for `standard`).
+- THE SYSTEM SHALL NOT attempt the fast profile on a recording slower than 40 frames per second.
+- WHEN both profiles produce a message and they differ THE SYSTEM SHALL return `repeatRequested`.
+- THE SYSTEM SHALL read a fast transmission at 40 to 120 frames per second with up to ±20% interval jitter, a sender clock within ±3%, noise and drift, and SHALL NOT mistake a transmission of one profile for a message of the other.
+
 ### HL-11 — Deterministic
 - THE SYSTEM SHALL return the same result for the same series.
 
 ## Analysis
-- **The documents disagree on frame timing, and the arithmetic wins.** The architecture says a frame takes 6.4 s at 5 symbols per second. That is 32 symbols, which is 16 Manchester bits, but the frame it describes (preamble, sequence, payload, parity) is more than 16 bits. With Manchester at 5 symbols per second, one bit takes 400 ms. The frame below is 32 bits, so **12.8 s per repeat and 38.4 s for three**. The design document's "20 s" hint and the 6.4 s figure should be revised; a faster rate (10 symbols per second) is possible but is a camera and rolling-shutter question for the sensing wave, not a decision to make blind here.
-- **The roster id is 4 bits, not 6.** The architecture's example `0x2F` needs 6 bits, but the payload is 8 bits and carries a 4-bit code. A receiver can therefore tell 16 senders apart (slots 0 to 15). A larger roster needs a longer frame.
+- **Frame timing, settled.** The architecture quoted 6.4 s per frame at 5 symbols per second, which is arithmetically impossible for a 32-bit Manchester frame (it would be 12.8 s). Instead of shrinking the figure, the protocol now has two profiles: `standard` at 5 symbols per second (12.8 s per repeat, 38.4 s for three) and `fast` at 10 symbols per second (6.4 s per repeat, 19.2 s for three), which restores the architecture's 6.4 s figure. The fast profile gives each symbol only 100 ms, so it is read only from a camera of 40 fps or more (4 or more readings per symbol); a 30 fps phone uses standard. This is decided by the measured frame interval, not by a setting, so a user never has to know. Rolling-shutter and exposure behaviour of real phones is still to be measured; the simulator cannot answer it.
+- **Roster slot, settled.** The slot is 6 bits (64 senders) so the building persona (a caretaker with 60 flats) works and the architecture's `0x2F` example fits. The 2 bits come from the sequence counter, which only tells consecutive messages from one sender apart (4 is enough because repeats are identical and a receiver also dedupes by time). The frame stays 32 bits. Above 64 senders, a receiver needs a group prefix, which is a later protocol revision.
 - **Why Hamming plus CRC, and why two repeats.** Hamming(12,8) corrects one flip per byte but can mistake two flips for one. CRC-4 catches most of that but only 15 in 16. A single frame is therefore not enough evidence to show "SAFE" or "HELP" (HL-04 measures the miscorrection rate). Requiring two agreeing repeats that sit exactly one frame length apart multiplies the odds against a false message and rules out a chance match in noise.
 - **Measured miscorrection.** Two flips in one Hamming word are refused most of the time, but a small share (under 8%, asserted by the HL-04 test) still passes Hamming and CRC-4 as a different message. This is the quantified reason a single frame is never shown.
 - **Light is public.** Codes carry no personal data and are visible to anyone who can see the torch (privacy-aggregation rule 6). The slot is meaningful only to the paired receiver.

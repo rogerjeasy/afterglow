@@ -37,3 +37,11 @@ export {
   type BrightnessSample,
   type HeliographResult,
 } from './receive.js';
+export {
+  PROFILES,
+  PROFILE_LIST,
+  frameMsOf,
+  maxFrameIntervalMs,
+  type Profile,
+  type ProfileName,
+} from './profiles.js';

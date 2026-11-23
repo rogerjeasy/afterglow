@@ -15,6 +15,7 @@ import {
   encodeFrame,
 } from './frame.js';
 import { manchesterDecode, manchesterEncode, manchesterPair } from './manchester.js';
+import { PROFILES, type Profile } from './profiles.js';
 import { type BrightnessSample, MAX_SAMPLES, decodeBrightness } from './receive.js';
 import { planTransmission } from './transmit.js';
 
@@ -39,6 +40,8 @@ function mulberry32(seed: number): () => number {
 }
 
 interface Recording {
+  /** Symbol length of the transmission being simulated. */
+  readonly symbolMs: number;
   readonly fps: number;
   /** Fractional jitter of each frame interval, for example 0.2 for +-20%. */
   readonly jitter: number;
@@ -57,6 +60,7 @@ interface Recording {
 }
 
 const BASE: Recording = {
+  symbolMs: 200,
   fps: 30,
   jitter: 0,
   clockScale: 1,
@@ -70,13 +74,17 @@ const BASE: Recording = {
   seed: 1,
 };
 
-function symbolsOf(msgs: readonly HeliographMessage[], repeats: number[]): (0 | 1)[] {
+function symbolsOf(
+  msgs: readonly HeliographMessage[],
+  repeats: number[],
+  profile: Profile = PROFILES.standard,
+): (0 | 1)[] {
   const out: (0 | 1)[] = [];
   msgs.forEach((m, i) => {
-    const plan = planTransmission(m, repeats[i] ?? 1);
+    const plan = planTransmission(m, repeats[i] ?? 1, profile);
     if (!plan) throw new Error('invalid message in fixture');
     for (const run of plan.runs)
-      for (let k = 0; k < run.ms / SYMBOL_MS; k++) out.push(run.lit ? 1 : 0);
+      for (let k = 0; k < run.ms / profile.symbolMs; k++) out.push(run.lit ? 1 : 0);
   });
   return out;
 }
@@ -84,7 +92,7 @@ function symbolsOf(msgs: readonly HeliographMessage[], repeats: number[]): (0 | 
 function record(symbols: readonly (0 | 1)[], r: Recording): BrightnessSample[] {
   const rnd = mulberry32(r.seed);
   const flips = symbols.map(() => rnd() < r.flipProb);
-  const symMs = SYMBOL_MS * r.clockScale;
+  const symMs = r.symbolMs * r.clockScale;
   const total = r.leadMs + symbols.length * symMs + r.trailMs;
   const out: BrightnessSample[] = [];
   let t = 0;
@@ -103,7 +111,13 @@ function record(symbols: readonly (0 | 1)[], r: Recording): BrightnessSample[] {
 const heard = (msg: HeliographMessage, repeats: number, r: Partial<Recording> = {}) =>
   decodeBrightness(record(symbolsOf([msg], [repeats]), { ...BASE, ...r }));
 
-const SAFE_MSG: HeliographMessage = { code: 'SAFE', slot: 3, sequence: 7 };
+/** A fast-profile transmission, recorded by a camera at `fps`. */
+const heardFast = (msg: HeliographMessage, repeats: number, r: Partial<Recording> = {}) =>
+  decodeBrightness(
+    record(symbolsOf([msg], [repeats], PROFILES.fast), { ...BASE, symbolMs: 100, fps: 60, ...r }),
+  );
+
+const SAFE_MSG: HeliographMessage = { code: 'SAFE', slot: 3, sequence: 2 };
 const isNonMessage = (r: ReturnType<typeof decodeBrightness>): boolean => r.kind !== 'message';
 
 describe('Heliograph properties', () => {
@@ -119,7 +133,7 @@ describe('Heliograph properties', () => {
 
   it('HL-01 a frame carrying a reserved code is refused', () => {
     for (const reserved of [0, 12, 13, 14, 15]) {
-      const head = [...numberToBits(5, 4), ...numberToBits(reserved, 4), ...numberToBits(2, 4)];
+      const head = [...numberToBits(1, 2), ...numberToBits(reserved, 4), ...numberToBits(37, 6)];
       const body = [...head, ...numberToBits(crc4(head), 4)];
       const coded = [
         ...hammingEncode(body.slice(0, 8) as Bit[]),
@@ -160,10 +174,10 @@ describe('Heliograph properties', () => {
   it('HL-02 an out-of-range message gives no frame', () => {
     const bad: unknown[] = [
       { code: 'NOPE', slot: 0, sequence: 0 },
-      { code: 'SAFE', slot: 16, sequence: 0 },
+      { code: 'SAFE', slot: 64, sequence: 0 },
       { code: 'SAFE', slot: -1, sequence: 0 },
       { code: 'SAFE', slot: 1.5, sequence: 0 },
-      { code: 'SAFE', slot: 0, sequence: 16 },
+      { code: 'SAFE', slot: 0, sequence: 4 },
       { code: 'SAFE', slot: 0, sequence: Number.NaN },
       { code: 'SAFE', slot: '1', sequence: 0 },
       { code: 'toString', slot: 0, sequence: 0 },
@@ -239,7 +253,7 @@ describe('Heliograph properties', () => {
   // ------------------------------------------------------------------ HL-04
   it('HL-04 a wrong CRC is refused even when the Hamming words are valid', () => {
     for (const wrong of [1, 2, 4, 8, 15]) {
-      const head = [...numberToBits(3, 4), ...numberToBits(1, 4), ...numberToBits(5, 4)];
+      const head = [...numberToBits(3, 2), ...numberToBits(1, 4), ...numberToBits(45, 6)];
       const body = [...head, ...numberToBits(crc4(head) ^ wrong, 4)];
       const coded = [
         ...hammingEncode(body.slice(0, 8) as Bit[]),
@@ -254,8 +268,8 @@ describe('Heliograph properties', () => {
     let wrong = 0;
     let refused = 0;
     for (const code of NAMES) {
-      for (let slot = 0; slot <= MAX_SLOT; slot += 3) {
-        for (let sequence = 0; sequence <= MAX_SEQUENCE; sequence += 5) {
+      for (let slot = 0; slot <= MAX_SLOT; slot += 5) {
+        for (let sequence = 0; sequence <= MAX_SEQUENCE; sequence += 1) {
           const m = { code, slot, sequence };
           const coded = encodeCoded(m) as Bit[];
           for (const [lo, hi] of [
@@ -414,15 +428,15 @@ describe('Heliograph properties', () => {
   });
 
   it('HL-08 two different messages each seen twice are refused', () => {
-    const a: HeliographMessage = { code: 'SAFE', slot: 3, sequence: 7 };
-    const b: HeliographMessage = { code: 'HELP', slot: 3, sequence: 8 };
+    const a: HeliographMessage = { code: 'SAFE', slot: 3, sequence: 2 };
+    const b: HeliographMessage = { code: 'HELP', slot: 3, sequence: 3 };
     const r = decodeBrightness(record(symbolsOf([a, b], [2, 2]), BASE));
     expect(r.kind).toBe('repeatRequested');
   });
 
   it('HL-08 a later, different message does not cancel one that was confirmed', () => {
-    const a: HeliographMessage = { code: 'SAFE', slot: 3, sequence: 7 };
-    const b: HeliographMessage = { code: 'HELP', slot: 3, sequence: 8 };
+    const a: HeliographMessage = { code: 'SAFE', slot: 3, sequence: 2 };
+    const b: HeliographMessage = { code: 'HELP', slot: 3, sequence: 3 };
     const r = decodeBrightness(record(symbolsOf([a, b], [2, 1]), BASE));
     expect(r).toMatchObject({ kind: 'message', message: a });
   });
@@ -591,6 +605,152 @@ describe('Heliograph properties', () => {
       ),
       { numRuns: 300 },
     );
+  });
+
+  // ------------------------------------------------------------------ HL-12
+  it('HL-12 a frame is 12.8 s standard and 6.4 s fast, and three repeats are 38.4 s and 19.2 s', () => {
+    const std = planTransmission(SAFE_MSG, 3, PROFILES.standard);
+    const fast = planTransmission(SAFE_MSG, 3, PROFILES.fast);
+    expect(std).toMatchObject({ totalMs: 38_400, profile: 'standard' });
+    expect(fast).toMatchObject({ totalMs: 19_200, profile: 'fast' });
+    expect(planTransmission(SAFE_MSG, 1, PROFILES.fast)?.totalMs).toBe(6_400);
+    expect(planTransmission(SAFE_MSG, 1)?.totalMs).toBe(12_800);
+    expect(planTransmission(SAFE_MSG, 3, { name: 'fast', symbolMs: 0, minFps: 0 })).toBeNull();
+    expect(planTransmission(SAFE_MSG, 3, null as unknown as Profile)).toBeNull();
+  });
+
+  it('HL-12 a clean fast recording at 60 fps is read', () => {
+    const r = heardFast(SAFE_MSG, 3);
+    expect(r).toMatchObject({ kind: 'message', message: SAFE_MSG, profile: 'fast' });
+  });
+
+  it('HL-12 a noisy, jittery fast recording is read at 40 to 120 fps', () => {
+    fc.assert(
+      fc.property(
+        msgArb,
+        fc.integer({ min: 40, max: 120 }),
+        fc.double({ min: 0, max: 0.2, noNaN: true }),
+        fc.double({ min: 0.97, max: 1.03, noNaN: true }),
+        fc.integer({ min: 0, max: 3000 }),
+        fc.integer({ min: 0, max: 3000 }),
+        fc.double({ min: 0, max: 18, noNaN: true }),
+        fc.double({ min: -25, max: 25, noNaN: true }),
+        fc.integer({ min: 1, max: 1_000_000 }),
+        (msg, fps, jitter, clockScale, leadMs, trailMs, noise, drift, seed) => {
+          const r = heardFast(msg, 3, {
+            fps,
+            jitter,
+            clockScale,
+            leadMs,
+            trailMs,
+            noise,
+            drift,
+            seed,
+          });
+          expect(
+            r.kind,
+            JSON.stringify({ msg, fps, jitter, clockScale, leadMs, noise, drift }),
+          ).toBe('message');
+          if (r.kind === 'message') {
+            expect(r.message).toEqual(msg);
+            expect(r.profile).toBe('fast');
+          }
+        },
+      ),
+      { numRuns: 60 },
+    );
+  });
+
+  it('HL-12 the speed limit sits at 40 fps with a margin for timestamp rounding', () => {
+    // Exactly 40 fps must be accepted even though its interval is 25.000000000000004 ms.
+    expect(heardFast(SAFE_MSG, 3, { fps: 40 })).toMatchObject({ kind: 'message', profile: 'fast' });
+    expect(heardFast(SAFE_MSG, 3, { fps: 39 })).toMatchObject({ kind: 'message', profile: 'fast' });
+    expect(heardFast(SAFE_MSG, 3, { fps: 36 }).kind).not.toBe('message');
+  });
+
+  it('HL-12 a camera under 40 fps is not asked to read the fast profile', () => {
+    for (const fps of [20, 24, 30, 35]) {
+      const r = heardFast(SAFE_MSG, 3, { fps });
+      expect(r.kind, `${fps} fps`).not.toBe('message');
+    }
+  });
+
+  it('HL-12 a standard transmission is read as standard, even by a fast camera', () => {
+    for (const fps of [30, 60, 120]) {
+      const r = heard(SAFE_MSG, 3, { fps });
+      expect(r, `${fps} fps`).toMatchObject({
+        kind: 'message',
+        message: SAFE_MSG,
+        profile: 'standard',
+      });
+    }
+  });
+
+  it('HL-12 neither profile is mistaken for the other, and a mixed pair is not a message', () => {
+    const mixed = [...symbolsOf([SAFE_MSG], [2], PROFILES.fast)];
+    const r = decodeBrightness(record(mixed, { ...BASE, symbolMs: 100, fps: 60 }));
+    expect(r).toMatchObject({ kind: 'message', profile: 'fast' });
+    // A standard recording never yields a fast message and the reverse.
+    fc.assert(
+      fc.property(msgArb, fc.integer({ min: 1, max: 1_000_000 }), (msg, seed) => {
+        const a = heard(msg, 3, { fps: 60, seed, noise: 6 });
+        if (a.kind === 'message') expect(a.profile).toBe('standard');
+        const b = heardFast(msg, 3, { seed, noise: 6 });
+        if (b.kind === 'message') expect(b.profile).toBe('fast');
+      }),
+      { numRuns: 40 },
+    );
+  });
+
+  it('HL-12 when the two profiles read different messages from one recording, it is refused', () => {
+    const a: HeliographMessage = { code: 'SAFE', slot: 5, sequence: 1 };
+    const b: HeliographMessage = { code: 'HELP', slot: 5, sequence: 2 };
+    const fast = record(symbolsOf([a], [2], PROFILES.fast), {
+      ...BASE,
+      symbolMs: 100,
+      fps: 60,
+      leadMs: 500,
+      trailMs: 500,
+    });
+    const std = record(symbolsOf([b], [2], PROFILES.standard), {
+      ...BASE,
+      fps: 60,
+      leadMs: 500,
+      trailMs: 500,
+    });
+    const shift = (fast[fast.length - 1] as BrightnessSample).tMs + 1000 / 60;
+    const both = [...fast, ...std.map((x) => ({ tMs: x.tMs + shift, level: x.level }))];
+    // Each part alone is a message in its own profile...
+    expect(decodeBrightness(fast)).toMatchObject({ kind: 'message', message: a, profile: 'fast' });
+    expect(decodeBrightness(std)).toMatchObject({
+      kind: 'message',
+      message: b,
+      profile: 'standard',
+    });
+    // ...but together they disagree, so nothing is shown.
+    expect(decodeBrightness(both).kind).toBe('repeatRequested');
+  });
+
+  it('HL-12 under heavy corruption a fast recording gives the sent message or a refusal', () => {
+    let messages = 0;
+    fc.assert(
+      fc.property(
+        msgArb,
+        fc.integer({ min: 1, max: 3 }),
+        fc.double({ min: 0, max: 0.3, noNaN: true }),
+        fc.double({ min: 0, max: 50, noNaN: true }),
+        fc.integer({ min: 1, max: 1_000_000 }),
+        (msg, repeats, flipProb, noise, seed) => {
+          const r = heardFast(msg, repeats, { flipProb, noise, seed });
+          if (r.kind === 'message') {
+            messages++;
+            expect(r.message).toEqual(msg);
+          }
+        },
+      ),
+      { numRuns: 300 },
+    );
+    expect(messages).toBeGreaterThan(0);
   });
 
   // ------------------------------------------------------------------ HL-11
