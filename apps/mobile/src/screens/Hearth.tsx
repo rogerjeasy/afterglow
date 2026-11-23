@@ -1,14 +1,17 @@
 import { household, thermal } from '@afterglow/core';
 import { type ReactNode, useMemo, useState } from 'react';
 import { foodIndex } from '../data/foodkeeper';
+import { useFormulary } from '../data/formulary';
 import { simulatedNeighbourhood } from '../demo/household';
 import { type DemoPhase, runScenario } from '../demo/scenario';
 import { formatClockTime, formatTimer } from '../format';
 import {
+  LABEL_SOURCE,
   MODEL_SOURCE,
   applianceSources,
   applianceTileText,
   hoursOfSafetyText,
+  worstMedicine,
 } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
 import { SourceChip, StatusLine, Tile } from '../night-shell/components';
@@ -37,6 +40,13 @@ export function Hearth({
 
   const assessments = useMemo(() => household.assessAll(view, foodIndex, nowMs), [view, nowMs]);
   const hours = useMemo(() => household.hoursOfSafety(view, nowMs), [view, nowMs]);
+  const table = useFormulary();
+  const loadedTable = table.kind === 'loaded' ? table.formulary : null;
+  const medicines = useMemo(
+    () => household.assessMedicines(view, loadedTable, nowMs),
+    [view, loadedTable, nowMs],
+  );
+  const worst = worstMedicine(medicines);
   const elapsed = household.elapsedMinutes(view, nowMs);
   const outage = view.outageStartedAtMs !== null;
 
@@ -139,16 +149,42 @@ export function Hearth({
           />
 
           <div style={{ gridColumn: '1 / -1' }}>
-            <WardCard
-              title="Medicines"
-              refusal="No medicine clock. I will not estimate how long your medicine lasts."
-            >
-              <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
-                Storage limits come only from a pharmacist-approved label table, and this build has
-                none loaded. Ask your pharmacist. This is not medical advice.
-              </div>
-              <SourceChip label="label-only rule" />
-            </WardCard>
+            {worst ? (
+              <Tile
+                title="Medicines"
+                value={worst.text.label.toLowerCase()}
+                note={`${worst.assessment.medicine.product}: ${worst.text.headline}`}
+                sources={[
+                  LABEL_SOURCE,
+                  ...(table.kind === 'loaded' ? [`table ${table.version}`] : []),
+                  ...(medicines.length > 1 ? [`${medicines.length} medicines, worst shown`] : []),
+                ]}
+                live={outage}
+                onClick={() => onOpenCold(null)}
+              />
+            ) : table.kind === 'loaded' ? (
+              <Tile
+                title="Medicines"
+                value="Add yours"
+                note="Pick from the pharmacist-approved table. A clock appears only for products in it."
+                sources={[LABEL_SOURCE, `table ${table.version}`]}
+                onClick={() => onOpenCold(null)}
+              />
+            ) : (
+              <WardCard
+                title="Medicines"
+                refusal="No medicine clock. I will not estimate how long your medicine lasts."
+              >
+                <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
+                  {table.kind === 'loading'
+                    ? 'Checking for the pharmacist-approved table. '
+                    : `${table.reason} `}
+                  Storage limits come only from that table. Ask your pharmacist. This is not medical
+                  advice.
+                </div>
+                <SourceChip label={LABEL_SOURCE} />
+              </WardCard>
+            )}
           </div>
         </div>
       </Section>

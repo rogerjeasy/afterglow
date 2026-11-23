@@ -1,4 +1,4 @@
-import { foodkeeper as fk, type foodkeeper, type household } from '@afterglow/core';
+import { foodkeeper as fk, type foodkeeper, type formulary, type household } from '@afterglow/core';
 import { formatDuration, formatTemp } from '../format';
 
 /**
@@ -133,4 +133,123 @@ export function hoursOfSafetyText(h: household.HoursOfSafety): {
       };
     }
   }
+}
+
+// ---------------------------------------------------------------- medicines
+export const LABEL_SOURCE = 'pharmacist-approved label table';
+
+export type MedicineLabel =
+  | 'NOT IN TABLE'
+  | 'NO CLOCK YET'
+  | 'IN FRIDGE RANGE'
+  | 'CLOCK RUNNING'
+  | 'ALLOWANCE USED UP'
+  | 'BEYOND LABEL'
+  | 'UNKNOWN';
+
+export interface MedicineText {
+  readonly label: MedicineLabel;
+  readonly headline: string;
+  readonly details: readonly string[];
+  /** 0 is calm; higher needs more attention. Used to pick the worst one for the Hearth. */
+  readonly severity: number;
+  /** Present only when a validated entry stands behind the words. */
+  readonly provenance: formulary.ClockProvenance | null;
+}
+
+/** The label provenance that every medicine number must show (label-only-medicine rule 6). */
+export function provenanceChips(p: formulary.ClockProvenance): string[] {
+  return [
+    LABEL_SOURCE,
+    `label ${p.labelVersion}`,
+    `approved by ${p.approver}, ${p.approvedAt.slice(0, 10)}`,
+  ];
+}
+
+function entryProvenance(entry: formulary.ValidatedEntry): formulary.ClockProvenance {
+  return {
+    product: entry.product,
+    condition: entry.condition,
+    labelVersion: entry.labelVersion,
+    approver: entry.approver,
+    approvedAt: entry.approvedAt,
+    source: entry.source,
+    entryNotes: entry.notes,
+    disclaimer: DISCLAIMER_TEXT,
+  };
+}
+// Kept in step with the core's wording by a test.
+export const DISCLAIMER_TEXT =
+  'Derived from the label. Confirm with your pharmacist. Not medical advice.';
+
+/**
+ * Words for a medicine assessment. The core decided; this only words it. It
+ * never says "safe", and it never shows a number the core did not produce.
+ */
+export function medicineText(a: household.MedicineAssessment): MedicineText {
+  switch (a.kind) {
+    case 'notInTable':
+      return {
+        label: 'NOT IN TABLE',
+        headline: 'No clock. I will not estimate how long this medicine lasts.',
+        details: [
+          'Storage limits come only from the pharmacist-approved label table, and this product is not in it. Ask your pharmacist.',
+          'Photographing a label for review is not available in this build yet.',
+        ],
+        severity: 3,
+        provenance: null,
+      };
+    case 'noOutage':
+      return {
+        label: 'NO CLOCK YET',
+        headline: 'The power is on. The clock starts if it fails.',
+        details: [
+          `${a.medicine.product} is in the ${a.applianceName.toLowerCase()}.`,
+          'Label limits are shown below so you can read them before you need them.',
+        ],
+        severity: 0,
+        provenance: entryProvenance(a.entry),
+      };
+    case 'clock': {
+      const c = a.clock;
+      if (c.kind === 'unknown') {
+        return {
+          label: 'UNKNOWN',
+          headline: c.reason,
+          details: [c.whatWouldResolveIt],
+          severity: 3,
+          provenance: entryProvenance(a.entry),
+        };
+      }
+      const label: MedicineLabel =
+        c.kind === 'noExcursion'
+          ? 'IN FRIDGE RANGE'
+          : c.kind === 'consuming'
+            ? 'CLOCK RUNNING'
+            : c.kind === 'exhausted'
+              ? 'ALLOWANCE USED UP'
+              : 'BEYOND LABEL';
+      const severity =
+        c.kind === 'noExcursion' ? 0 : c.kind === 'consuming' ? 1 : c.kind === 'exhausted' ? 3 : 4;
+      return {
+        label,
+        headline: c.message,
+        details: c.lines,
+        severity,
+        provenance: c.provenance,
+      };
+    }
+  }
+}
+
+/** The worst assessment, for the one line on the Hearth. Ties keep the first. */
+export function worstMedicine(
+  list: readonly household.MedicineAssessment[],
+): { readonly assessment: household.MedicineAssessment; readonly text: MedicineText } | null {
+  let best: { assessment: household.MedicineAssessment; text: MedicineText } | null = null;
+  for (const assessment of list) {
+    const text = medicineText(assessment);
+    if (best === null || text.severity > best.text.severity) best = { assessment, text };
+  }
+  return best;
 }

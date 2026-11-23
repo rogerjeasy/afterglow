@@ -41,6 +41,8 @@ export interface HouseholdStore {
   removeAppliance(id: string): void;
   addItem(applianceId: string, productId: number): string;
   removeItem(itemId: string): void;
+  addMedicine(applianceId: string, product: string, condition: 'unopened' | 'inUse'): string;
+  removeMedicine(medicineId: string): void;
   openDoor(applianceId: string, openMinutes: number): void;
   startOutage(atMs: number): void;
   endOutage(): void;
@@ -158,6 +160,16 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
     },
     removeItem(itemId) {
       append(E.itemRemoved, { itemId });
+    },
+    addMedicine(applianceId, product, condition) {
+      const id = nextId('m');
+      // Only the names are stored. Storage limits come from the validated table at
+      // display time and are never written to the log (HH-08).
+      append(E.medicineAdded, { medicineId: id, applianceId, product, condition });
+      return id;
+    },
+    removeMedicine(medicineId) {
+      append(E.medicineRemoved, { medicineId });
     },
     openDoor(applianceId, openMinutes) {
       append(E.doorOpened, { applianceId, openMinutes, atMs: now() });

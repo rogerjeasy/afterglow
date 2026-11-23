@@ -15,6 +15,7 @@ import { SourceChip } from '../night-shell/components';
 import { Button, ChoiceChip, Notice, SearchField, Section, Stepper } from '../night-shell/controls';
 import { Tombstone } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
+import { Medicines } from './Medicines';
 
 const CLASS_CHOICES: readonly { cls: thermal.ApplianceClass; label: string }[] = [
   { cls: 'fridge', label: 'Fridge' },
@@ -503,6 +504,8 @@ export function Cold({
           </Section>
         </>
       ) : null}
+
+      <Medicines nowMs={nowMs} applianceId={selected ? selected.model.appliance.id : null} />
 
       <Section title="Your data">
         <Notice>
