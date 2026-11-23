@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Deny formulary write (file tools)",
+      "trigger": "PreToolUse",
+      "description": "Only the review pipeline writes afterglow-formulary/validated/**. Agents write proposals to proposals/** and review-queue/**.",
+      "matcher": "fs_write|fs_append|str_replace|delete_file|smart_relocate|semantic_rename",
+      "action": {
+        "type": "command",
+        "command": "in=$(cat); p=$(printf '%s' \"$in\" | jq -r '.. | (.path? // .targetFile? // .sourcePath? // .destinationPath? // empty) | strings' 2>/dev/null); [ -n \"$p\" ] || p=\"$in\"; if printf '%s' \"$p\" | grep -Eq 'afterglow-formulary/+validated([^[:alnum:]_-]|$)'; then echo 'deny-formulary-write: the validated formulary is written only by the review pipeline after pharmacist approval. Write a proposal under proposals/ instead.' >&2; exit 2; fi; exit 0",
+        "timeout": 10
+      }
+    }
+  ]
+}

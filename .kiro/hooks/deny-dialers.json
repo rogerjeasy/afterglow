@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Deny dialers (shell)",
+      "trigger": "PreToolUse",
+      "description": "Blocks shell commands that could send an SMS, voice call or push to a real person (Twilio, Africa's Talking, SNS publish, Connect, SES/Pinpoint sends). Sending to humans is a human step.",
+      "matcher": "execute_bash",
+      "action": {
+        "type": "command",
+        "command": "in=$(cat); c=$(printf '%s' \"$in\" | jq -r '.. | .command? // empty' 2>/dev/null | head -n 1); [ -n \"$c\" ] || c=\"$in\"; if printf '%s' \"$c\" | grep -Eiq '(^|[^[:alnum:]_-])(twilio|africastalking)([^[:alnum:]_-]|$)|api\\.(twilio|africastalking)\\.com|aws +(sns +publish|connect|pinpoint|ses +send|sesv2 +send)'; then echo 'deny-dialers: this command could message or call a real person. Sending is a human step; run it yourself in test mode if needed.' >&2; exit 2; fi; exit 0",
+        "timeout": 10
+      }
+    }
+  ]
+}

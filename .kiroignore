@@ -1,0 +1,32 @@
+# Files the agent must never read (AGENTS.md: "No secrets in code, logs, or prompts").
+# Same syntax as .gitignore. To adopt: cp docs/kiro/kiroignore.proposed .kiroignore
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa*
+id_ed25519*
+
+# Terraform state and real variable values (secrets and account ids live here)
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+*.backend.hcl
+!backend.hcl.example
+.terraform/
+
+# Raw audio recordings: privacy invariant, never read by an agent
+data/fixtures/audio/raw/
+
+# Credentials that tools cache locally
+.aws/
+.npmrc.local
