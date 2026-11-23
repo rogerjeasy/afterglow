@@ -47,8 +47,20 @@ The Household module is the user's own data for the cold-chain and hours-of-safe
 ### HH-07 — Defaults are labelled
 - WHERE the room temperature was not set by the user THE SYSTEM SHALL mark the appliance `ambientIsDefault` (22 °C reference) so the UI can say so.
 
+### HH-08 — Medicines are the user's list of names, never storage data
+- THE SYSTEM SHALL record a medicine as `{ medicineId, applianceId, product, condition }` and nothing else: no temperature, duration or label text is stored in the log.
+- IF a medicine event is malformed THEN THE SYSTEM SHALL ignore it (HH-03). WHEN a removal is later than the last set THE SYSTEM SHALL omit it (HH-02). WHEN its appliance is removed THE SYSTEM SHALL drop it.
+
+### HH-09 — A medicine clock comes only from a validated formulary entry
+- THE SYSTEM SHALL report `notInTable` for a medicine that has no validated entry for its product and condition, including when no table is loaded, and SHALL NOT compute a clock for it.
+- WHEN the power is on THE SYSTEM SHALL report `noOutage` for a found medicine and SHALL NOT compute a clock.
+- WHEN an outage is running THE SYSTEM SHALL compute the clock from the formulary's `excursionClock` over the modelled temperature of the appliance the medicine is in, from minute 0 to now, so door openings (HH-04) shorten it.
+
+### HH-10 — Medicine assessment is deterministic and bounded
+- THE SYSTEM SHALL return the same assessments for the same view, table and time, and SHALL sample the temperature at about 2 000 points however long the outage has lasted.
+
 ## Analysis
 - **Door model.** `thermal.applyDoorEvents` folds door openings into the start state, so a door opened at hour 3 is modelled as warming from minute 0. That is earlier and therefore conservative (fail closed). A time-resolved door model is future work.
 - **Time.** The core has no clock. Event payloads carry wall-clock milliseconds supplied by the caller, and derivations take `nowMs` as an argument.
-- **Medicines are not here.** Medicine clocks are governed by `label-only-medicine.md` and a separate validated-formulary module (Wave 1.6).
+- **Medicines (HH-08 to HH-10).** The household stores only the user's choice of product and condition. Numbers come from the `formulary` module and only for validated entries (`label-only-medicine.md`). A medicine in an appliance is driven by that appliance's modelled temperature, so one model serves food and medicine. The outage start is taken as the moment the medicine began to warm, which is the earliest and therefore conservative.
 - **Out of scope:** sync, SQLite persistence (Wave 2), forecast-driven outdoor temperature (Wave 4), BLE thermometers (sensing wave).

@@ -14,6 +14,8 @@ import {
   isIceCheckedPayload,
   isItemAddedPayload,
   isItemRemovedPayload,
+  isMedicineAddedPayload,
+  isMedicineRemovedPayload,
   isOutageSetPayload,
 } from './events.js';
 
@@ -31,6 +33,12 @@ export interface FoodItem {
   readonly applianceId: string;
   readonly productId: number;
 }
+export interface MedicineItem {
+  readonly id: string;
+  readonly applianceId: string;
+  readonly product: string;
+  readonly condition: 'unopened' | 'inUse';
+}
 export interface DoorOpening {
   readonly applianceId: string;
   readonly openMinutes: number;
@@ -44,6 +52,7 @@ export interface IceCheck {
 export interface HouseholdView {
   readonly appliances: readonly Appliance[];
   readonly items: readonly FoodItem[];
+  readonly medicines: readonly MedicineItem[];
   readonly doors: readonly DoorOpening[];
   readonly outageStartedAtMs: number | null;
   readonly iceChecks: Readonly<Record<string, IceCheck>>;
@@ -53,6 +62,7 @@ export interface HouseholdView {
 interface Internal {
   readonly appliances: ReadonlyMap<string, Versioned<Appliance | null>>;
   readonly items: ReadonlyMap<string, Versioned<FoodItem | null>>;
+  readonly medicines: ReadonlyMap<string, Versioned<MedicineItem | null>>;
   readonly doors: readonly DoorOpening[];
   readonly outage: Versioned<number | null> | undefined;
   readonly iceChecks: ReadonlyMap<string, Versioned<IceCheck>>;
@@ -62,6 +72,7 @@ interface Internal {
 const INITIAL: Internal = {
   appliances: new Map(),
   items: new Map(),
+  medicines: new Map(),
   doors: [],
   outage: undefined,
   iceChecks: new Map(),
@@ -111,6 +122,20 @@ function step(state: Internal, event: AfterglowEvent): Internal {
       if (!isItemRemovedPayload(p)) return state;
       return { ...state, items: put(state.items, p.itemId, event, null) };
     }
+    case HOUSEHOLD_EVENT.medicineAdded: {
+      if (!isMedicineAddedPayload(p)) return state;
+      const medicine: MedicineItem = {
+        id: p.medicineId,
+        applianceId: p.applianceId,
+        product: p.product,
+        condition: p.condition,
+      };
+      return { ...state, medicines: put(state.medicines, p.medicineId, event, medicine) };
+    }
+    case HOUSEHOLD_EVENT.medicineRemoved: {
+      if (!isMedicineRemovedPayload(p)) return state;
+      return { ...state, medicines: put(state.medicines, p.medicineId, event, null) };
+    }
     case HOUSEHOLD_EVENT.doorOpened: {
       if (!isDoorOpenedPayload(p)) return state;
       const door: DoorOpening = {
@@ -156,6 +181,10 @@ export function buildHouseholdView(log: EventLog): HouseholdView {
     .map((v) => v.value)
     .filter((i): i is FoodItem => i !== null && live.has(i.applianceId))
     .sort(byId);
+  const medicines = [...s.medicines.values()]
+    .map((v) => v.value)
+    .filter((m): m is MedicineItem => m !== null && live.has(m.applianceId))
+    .sort(byId);
   const iceChecks: Record<string, IceCheck> = {};
   for (const [id, v] of [...s.iceChecks.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
     iceChecks[id] = v.value;
@@ -169,6 +198,7 @@ export function buildHouseholdView(log: EventLog): HouseholdView {
   return {
     appliances,
     items,
+    medicines,
     doors,
     outageStartedAtMs: s.outage?.value ?? null,
     iceChecks,

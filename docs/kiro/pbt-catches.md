@@ -107,3 +107,16 @@ Not property-test shrinks, but the same discipline: passing tests are not enough
 **5. Focused inputs hid under the fixed tab bar.** Scripted interaction with a lower form field landed on the tab bar. Fixed with `scroll-padding-bottom` so focus scrolling clears the bar.
 
 **6. Browser autofill paints a pale background** that would break the night-vision rule. The autofill pseudo-class is overridden with the surface token and the create form is covered by the pixel scan.
+---
+## 2026-11-23 · HH-10 / FM-08 · modelled series was not strictly increasing, so a medicine clock came back `unknown`
+**Requirement:** HH-10 (assessment is deterministic and survives a long outage), FM-08 (modelled series sampling), FM-09 (invalid input is `unknown`).
+**Property:** `HH-10 assessment is deterministic and survives a very long outage` and `HH-09 door openings never reduce what has been used`.
+**Shrunken counterexample:**
+```
+HH-10:  elapsed = 8631791 minutes        (step = elapsed / 2000)
+HH-09:  ambientC = 10, elapsed = 2187 minutes, no door openings
+```
+Both returned `{ kind: 'unknown', reason: 'Reading times must be strictly increasing.' }` instead of a clock.
+**Root cause (implementation bug):** `modelledSeries` placed `ceil((to - from) / step)` grid points and then always appended a final sample at `toMinute`. With `step = elapsed / 2000`, floating-point rounding made `ceil(...)` equal 2001, so the last grid point landed exactly on `toMinute` and the appended sample repeated it. `excursionClock` correctly refused the non-increasing series (fail closed), so the user saw "unknown" for an ordinary outage.
+**Fix:** `modelledSeries` now skips any grid point that is not strictly after the previous one or not strictly before `toMinute`, and appends `toMinute` once. The series is strictly increasing, starts at `fromMinute`, and ends at `toMinute` for any window and step.
+**What was wrong:** the implementation. The clock's validation and the requirements were right. The FM-08 test used integer steps that divide the window, so it never hit the rounding case; a regression property (`length / pieces` over 500 runs plus fixed cases) now guards it, and fails against the old code.

@@ -22,6 +22,8 @@ Status: `[x]` done, `[ ]` planned.
 - [x] 7. Cold screen, Hearth tiles, home setup
   - _Files: `apps/mobile/src/screens/{Cold,Hearth}.tsx`_
 
+- [x] 7a. Medicines: events, view, `assessMedicines` over the validated formulary (HH-08..HH-10); Cold screen medicines section; Hearth medicine tile
+  - _Files: `packages/core/src/household/{events,view,derive}.ts`, `packages/core/src/household/medicines.property.test.ts`, `apps/mobile/src/screens/{Cold,Hearth}.tsx`_
 ## Later
 - [ ] 8. SQLite persistence replaces localStorage (Wave 2.2)
 - [ ] 9. Time-resolved door model; learned household tau (thermal tasks 6 and 8)

@@ -6,6 +6,14 @@ import {
   assessFood,
 } from '../foodkeeper/index.js';
 import {
+  type ClockResult,
+  type Formulary,
+  type ValidatedEntry,
+  excursionClock,
+  lookupEntry,
+  modelledSeries,
+} from '../formulary/index.js';
+import {
   type ApplianceClass,
   BUILDING_MODEL_VERSION,
   buildingCrossing,
@@ -13,7 +21,7 @@ import {
 } from '../thermal/archetypes.js';
 import { InvalidThermalInputError, applyDoorEvents } from '../thermal/model.js';
 import type { CompartmentState, CrossingTime } from '../thermal/types.js';
-import type { Appliance, FoodItem, HouseholdView } from './view.js';
+import type { Appliance, FoodItem, HouseholdView, MedicineItem } from './view.js';
 
 export function compartmentKindOf(cls: ApplianceClass): CompartmentKind {
   return cls === 'freezer' || cls === 'chestFreezer' ? 'frozen' : 'refrigerated';
@@ -199,4 +207,78 @@ export function hoursOfSafety(view: HouseholdView, nowMs: number): HoursOfSafety
     thresholdC: home.thresholdC,
     modelVersion: BUILDING_MODEL_VERSION,
   };
+}
+
+// ---------------------------------------------------------------- medicines
+/** HH-10: a long outage is sampled at a coarser step instead of using more samples. */
+export const MEDICINE_MAX_SAMPLES = 2001;
+
+const NO_TABLE: Formulary = { formularyVersion: 'none', entries: [], rejected: [] };
+
+export type MedicineAssessment =
+  /** No validated entry: no clock, ask your pharmacist (label-only-medicine rule 2). */
+  | {
+      readonly kind: 'notInTable';
+      readonly medicine: MedicineItem;
+      readonly applianceName: string;
+      readonly message: string;
+    }
+  /** Found, but the power is on, so there is nothing to count yet. */
+  | {
+      readonly kind: 'noOutage';
+      readonly medicine: MedicineItem;
+      readonly applianceName: string;
+      readonly entry: ValidatedEntry;
+    }
+  | {
+      readonly kind: 'clock';
+      readonly medicine: MedicineItem;
+      readonly applianceName: string;
+      readonly entry: ValidatedEntry;
+      readonly clock: ClockResult;
+    };
+
+/**
+ * Assess every medicine at `nowMs` (HH-09, HH-10).
+ *
+ * `table` is the validated formulary, or null when none is loaded. A medicine
+ * gets a clock only through `formulary.excursionClock`, which itself accepts
+ * only entries the formulary admitted. The temperature is the modelled
+ * temperature of the appliance the medicine is in, from the start of the
+ * outage, door openings included.
+ */
+export function assessMedicines(
+  view: HouseholdView,
+  table: Formulary | null,
+  nowMs: number,
+): readonly MedicineAssessment[] {
+  const formulary = table ?? NO_TABLE;
+  const elapsed = elapsedMinutes(view, nowMs);
+  const out: MedicineAssessment[] = [];
+  for (const medicine of view.medicines) {
+    const model = compartmentModel(view, medicine.applianceId);
+    if (!model) continue;
+    const applianceName = model.appliance.name;
+    const hit = lookupEntry(formulary, medicine.product, medicine.condition);
+    if (hit.kind === 'notInTable') {
+      out.push({ kind: 'notInTable', medicine, applianceName, message: hit.message });
+      continue;
+    }
+    if (elapsed === null) {
+      out.push({ kind: 'noOutage', medicine, applianceName, entry: hit.entry });
+      continue;
+    }
+    const step = Math.max(1, elapsed / (MEDICINE_MAX_SAMPLES - 1));
+    const series = modelledSeries(model.state, 0, elapsed, step);
+    const clock: ClockResult =
+      series.kind === 'ok'
+        ? excursionClock(hit.entry, { startMinute: 0, nowMinute: elapsed, samples: series.samples })
+        : {
+            kind: 'unknown',
+            reason: series.reason,
+            whatWouldResolveIt: 'Check the appliance type, fullness and room temperature.',
+          };
+    out.push({ kind: 'clock', medicine, applianceName, entry: hit.entry, clock });
+  }
+  return out;
 }

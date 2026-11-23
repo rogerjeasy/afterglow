@@ -16,6 +16,8 @@ export const HOUSEHOLD_EVENT = {
   outageSet: 'household.outage.set',
   iceChecked: 'household.ice.checked',
   homeSet: 'household.home.set',
+  medicineAdded: 'household.medicine.added',
+  medicineRemoved: 'household.medicine.removed',
 } as const;
 
 export type HouseholdEventType = (typeof HOUSEHOLD_EVENT)[keyof typeof HOUSEHOLD_EVENT];
@@ -76,6 +78,16 @@ export interface HomePayload {
   readonly thresholdC: number;
 }
 
+export interface MedicineAddedPayload {
+  readonly medicineId: string;
+  readonly applianceId: string;
+  /** The product name as chosen from the validated table. No storage data lives here (HH-08). */
+  readonly product: string;
+  readonly condition: 'unopened' | 'inUse';
+}
+export interface MedicineRemovedPayload {
+  readonly medicineId: string;
+}
 const isRecord = (x: unknown): x is Record<string, unknown> =>
   typeof x === 'object' && x !== null && !Array.isArray(x);
 const isId = (x: unknown): x is string => typeof x === 'string' && x.length > 0 && x.length <= 64;
@@ -153,6 +165,22 @@ export function isHomePayload(x: unknown): x is HomePayload {
   );
 }
 
+export function isMedicineAddedPayload(x: unknown): x is MedicineAddedPayload {
+  return (
+    isRecord(x) &&
+    isId(x.medicineId) &&
+    isId(x.applianceId) &&
+    typeof x.product === 'string' &&
+    x.product.trim().length > 0 &&
+    x.product.length <= 200 &&
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point
+    !/[\u0000-\u001f\u007f]/.test(x.product) &&
+    (x.condition === 'unopened' || x.condition === 'inUse')
+  );
+}
+export function isMedicineRemovedPayload(x: unknown): x is MedicineRemovedPayload {
+  return isRecord(x) && isId(x.medicineId);
+}
 /** Build a household event; the caller supplies identity (device epoch, lamport) and model version. */
 export function householdEvent<T extends HouseholdEventType>(
   type: T,
