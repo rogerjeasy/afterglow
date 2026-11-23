@@ -32,6 +32,16 @@ The fusion module and tokens are not demo artifacts; they are the first two real
 
 ---
 
+- [x] Infra slice (Wave 6.11, partial): Terraform `bootstrap` (account) and `regional` stack with modules `kms`, `s3-bucket`, `dynamodb-table`, `identity`, `edge`, `alerts`; 63 offline plan tests, Checkov 0 failed, `infra.yml` CI. **Never planned or applied against a real AWS account** (human gate). Compute (Lambda, Kinesis, Flink, API Gateway) is not yet in Terraform. See `infra/README.md`.
+- [x] Guardrail hooks and `formulary` core (see 1.6 and 8.2).
+
+- [x] Formulary follow-ups: signed-snapshot loader (`@afterglow/adapters`, FM-15..FM-19: pinned Ed25519 anchors, signed manifest, rollback protection), household medicines (HH-08..HH-10), medicine screens on Cold and a Hearth tile, in-use caveat (FM-14), `docs/kiro/pharmacist-questions.md`.
+- [x] Pixel scan (NS-10..NS-12): pure scanner plus a Playwright harness over every built route in all three modes.
+
+**Known gaps to close next (in order of value):** CI has never run on GitHub; core is not yet run on Hermes (0.1; Node and Chromium are done); the responsive/overflow pass and the 200% text and 320 px pixel-scan variants (0.6); no `trust anchor` is pinned and no table exists until the `afterglow-formulary` repo and its review pipeline are built (separate repo); a service-worker cache so the table works offline; `heliograph` (1.8).
+
+---
+
 ## Build principles (apply to every wave)
 
 1. **Dependencies point downward** (`structure.md`): UI → feature modules → `packages/core` → adapters → OS. The core imports nothing but itself.
@@ -47,11 +57,11 @@ The fusion module and tokens are not demo artifacts; they are the first two real
 
 Close the gaps the current scaffold left before the core grows.
 
-- [ ] **0.1 Core test runtimes.** Run the `packages/core` property suite on Node, in a headless browser, and on a Hermes runner in CI (architecture ADR-002), so the core is verified on every runtime it ships to.
+- [~] **0.1 Core test runtimes.** The `packages/core` property suite runs on Node (`pnpm test`) and in headless Chromium (`pnpm --filter @afterglow/core test:browser`, wired into CI, 153 tests green). A Hermes runner is still to do (architecture ADR-002).
 - [x] **0.2 Shared types package / core barrel.** Establish `packages/core` module layout (`events`, `cells`, `schedule`, `thermal`, `foodkeeper`, `formulary`, `energy`, `heliograph`, `acoustic`, `alerts`, `policy`, `fusion`) with a stable public surface and per-module property-test convention.
 - [x] **0.3 `AGENTS.md`** at repo root — the universal contract (deterministic core, fail closed, no raw media, k ≥ 5, no light mode).
-- [~] **0.4 `.kiroignore`** (content ready; the workspace write-deny rule blocks agent writes to it, so a human adds it) — env files, keys, raw audio fixtures under `data/fixtures/audio/raw/`.
-- [~] **0.5 CI pipeline** — `ci.yml` (lint, typecheck, property suite, build) and `deploy-pages.yml` written; not yet run on GitHub. Playwright pixel-scan job still to add.
+- [~] **0.4 `.kiroignore`** — the workspace write-deny rule blocks agent writes to it, so a human adds it. Content is staged in `docs/kiro/kiroignore.proposed`; adopt with `cp docs/kiro/kiroignore.proposed .kiroignore`.
+- [~] **0.5 CI pipeline** — `ci.yml` (lint, typecheck, property suite, build, and a `pixel-scan` Playwright job) and `deploy-pages.yml` written; not yet run on GitHub. The scan itself runs locally: 25 browser tests green (NS-10..NS-12).
 - [ ] **0.6 Responsive/overflow pass** on the app shell (close the "nothing overflows" design rule).
 
 ---
@@ -65,7 +75,7 @@ Pure TypeScript, no I/O. Built in dependency order. Each is a real product modul
 - [x] **1.3 `schedule`** — provider-merge (deterministic, idempotent, commutative), adherence scoring (promised vs observed). _Properties:_ merge order-independence; adherence monotonicity. (SC-01..SC-07 green.)
 - [x] **1.4 `thermal`** — RC compartment model `T(t)=T_amb+(T_0−T_amb)e^(−t/τ)` and building model; `temperatureAt`, `crossingTime`, `discardTimes`; door-event steps. Real USDA/archetype constants vendored. _Properties:_ boundedness, monotonicity toward ambient, order-independence of door events, model versioned. (TH-01..TH-07 green.)
 - [x] **1.5 `foodkeeper`** — rules engine over the real USDA FoodKeeper snapshot (661 products, CC0) and USDA outage guidance. Refrigerated window = `min(240 min, modelled 40 °F crossing)`; frozen ice-crystals flow; unlisted foods fall back to perishable. (FK-01..FK-11 green.) Also: `household` event-sourced view and derivations (HH-01..HH-07 green); Cold screen and computed Hearth tiles. See `.kiro/specs/foodkeeper`, `.kiro/specs/household`.
-- [ ] **1.6 `formulary`** — excursion clocks over *validated* entries only (`{product,labelVersion,condition,maxTempC,maxDays,notes,source,approver,approvedAt,signature}`); signature verification; "ask your pharmacist" when absent; stop at label allowance. _Properties:_ clock never exceeds budget; unvalidated/unsigned entry never yields a clock; monotonic while outside range. (The validated table itself lives in the separate `afterglow-formulary` repo; see §Separate repos.)
+- [x] **1.6 `formulary`** — excursion clocks over *validated* entries only (`{product,labelVersion,condition,maxTempC,maxDays,notes,source,approver,approvedAt,signature}`); signature verification through an injected verifier; "ask your pharmacist" when absent; stop at label allowance. (FM-01..FM-13 green, 40 tests, mutation-checked; see `.kiro/specs/formulary`.) Contains no drug data. The validated table lives in the separate `afterglow-formulary` repo (§Separate repos). **Still open:** the async Ed25519 adapter that builds the verifier from pinned keys, rollback protection on `formularyVersion`, the medicine screens, and two modelling questions for a pharmacist (see the spec's Analysis).
 - [ ] **1.7 `energy`** — store/load priority planner (medical > communication > light > food > comfort), feasibility checks, schedule awareness, generator fuel/runtime. _Properties:_ never schedules a medical load on a store that can't sustain it for the forecast; infeasible loads stated; deterministic given inputs.
 - [ ] **1.8 `heliograph`** — frame encoder/decoder, Manchester clock recovery on sampled brightness series, Hamming(12,8)+CRC-4, three-repeat majority vote. _Properties:_ codec round-trip under bounded bit flips; never displays a best-effort decode (repeat requested on FEC+CRC fail).
 - [ ] **1.9 `acoustic`** — ggwave payload adapter (FSK, audible/near-ultrasonic) carrying the same codes. _Properties:_ payload round-trip; same message set as optical.
@@ -158,7 +168,7 @@ TypeScript Lambda (Node 24), Python 3.13 jobs, Java 17 Flink. Real code, real Ia
 Built alongside the waves above, not after; listed here for completeness.
 
 - [ ] **8.1 Specs** — one per module + `providers, simulator, platform-api, voice, beacon, business, tiles, aggregation, relay, formulary-pipeline`; EARS ids traced to properties and tasks.
-- [ ] **8.2 Remaining hooks** — `deny-dialers`, `deny-publish-deploy`, `deny-formulary-write`, `formulary-docs-regen`, `property-skeleton-on-create`, `post-task-verify`, `prompt-context`, `session-brief`, `provider-conformance`.
+- [~] **8.2 Hooks** — done: `luminance-on-token-save`, `sensing-fixtures-on-save`, `agent-stop-gate`, `deny-dialers` (+ `deny-dialers-mcp`), `deny-publish-deploy`, `deny-formulary-write` (+ `-shell`). The deny hooks read the tool input on stdin (`jq`, falling back to the raw text), exit 2 to block, and were tested against blocked and allowed inputs; they take effect from the next session start. Remaining: `formulary-docs-regen`, `property-skeleton-on-create`, `post-task-verify`, `prompt-context`, `session-brief`, `provider-conformance`.
 - [ ] **8.3 Custom agents** — Foreman, Lamplighter, Quartermaster, Cartographer, Label Reader, Pharmacist Validator, Sensor Red Team, Privacy Red Team, Night Watch, Release Gate — each scoped tools/permissions/resources.
 - [ ] **8.4 MCP servers** — openFDA, emPOWER, grid-feeds, Black Marble, DIRS, OSM Overpass, provider sandboxes, Africa's Talking/Twilio sandboxes, Home Assistant, Playwright, custom lux-meter, custom simulator.
 - [ ] **8.5 Tools** — `tools/simulator` (virtual neighbourhood driving demos/tests/chaos), `tools/mcp/*`.
