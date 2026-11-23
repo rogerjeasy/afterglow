@@ -16,7 +16,8 @@
     "./thermal": "./src/thermal/index.ts",
     "./foodkeeper": "./src/foodkeeper/index.ts",
     "./household": "./src/household/index.ts",
-    "./formulary": "./src/formulary/index.ts"
+    "./formulary": "./src/formulary/index.ts",
+    "./heliograph": "./src/heliograph/index.ts"
   },
   "scripts": {
     "test": "vitest run",
