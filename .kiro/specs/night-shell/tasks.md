@@ -45,3 +45,10 @@ Tasks map to requirement ids. Property tests are the definition of done (`tech.m
 - Wave 2 requires the Expo app shell.
 - The `luminance-on-token-save` hook (architecture §15.6) guards `theme.night.json` once created; the pixel-scan runs in the `post-task-verify` hook.
 - Once `theme.night.json` is the live source, add a `#[[file:...]]` reference to it in `night-vision.md` so steering reads the real table (the steering file already flags this).
+
+## Pixel scan (NS-10..NS-12)
+- [x] Pure scanner `scanRgba` / `judgePixel` in `packages/design-system/src/pixelScan.ts`, property-tested (NS-10..NS-12)
+- [x] Playwright harness `apps/mobile/e2e/pixel-scan.e2e.ts`: Hearth, Cold and You, power on and in an outage, plus a seeded medicine with no table, in Night, Dusk and Ember; includes a probe that proves the scan detects a bright pixel and a non-red pixel. `pnpm e2e` in `apps/mobile`.
+- [x] CI job `pixel-scan` in `.github/workflows/ci.yml` (written; not yet run on GitHub)
+- [ ] Add screens as they are built (medicines with a loaded table needs a signed fixture served to the browser; Lantern, Séance, Plan)
+- [ ] Dynamic Type 200% and 320 px width variants

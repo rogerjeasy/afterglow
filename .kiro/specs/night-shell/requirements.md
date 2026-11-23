@@ -88,6 +88,23 @@ The Night Shell is the interface layer everything renders through. Afterglow is 
 
 *Property:* `NS-08 parseHex rejects malformed colour strings`.
 
+### NS-10 — No rendered pixel exceeds the active mode's ceiling
+**User story:** As a person in a blackout, I want what is actually painted, not just what the tokens say, to stay under the luminance budget.
+- THE SYSTEM SHALL fail the scan of any screenshot that contains a pixel whose red channel exceeds the active mode's text ceiling (Night `#A5`, Dusk `#B7`, Ember `#FF`).
+- THE SYSTEM SHALL allow a pixel exactly at the ceiling.
+- THE SYSTEM SHALL scan every route in every mode, and the outage state, in the browser (Playwright harness, `apps/mobile/e2e`).
+*Property:* `NS-10` in `packages/design-system/src/pixelScan.property.test.ts`. *Source:* `night-vision.md` rule 3, design section 16.
+
+### NS-11 — Every visible pixel is red-dominant
+- THE SYSTEM SHALL fail any pixel with `R < 3 * max(G, B)` when `max(G, B)` exceeds a rendering-noise floor of 2.
+- THE SYSTEM SHALL pass any pixel at or under the ceiling with `R >= 3 * max(G, B)`.
+*Property:* `NS-11`. *Source:* NS-02 and `night-vision.md` rule 2, applied to rendered pixels.
+
+### NS-12 — The scan fails closed
+- IF the buffer length does not match the stated width and height, or the size is not a positive whole number, THEN THE SYSTEM SHALL report failure.
+- THE SYSTEM SHALL ignore alpha and SHALL count every offender while reporting only the first few.
+*Property:* `NS-12`.
+
 ### NS-09 — Type, motion, depth, and states (future, component layer)
 **User story:** As a person under stress in the dark, I want large calm type, one primary action, and a designed state for every situation including "unknown".
 
