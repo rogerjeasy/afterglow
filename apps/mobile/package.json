@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check src"
+    "lint": "biome check src e2e playwright.config.ts",
+    "e2e": "pnpm build && playwright test"
   },
   "dependencies": {
     "@afterglow/adapters": "workspace:*",
@@ -21,11 +22,14 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@types/node": "22",
+    "@types/pngjs": "6.0.5",
     "@types/react": "19.0.1",
     "@types/react-dom": "19.0.1",
     "@vitejs/plugin-react": "4.3.4",
     "fast-check": "3.23.2",
+    "pngjs": "7.0.0",
     "typescript": "5.7.2",
     "vite": "6.0.5",
     "vitest": "2.1.8"

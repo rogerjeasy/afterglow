@@ -15,16 +15,20 @@
     "./schedule": "./src/schedule/index.ts",
     "./thermal": "./src/thermal/index.ts",
     "./foodkeeper": "./src/foodkeeper/index.ts",
-    "./household": "./src/household/index.ts"
+    "./household": "./src/household/index.ts",
+    "./formulary": "./src/formulary/index.ts"
   },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check src"
+    "lint": "biome check src",
+    "test:browser": "vitest run --config vitest.browser.config.ts"
   },
   "devDependencies": {
+    "@vitest/browser": "2.1.8",
     "fast-check": "3.23.2",
+    "playwright": "1.65.1",
     "typescript": "5.7.2",
     "vitest": "2.1.8"
   }
