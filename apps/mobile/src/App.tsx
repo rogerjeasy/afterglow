@@ -7,6 +7,7 @@ import { decideMode } from './night-shell/modePolicy';
 import { applyMode, token } from './night-shell/theme';
 import { Cold } from './screens/Cold';
 import { Hearth } from './screens/Hearth';
+import { Seance } from './screens/Seance';
 import { You } from './screens/You';
 import { getSpaceController, useIdleLock, useSpace } from './spaces/useSpace';
 
@@ -15,10 +16,16 @@ const MODE_CYCLE: readonly LuminanceMode[] = ['night', 'dusk', 'ember'];
 function tabFromHash(): TabId {
   const h = window.location.hash;
   if (h.startsWith('#/cold')) return 'cold';
+  if (h.startsWith('#/seance')) return 'seance';
   if (h.startsWith('#/you')) return 'you';
   return 'hearth';
 }
-const HASH: Record<TabId, string> = { hearth: '#/', cold: '#/cold', you: '#/you' };
+const HASH: Record<TabId, string> = {
+  hearth: '#/',
+  seance: '#/seance',
+  cold: '#/cold',
+  you: '#/you',
+};
 
 /**
  * The app shell: header, the built destinations, and the Lights-Out moment.
@@ -164,7 +171,10 @@ export function App(): ReactNode {
             setColdSelected(id);
             go('cold');
           }}
+          onOpenSeance={() => go('seance')}
         />
+      ) : tab === 'seance' ? (
+        <Seance nowMs={nowMs} />
       ) : tab === 'cold' ? (
         <Cold nowMs={nowMs} selectedId={coldSelected} onSelect={setColdSelected} />
       ) : (

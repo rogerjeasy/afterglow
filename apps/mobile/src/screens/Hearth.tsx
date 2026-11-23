@@ -30,9 +30,11 @@ import { HomeSetup } from './HomeSetup';
 export function Hearth({
   nowMs,
   onOpenCold,
+  onOpenSeance,
 }: {
   nowMs: number;
   onOpenCold: (applianceId: string | null) => void;
+  onOpenSeance: () => void;
 }): ReactNode {
   const { store, state, demo } = useHousehold();
   const { view } = state;
@@ -47,6 +49,9 @@ export function Hearth({
     [view, loadedTable, nowMs],
   );
   const worst = worstMedicine(medicines);
+  const roster = useMemo(() => household.assessRoster(view), [view]);
+  const ghosts = roster.filter((r) => r.state === 'ghost').length;
+  const helps = roster.filter((r) => r.state === 'help').length;
   const elapsed = household.elapsedMinutes(view, nowMs);
   const outage = view.outageStartedAtMs !== null;
 
@@ -148,6 +153,28 @@ export function Hearth({
             onClick={() => setSettingUpHome(true)}
           />
 
+          <div style={{ gridColumn: '1 / -1' }}>
+            <Tile
+              title="Your people"
+              value={
+                roster.length === 0
+                  ? 'Add yours'
+                  : helps > 0
+                    ? `${helps} need${helps === 1 ? 's' : ''} help`
+                    : `${roster.length - ghosts} of ${roster.length} heard`
+              }
+              note={
+                roster.length === 0
+                  ? 'The people you look after, and a way to hear from them without a network.'
+                  : ghosts > 0
+                    ? `${ghosts} ghost${ghosts === 1 ? '' : 's'}: no word yet${outage ? ' since the outage began' : ''}.`
+                    : 'Everyone has been heard from.'
+              }
+              sources={['your list']}
+              live={outage}
+              onClick={onOpenSeance}
+            />
+          </div>
           <div style={{ gridColumn: '1 / -1' }}>
             {worst ? (
               <Tile

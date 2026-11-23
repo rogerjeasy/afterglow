@@ -128,7 +128,7 @@ Each feature module (spec §7.1–7.20) gets its screens, every state designed (
 - [ ] **5.2 Grid Sense + Ember Map screens** — Hearth status line; Lantern map (MapLibre + PMTiles), cell provenance, lit places, schedule/adherence, grid-stress gauge, history/playback.
 - [ ] **5.3 Cold Chain + Medicine** — compartment tombstones, temperature curves, inventory, "can I eat the…", excursion clocks with label provenance.
 - [ ] **5.4 Hours of Safety + Candles + CO Guard** — Graveyard Shift timeline, energy candles/plan, the Ward checklist.
-- [ ] **5.5 Heliograph / Séance** — send codes (torch), receive (camera decoding ring), roster/ghost board, QR pairing, BLE/Wi-Fi-Aware channels, Lamplighters.
+- [~] **5.5 Heliograph / Séance** — done on web: roster and ghost board (HH-11..HH-13), send with the screen lamp (HL-14, HL-17), watch with the camera through tracker, reader and decoder (HL-13, HL-15, HL-16), a demo-only simulated reader, and the Hearth "Your people" tile; verified with real fake-camera streams. Still to do: QR pairing, phone torch and BLE and sound channels (native), Lamplighters, real-phone fixtures.
 - [ ] **5.6 Signal Finder + Dependent Services** — towers/bearing, DIRS severity; water-pressure countdown, lifts, ATMs, fuel.
 - [ ] **5.7 Alerts, History/Reports, Household, Guidance + Ask, Settings, Onboarding** — the remaining §7.13–7.20 surfaces, incl. accessibility (3 luminance modes, screen-reader names, Dynamic Type 200%) and localisation scaffolding.
 - [ ] **5.8 Widgets / Live Activities / watch complications** (native).

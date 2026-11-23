@@ -315,7 +315,7 @@ export function Notice({ children }: { children: ReactNode }): ReactNode {
   );
 }
 
-export type TabId = 'hearth' | 'cold' | 'you';
+export type TabId = 'hearth' | 'seance' | 'cold' | 'you';
 
 function Glyph({ children }: { children: ReactNode }): ReactNode {
   return (
@@ -359,8 +359,18 @@ const YouGlyph = (): ReactNode => (
   </Glyph>
 );
 
+function SeanceGlyph(): ReactNode {
+  // A lamp with rays: the séance (design 7.1).
+  return (
+    <Glyph>
+      <circle cx="12" cy="13" r="4" />
+      <path d="M12 3v3M4.5 6.5l2 2M19.5 6.5l-2 2M3 13h2M19 13h2" />
+    </Glyph>
+  );
+}
 const TABS: readonly { id: TabId; label: string; glyph: () => ReactNode }[] = [
   { id: 'hearth', label: 'Hearth', glyph: HearthGlyph },
+  { id: 'seance', label: 'Séance', glyph: SeanceGlyph },
   { id: 'cold', label: 'Cold', glyph: TombstoneGlyph },
   { id: 'you', label: 'You', glyph: YouGlyph },
 ];

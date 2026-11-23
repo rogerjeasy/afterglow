@@ -70,6 +70,8 @@ const SCENARIOS: readonly Scenario[] = [
   { name: 'hearth, demo outage', url: '/?phase=outage&elapsed=30#/' },
   { name: 'cold, demo outage', url: '/?phase=outage&elapsed=30#/cold' },
   { name: 'you, demo outage', url: '/?phase=outage&elapsed=30#/you' },
+  { name: 'seance, power on', url: '/#/seance' },
+  { name: 'seance, demo outage', url: '/?phase=outage&elapsed=30#/seance' },
   { name: 'hearth, medicine with no table', url: '/#/', seed: true },
   { name: 'cold, medicine with no table', url: '/#/cold', seed: true },
 ];

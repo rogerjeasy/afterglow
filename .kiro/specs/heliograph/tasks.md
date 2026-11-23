@@ -15,9 +15,14 @@ Status: `[x]` done, `[ ]` planned.
 - [x] 9. Four defects found and fixed, recorded in `docs/kiro/pbt-catches.md`
 
 ## Planned (not in this slice)
-- [ ] 10. Torch and screen sender adapter that follows `planTransmission` on a monotonic clock (native module, Wave 3)
-- [ ] 11. Camera adapter and blob tracker producing `BrightnessSample`s (VisionCamera on native, `getUserMedia` on web)
+- [x] 10. Screen-lamp sender on an absolute schedule (`packages/adapters/src/heliograph/sender.ts`, HL-14) and its lamp UI with one-tap stop and flashing warnings (HL-17). Still to do: the phone torch (native module, Wave 3)
+- [x] 11. Web camera adapter (`getUserMedia`, 8 x 6 grid, numbers only; HL-16), tracker (`trackSeries`, HL-13) and rolling reader (HL-15), verified against a real Chromium fake-camera video. Still to do: VisionCamera on native
 - [ ] 12. Recorded fixtures at 5 to 40 m (needs a device and a dark room) to confirm the simulator's noise model
 - [x] 13. Fast profile (10 symbols per second, 6.4 s per frame) chosen by measured camera speed (HL-12). Still to measure on real phones: rolling-shutter and exposure behaviour at 40 to 60 fps, which decides whether the 40 fps limit should move
-- [ ] 14. Séance screen: send and receive, ghost solidify, "repeat requested" state (design 11.5)
+- [x] 14. Séance screen: ghost board, add people, send with the screen lamp, watch with the camera, every state designed (`apps/mobile/src/screens/Seance.tsx`). Still to do: QR pairing, animated ghost solidify, haptics, Hearth "I'm safe" one-tap, BLE and sound channels
 - [x] 15. Architecture section 6, design section 11.5 and the product spec corrected for frame timing, profiles and the 6-bit slot
+
+## Séance slice (this commit group)
+- [x] 16. Roster and ghost board in `household` (HH-11..HH-13): people with a slot, latest word, ghosts, attribution that refuses unknown and shared numbers
+- [x] 17. Photosensitivity: standard by default, fast only after confirmation, warning before every send, one-tap stop (HL-17)
+- [x] 18. Browser tests: board, add, send, fast confirmation, HELP note, lamp pixels in three modes, camera denied and absent, and three real fake-camera streams (read a message, ignore a steady lamp, refuse to name an unknown number)

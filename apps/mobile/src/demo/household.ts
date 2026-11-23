@@ -47,6 +47,18 @@ export function loadDemoHousehold(store: HouseholdStore, index: foodkeeper.FoodI
       if (id !== undefined) store.addItem(freezer, id);
     }
   }
+  // The people from the design walk-through, none heard from yet: ghosts until a word arrives.
+  if (store.getState().view.roster.length === 0) {
+    for (const [name, slot] of [
+      ['Mrs Dlamini', 12],
+      ['Paulo', 7],
+      ['Mom', 3],
+      ['Mr Naidoo', 21],
+      ['Sipho (caretaker)', 5],
+    ] as const) {
+      store.addPerson(name, slot);
+    }
+  }
   if (store.getState().view.home === null) {
     store.setHome({
       archetype: { type: 'apartment', vintage: 'pre1980', insulation: 'poor', climate: 'cold' },

@@ -43,6 +43,13 @@ export interface HouseholdStore {
   removeItem(itemId: string): void;
   addMedicine(applianceId: string, product: string, condition: 'unopened' | 'inUse'): string;
   removeMedicine(medicineId: string): void;
+  addPerson(name: string, slot: number): string;
+  removePerson(personId: string): void;
+  recordHeard(
+    personId: string,
+    code: household.HeardPayload['code'],
+    channel: household.HeardChannel,
+  ): void;
   openDoor(applianceId: string, openMinutes: number): void;
   startOutage(atMs: number): void;
   endOutage(): void;
@@ -170,6 +177,18 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
     },
     removeMedicine(medicineId) {
       append(E.medicineRemoved, { medicineId });
+    },
+    addPerson(name, slot) {
+      const id = nextId('p');
+      // Only a name and a slot are stored: no phone number, address or place (HH-11).
+      append(E.rosterSet, { personId: id, name: name.trim(), slot });
+      return id;
+    },
+    removePerson(personId) {
+      append(E.rosterRemoved, { personId });
+    },
+    recordHeard(personId, code, channel) {
+      append(E.heard, { personId, code, atMs: now(), channel });
     },
     openDoor(applianceId, openMinutes) {
       append(E.doorOpened, { applianceId, openMinutes, atMs: now() });
