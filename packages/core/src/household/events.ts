@@ -1,5 +1,6 @@
 import type { AfterglowEvent } from '../events/types.js';
 import type { IceCrystals } from '../foodkeeper/types.js';
+import { MAX_SLOT, MESSAGE_CODES, type MessageName, nameOfCode } from '../heliograph/codes.js';
 import type { ApplianceClass, ArchetypeQuery, Fullness } from '../thermal/archetypes.js';
 
 /**
@@ -18,6 +19,9 @@ export const HOUSEHOLD_EVENT = {
   homeSet: 'household.home.set',
   medicineAdded: 'household.medicine.added',
   medicineRemoved: 'household.medicine.removed',
+  rosterSet: 'household.roster.set',
+  rosterRemoved: 'household.roster.removed',
+  heard: 'household.roster.heard',
 } as const;
 
 export type HouseholdEventType = (typeof HOUSEHOLD_EVENT)[keyof typeof HOUSEHOLD_EVENT];
@@ -87,6 +91,22 @@ export interface MedicineAddedPayload {
 }
 export interface MedicineRemovedPayload {
   readonly medicineId: string;
+}
+export type HeardChannel = 'light' | 'sound' | 'sms' | 'ble' | 'manual';
+const HEARD_CHANNELS: ReadonlySet<string> = new Set(['light', 'sound', 'sms', 'ble', 'manual']);
+export interface RosterSetPayload {
+  readonly personId: string;
+  readonly name: string;
+  readonly slot: number;
+}
+export interface RosterRemovedPayload {
+  readonly personId: string;
+}
+export interface HeardPayload {
+  readonly personId: string;
+  readonly code: MessageName;
+  readonly atMs: number;
+  readonly channel: HeardChannel;
 }
 const isRecord = (x: unknown): x is Record<string, unknown> =>
   typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -180,6 +200,37 @@ export function isMedicineAddedPayload(x: unknown): x is MedicineAddedPayload {
 }
 export function isMedicineRemovedPayload(x: unknown): x is MedicineRemovedPayload {
   return isRecord(x) && isId(x.medicineId);
+}
+// biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+export function isRosterSetPayload(x: unknown): x is RosterSetPayload {
+  return (
+    isRecord(x) &&
+    isId(x.personId) &&
+    typeof x.name === 'string' &&
+    x.name.trim().length > 0 &&
+    x.name.length <= 60 &&
+    !CONTROL_CHARS.test(x.name) &&
+    typeof x.slot === 'number' &&
+    Number.isInteger(x.slot) &&
+    x.slot >= 0 &&
+    x.slot <= MAX_SLOT
+  );
+}
+export function isRosterRemovedPayload(x: unknown): x is RosterRemovedPayload {
+  return isRecord(x) && isId(x.personId);
+}
+export function isHeardPayload(x: unknown): x is HeardPayload {
+  return (
+    isRecord(x) &&
+    isId(x.personId) &&
+    typeof x.code === 'string' &&
+    Object.prototype.hasOwnProperty.call(MESSAGE_CODES, x.code) &&
+    nameOfCode((MESSAGE_CODES as Record<string, number>)[x.code] as number) === x.code &&
+    isMs(x.atMs) &&
+    typeof x.channel === 'string' &&
+    HEARD_CHANNELS.has(x.channel)
+  );
 }
 /** Build a household event; the caller supplies identity (device epoch, lamport) and model version. */
 export function householdEvent<T extends HouseholdEventType>(

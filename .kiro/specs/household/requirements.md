@@ -59,8 +59,25 @@ The Household module is the user's own data for the cold-chain and hours-of-safe
 ### HH-10 — Medicine assessment is deterministic and bounded
 - THE SYSTEM SHALL return the same assessments for the same view, table and time, and SHALL sample the temperature at about 2 000 points however long the outage has lasted.
 
+### HH-11 — The roster is people with a slot, and nothing else
+- THE SYSTEM SHALL record a roster member as `{ personId, name, slot }`, where `slot` is a whole number from 0 to 63, and nothing else about the person (no phone number, address or location).
+- IF a roster event is malformed THEN THE SYSTEM SHALL ignore it (HH-03). WHEN a removal is later than the last set THE SYSTEM SHALL omit the member (HH-02).
+- THE SYSTEM SHALL record a word from a member as `{ personId, code, atMs, channel }` with a Heliograph message name and a channel of light, sound, sms, ble or manual, and SHALL keep the latest per member, breaking ties deterministically, whatever the order the events arrive in.
+
+### HH-12 — A ghost is someone not heard from
+**User story:** As a caretaker, I want the board to say who I have not heard from, and to never call someone safe on old news.
+- THE SYSTEM SHALL mark a member a **ghost** when nothing has been heard from them, or, during an outage, when the latest word is from before the outage began.
+- THE SYSTEM SHALL mark a member **help** when their latest word is HELP, and SHALL list help first, then ghosts, then the rest.
+- THE SYSTEM SHALL NOT report a member as safe unless their latest word is SAFE and it is not older than the outage.
+
+### HH-13 — A received message is attributed only when its slot is unambiguous
+- WHEN a message arrives with a slot that belongs to exactly one roster member THE SYSTEM SHALL attribute it to that member.
+- IF the slot belongs to no member THEN THE SYSTEM SHALL report `unknownSlot`. IF it belongs to two or more THEN THE SYSTEM SHALL report `ambiguousSlot`. In both cases it SHALL NOT attribute the message to anyone.
+- THE SYSTEM SHALL offer the lowest free slot for a new member, and none when all 64 are taken.
+
 ## Analysis
 - **Door model.** `thermal.applyDoorEvents` folds door openings into the start state, so a door opened at hour 3 is modelled as warming from minute 0. That is earlier and therefore conservative (fail closed). A time-resolved door model is future work.
 - **Time.** The core has no clock. Event payloads carry wall-clock milliseconds supplied by the caller, and derivations take `nowMs` as an argument.
+- **Roster (HH-11 to HH-13).** The roster is the receiver's own list, so the slot is meaningful only on this device (pair-local, never a global identifier). Names are the user's own words and stay on the device. A message whose slot is shared by two people is refused rather than attributed, because guessing who said "SAFE" is the failure the product exists to avoid. Until QR pairing exists, a sender and a watcher agree a slot by hand.
 - **Medicines (HH-08 to HH-10).** The household stores only the user's choice of product and condition. Numbers come from the `formulary` module and only for validated entries (`label-only-medicine.md`). A medicine in an appliance is driven by that appliance's modelled temperature, so one model serves food and medicine. The outage start is taken as the moment the medicine began to warm, which is the earliest and therefore conservative.
 - **Out of scope:** sync, SQLite persistence (Wave 2), forecast-driven outdoor temperature (Wave 4), BLE thermometers (sensing wave).

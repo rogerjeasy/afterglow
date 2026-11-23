@@ -67,6 +67,31 @@ Heliograph carries a short message between two phones with a flashlight and a ca
 - WHEN both profiles produce a message and they differ THE SYSTEM SHALL return `repeatRequested`.
 - THE SYSTEM SHALL read a fast transmission at 40 to 120 frames per second with up to ±20% interval jitter, a sender clock within ±3%, noise and drift, and SHALL NOT mistake a transmission of one profile for a message of the other.
 
+### HL-13 — The brightest blinking spot is found in a grid of camera cells
+- GIVEN camera frames reduced to a grid of cell brightnesses, THE SYSTEM SHALL choose the cell whose brightness changes most over the recording and return its brightness series as `BrightnessSample`s.
+- THE SYSTEM SHALL ignore cells that never change (a lamp left on, a window) and SHALL pick the same cell whatever order the cells are listed in, breaking ties by index.
+- IF the frames are malformed, differ in cell count, are not strictly increasing in time, or no cell changes enough THEN THE SYSTEM SHALL return no series.
+- WHEN the chosen series is decoded THE SYSTEM SHALL read the transmitted message with other cells flickering at random.
+
+### HL-14 — The sender follows an absolute schedule (adapter: `packages/adapters/src/heliograph/sender.ts`)
+- THE SYSTEM SHALL switch the lamp at `start + planned time` for every run, so a late timer delays one switch by at most its own lateness and the error never accumulates.
+- WHEN a send is cancelled or fails THE SYSTEM SHALL leave the lamp dark.
+- WHEN a transmission is shown by the sender and filmed by a camera, THE SYSTEM SHALL be read by the receiver in both profiles.
+
+### HL-15 — The reader keeps numbers, not pictures (adapter: `reader.ts`)
+- THE SYSTEM SHALL keep only grid frames of the recent window, drop any frame that is not later than the last, and cap the number held.
+- THE SYSTEM SHALL answer `noSignal` (with a plain reason) until a blinking light is in view, then decode what it sees.
+
+### HL-16 — The camera adapter reduces frames to a grid and names its failures (adapter: `camera.ts`)
+- THE SYSTEM SHALL reduce each video frame to 48 cell values from 0 to 255 and keep nothing else of the picture.
+- THE SYSTEM SHALL report a refused permission, a missing camera, a busy camera, an insecure page or an unsupported browser as distinct errors so the screen can say what is missing and what to do.
+
+### HL-17 — Flashing is disclosed, and the faster profile is opt-in
+**User story:** As a person who may be sensitive to flashing light, or who sits near someone who is, I must be told before a screen flashes at me.
+- THE SYSTEM SHALL use the standard profile by default and SHALL NOT send in the fast profile until the sender has confirmed that nobody nearby is sensitive to flashing light.
+- THE SYSTEM SHALL show a flashing-light warning before every screen-lamp send.
+- THE SYSTEM SHALL let the sender stop at any moment with one tap, and the lamp SHALL end dark.
+
 ### HL-11 — Deterministic
 - THE SYSTEM SHALL return the same result for the same series.
 
@@ -75,5 +100,6 @@ Heliograph carries a short message between two phones with a flashlight and a ca
 - **Roster slot, settled.** The slot is 6 bits (64 senders) so the building persona (a caretaker with 60 flats) works and the architecture's `0x2F` example fits. The 2 bits come from the sequence counter, which only tells consecutive messages from one sender apart (4 is enough because repeats are identical and a receiver also dedupes by time). The frame stays 32 bits. Above 64 senders, a receiver needs a group prefix, which is a later protocol revision.
 - **Why Hamming plus CRC, and why two repeats.** Hamming(12,8) corrects one flip per byte but can mistake two flips for one. CRC-4 catches most of that but only 15 in 16. A single frame is therefore not enough evidence to show "SAFE" or "HELP" (HL-04 measures the miscorrection rate). Requiring two agreeing repeats that sit exactly one frame length apart multiplies the odds against a false message and rules out a chance match in noise.
 - **Measured miscorrection.** Two flips in one Hamming word are refused most of the time, but a small share (under 8%, asserted by the HL-04 test) still passes Hamming and CRC-4 as a different message. This is the quantified reason a single frame is never shown.
+- **Flashing and photosensitivity.** The standard profile switches at most every 200 ms, which is 2.5 flashes per second, under the 3 per second general flash threshold of WCAG 2.3.1. The fast profile switches every 100 ms (5 flashes per second) and the lamp is red, which is the colour that guideline treats most strictly. The torch of a phone is far smaller and dimmer than a full screen, so the screen lamp is the risk. Hence HL-17: standard by default, fast only after an explicit confirmation, a warning always, and one-tap stop. A smaller lamp area is a further mitigation to evaluate with a device.
 - **Light is public.** Codes carry no personal data and are visible to anyone who can see the torch (privacy-aggregation rule 6). The slot is meaningful only to the paired receiver.
 - **Out of scope:** the torch and camera adapters, blob tracking, the acoustic channel (`acoustic`, 1.9), BLE relay, roster resolution and the Séance screen.

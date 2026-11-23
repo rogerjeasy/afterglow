@@ -45,3 +45,4 @@ export {
   type Profile,
   type ProfileName,
 } from './profiles.js';
+export { MAX_CELLS, trackSeries, type GridFrame } from './track.js';

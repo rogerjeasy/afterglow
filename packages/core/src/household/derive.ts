@@ -13,6 +13,7 @@ import {
   lookupEntry,
   modelledSeries,
 } from '../formulary/index.js';
+import { MAX_SLOT, type MessageName } from '../heliograph/codes.js';
 import {
   type ApplianceClass,
   BUILDING_MODEL_VERSION,
@@ -21,7 +22,7 @@ import {
 } from '../thermal/archetypes.js';
 import { InvalidThermalInputError, applyDoorEvents } from '../thermal/model.js';
 import type { CompartmentState, CrossingTime } from '../thermal/types.js';
-import type { Appliance, FoodItem, HouseholdView, MedicineItem } from './view.js';
+import type { Appliance, FoodItem, HouseholdView, MedicineItem, RosterMember } from './view.js';
 
 export function compartmentKindOf(cls: ApplianceClass): CompartmentKind {
   return cls === 'freezer' || cls === 'chestFreezer' ? 'frozen' : 'refrigerated';
@@ -281,4 +282,59 @@ export function assessMedicines(
     out.push({ kind: 'clock', medicine, applianceName, entry: hit.entry, clock });
   }
   return out;
+}
+
+// ---------------------------------------------------------------- roster
+export type RosterState =
+  /** Nothing heard, or nothing since the outage began. Shown translucent. */
+  'ghost' | 'help' | 'heard';
+
+export interface RosterEntry {
+  readonly member: RosterMember;
+  readonly state: RosterState;
+  /** True only when the latest word is SAFE and is not older than the outage. */
+  readonly safe: boolean;
+}
+
+const RANK: Record<RosterState, number> = { help: 0, ghost: 1, heard: 2 };
+
+/** The board (HH-12): help first, then ghosts, then everyone heard from. Ties by name then id. */
+export function assessRoster(view: HouseholdView): readonly RosterEntry[] {
+  const since = view.outageStartedAtMs;
+  const entries = view.roster.map((member): RosterEntry => {
+    const h = member.heard;
+    const current = h !== null && (since === null || h.atMs >= since);
+    const state: RosterState = !h || !current ? 'ghost' : h.code === 'HELP' ? 'help' : 'heard';
+    return { member, state, safe: current && h !== null && h.code === 'SAFE' };
+  });
+  return entries.sort(
+    (a, b) =>
+      RANK[a.state] - RANK[b.state] ||
+      (a.member.name < b.member.name ? -1 : a.member.name > b.member.name ? 1 : 0) ||
+      (a.member.id < b.member.id ? -1 : a.member.id > b.member.id ? 1 : 0),
+  );
+}
+
+export type Attribution =
+  | { readonly kind: 'known'; readonly member: RosterMember; readonly code: MessageName }
+  | { readonly kind: 'unknownSlot'; readonly slot: number }
+  | { readonly kind: 'ambiguousSlot'; readonly slot: number; readonly count: number };
+
+/** Who a received message is from (HH-13). Never guesses between two people. */
+export function attributeMessage(
+  view: HouseholdView,
+  message: { readonly code: MessageName; readonly slot: number },
+): Attribution {
+  const matches = view.roster.filter((m) => m.slot === message.slot);
+  const [only] = matches;
+  if (matches.length === 1 && only) return { kind: 'known', member: only, code: message.code };
+  if (matches.length === 0) return { kind: 'unknownSlot', slot: message.slot };
+  return { kind: 'ambiguousSlot', slot: message.slot, count: matches.length };
+}
+
+/** The lowest slot no member uses, or null when all 64 are taken (HH-13). */
+export function freeSlot(view: HouseholdView): number | null {
+  const used = new Set(view.roster.map((m) => m.slot));
+  for (let slot = 0; slot <= MAX_SLOT; slot++) if (!used.has(slot)) return slot;
+  return null;
 }

@@ -6,10 +6,12 @@ import type { ApplianceClass, Fullness } from '../thermal/archetypes.js';
 import {
   DEFAULT_AMBIENT_C,
   HOUSEHOLD_EVENT,
+  type HeardPayload,
   type HomePayload,
   isAppliancePayload,
   isApplianceRemovedPayload,
   isDoorOpenedPayload,
+  isHeardPayload,
   isHomePayload,
   isIceCheckedPayload,
   isItemAddedPayload,
@@ -17,6 +19,8 @@ import {
   isMedicineAddedPayload,
   isMedicineRemovedPayload,
   isOutageSetPayload,
+  isRosterRemovedPayload,
+  isRosterSetPayload,
 } from './events.js';
 
 export interface Appliance {
@@ -39,6 +43,13 @@ export interface MedicineItem {
   readonly product: string;
   readonly condition: 'unopened' | 'inUse';
 }
+export interface RosterMember {
+  readonly id: string;
+  readonly name: string;
+  readonly slot: number;
+  /** The latest word from them, or null when nothing has been heard. */
+  readonly heard: Omit<HeardPayload, 'personId'> | null;
+}
 export interface DoorOpening {
   readonly applianceId: string;
   readonly openMinutes: number;
@@ -53,6 +64,7 @@ export interface HouseholdView {
   readonly appliances: readonly Appliance[];
   readonly items: readonly FoodItem[];
   readonly medicines: readonly MedicineItem[];
+  readonly roster: readonly RosterMember[];
   readonly doors: readonly DoorOpening[];
   readonly outageStartedAtMs: number | null;
   readonly iceChecks: Readonly<Record<string, IceCheck>>;
@@ -63,6 +75,8 @@ interface Internal {
   readonly appliances: ReadonlyMap<string, Versioned<Appliance | null>>;
   readonly items: ReadonlyMap<string, Versioned<FoodItem | null>>;
   readonly medicines: ReadonlyMap<string, Versioned<MedicineItem | null>>;
+  readonly people: ReadonlyMap<string, Versioned<{ name: string; slot: number } | null>>;
+  readonly heard: ReadonlyMap<string, HeardPayload>;
   readonly doors: readonly DoorOpening[];
   readonly outage: Versioned<number | null> | undefined;
   readonly iceChecks: ReadonlyMap<string, Versioned<IceCheck>>;
@@ -73,6 +87,8 @@ const INITIAL: Internal = {
   appliances: new Map(),
   items: new Map(),
   medicines: new Map(),
+  people: new Map(),
+  heard: new Map(),
   doors: [],
   outage: undefined,
   iceChecks: new Map(),
@@ -136,6 +152,28 @@ function step(state: Internal, event: AfterglowEvent): Internal {
       if (!isMedicineRemovedPayload(p)) return state;
       return { ...state, medicines: put(state.medicines, p.medicineId, event, null) };
     }
+    case HOUSEHOLD_EVENT.rosterSet: {
+      if (!isRosterSetPayload(p)) return state;
+      return {
+        ...state,
+        people: put(state.people, p.personId, event, { name: p.name, slot: p.slot }),
+      };
+    }
+    case HOUSEHOLD_EVENT.rosterRemoved: {
+      if (!isRosterRemovedPayload(p)) return state;
+      return { ...state, people: put(state.people, p.personId, event, null) };
+    }
+    case HOUSEHOLD_EVENT.heard: {
+      if (!isHeardPayload(p)) return state;
+      const next = new Map(state.heard);
+      const prev = next.get(p.personId);
+      // Latest word wins; an exact tie is broken by a canonical comparison so the
+      // result does not depend on arrival order (HH-01).
+      if (!prev || p.atMs > prev.atMs || (p.atMs === prev.atMs && canonical(p) > canonical(prev))) {
+        next.set(p.personId, p);
+      }
+      return { ...state, heard: next };
+    }
     case HOUSEHOLD_EVENT.doorOpened: {
       if (!isDoorOpenedPayload(p)) return state;
       const door: DoorOpening = {
@@ -165,6 +203,7 @@ function step(state: Internal, event: AfterglowEvent): Internal {
   }
 }
 
+const canonical = (h: HeardPayload): string => `${h.code}|${h.channel}`;
 const byId = <T extends { readonly id: string }>(a: T, b: T): number =>
   a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
@@ -185,6 +224,15 @@ export function buildHouseholdView(log: EventLog): HouseholdView {
     .map((v) => v.value)
     .filter((m): m is MedicineItem => m !== null && live.has(m.applianceId))
     .sort(byId);
+  const roster: RosterMember[] = [...s.people.entries()]
+    .flatMap(([id, v]) =>
+      v.value === null ? [] : [{ id, name: v.value.name, slot: v.value.slot }],
+    )
+    .map((m) => {
+      const h = s.heard.get(m.id);
+      return { ...m, heard: h ? { code: h.code, atMs: h.atMs, channel: h.channel } : null };
+    })
+    .sort(byId);
   const iceChecks: Record<string, IceCheck> = {};
   for (const [id, v] of [...s.iceChecks.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
     iceChecks[id] = v.value;
@@ -199,6 +247,7 @@ export function buildHouseholdView(log: EventLog): HouseholdView {
     appliances,
     items,
     medicines,
+    roster,
     doors,
     outageStartedAtMs: s.outage?.value ?? null,
     iceChecks,
