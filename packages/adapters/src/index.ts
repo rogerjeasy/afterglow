@@ -31,3 +31,15 @@ export {
   type RefusalCode,
   type TrustAnchor,
 } from './formulary/loader.js';
+export { type SenderDeps, type SendOutcome, runTransmission } from './heliograph/sender.js';
+export { DEFAULT_WINDOW_MS, type Reader, createReader } from './heliograph/reader.js';
+export {
+  GRID_COLS,
+  GRID_ROWS,
+  type CameraError,
+  type CameraResult,
+  type CameraSession,
+  errorOf,
+  gridOf,
+  openCamera,
+} from './heliograph/camera.js';
