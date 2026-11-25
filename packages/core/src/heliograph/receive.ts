@@ -279,7 +279,31 @@ function accept(
   profile: Profile,
 ): HeliographResult {
   const frameMs = frameMsOf(profile);
-  const found = dedupe(candidates, profile.symbolMs);
+  const all = dedupe(candidates, profile.symbolMs);
+
+  // Frames cannot overlap in time, so a frame that overlaps a better supported one is
+  // not real. With repeats back to back, the tail of one frame and the head of the next
+  // can spell a second, false frame half a frame out of step; it passes its CRC and
+  // recurs at every repeat boundary. The real frames sit on a lattice (one per repeat)
+  // with more preamble hits than that false one, so the false lattice loses. Where the
+  // support is equal, neither wins and the two groups below conflict, which is refused.
+  const latticeSize = (start: number): number =>
+    all.filter((c) => {
+      const d = Math.abs(c.startMs - start);
+      return Math.abs(d - Math.round(d / frameMs) * frameMs) <= SPACING_TOLERANCE * frameMs;
+    }).length;
+  const overlaps = (a: number, b: number): boolean =>
+    a !== b && Math.abs(a - b) < (1 - SPACING_TOLERANCE) * frameMs;
+  const support = new Map(all.map((c) => [c.startMs, latticeSize(c.startMs)]));
+  const found = all.filter(
+    (c) =>
+      !all.some(
+        (d) =>
+          overlaps(c.startMs, d.startMs) &&
+          (support.get(d.startMs) as number) > (support.get(c.startMs) as number),
+      ),
+  );
+
   const decoded = found.map((c) => ({ c, d: decodeCoded(c.coded) }));
   const valid = decoded.flatMap((x) =>
     x.d.ok ? [{ start: x.c.startMs, message: x.d.message, corrected: x.d.correctedWords }] : [],
