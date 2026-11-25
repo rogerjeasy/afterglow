@@ -174,6 +174,35 @@ export function findArchetype(q: ArchetypeQuery): Archetype | null {
   );
 }
 
+/** The time-constant range for a building, in hours, and whether it is the wide default (TH-05). */
+export interface BuildingBand {
+  readonly minHours: number;
+  readonly midHours: number;
+  readonly maxHours: number;
+  readonly isDefault: boolean;
+}
+
+/**
+ * The tau band for a building: the archetype's range, or the wide default band
+ * when the archetype is unknown (never a point estimate).
+ */
+export function buildingBand(query: ArchetypeQuery | null): BuildingBand {
+  const archetype = query ? findArchetype(query) : null;
+  return archetype
+    ? {
+        minHours: archetype.tauMinHours,
+        midHours: archetype.tauHours,
+        maxHours: archetype.tauMaxHours,
+        isDefault: false,
+      }
+    : {
+        minHours: DEFAULT_BAND.tauMinHours,
+        midHours: (DEFAULT_BAND.tauMinHours + DEFAULT_BAND.tauMaxHours) / 2,
+        maxHours: DEFAULT_BAND.tauMaxHours,
+        isDefault: true,
+      };
+}
+
 /**
  * Building crossing time with an uncertainty band from the archetype tau range
  * (TH-05). When no archetype matches, use the wide default band and flag it.
@@ -184,29 +213,15 @@ export function buildingCrossing(
   ambientC: number,
   thresholdC: number,
 ): BuildingCrossing {
-  const archetype = query ? findArchetype(query) : null;
-  const band = archetype
-    ? {
-        min: archetype.tauMinHours,
-        mid: archetype.tauHours,
-        max: archetype.tauMaxHours,
-        isDefault: false,
-      }
-    : {
-        min: DEFAULT_BAND.tauMinHours,
-        mid: (DEFAULT_BAND.tauMinHours + DEFAULT_BAND.tauMaxHours) / 2,
-        max: DEFAULT_BAND.tauMaxHours,
-        isDefault: true,
-      };
-
+  const band = buildingBand(query);
   const at = (tauHours: number): CrossingTime =>
     crossingTime({ startC, ambientC, tauMinutes: tauHours * 60 }, thresholdC);
 
   // Larger tau = slower change, so the LATEST crossing uses tauMax, EARLIEST tauMin.
   return {
-    crossing: at(band.mid),
-    bandEarliest: at(band.min),
-    bandLatest: at(band.max),
+    crossing: at(band.midHours),
+    bandEarliest: at(band.minHours),
+    bandLatest: at(band.maxHours),
     isDefaultBand: band.isDefault,
   };
 }

@@ -14,6 +14,8 @@ export {
   findArchetype,
   listArchetypes,
   buildingCrossing,
+  buildingBand,
+  type BuildingBand,
   type ApplianceClass,
   type Fullness,
   type ArchetypeQuery,
