@@ -4,11 +4,11 @@
     {
       "name": "Agent stop gate",
       "trigger": "Stop",
-      "description": "Blocks completion while any property/invariant test in the workspace is failing. Runs the full turbo test suite on Stop and exits non-zero if red.",
+      "description": "Blocks completion while any property or invariant test in the workspace is failing. On red it prints the documented Stop-hook block decision, so the agent must take another turn and fix it. Exit 0 with a block decision, not exit 2: only exit 1 or a block decision restarts a Stop turn.",
       "action": {
         "type": "command",
-        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && pnpm test >/tmp/afterglow-stop-gate.log 2>&1 || { echo \"Agent stop gate: invariant tests are RED. Fix before completing.\" >&2; tail -40 /tmp/afterglow-stop-gate.log >&2; exit 2; }",
-        "timeout": 300
+        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && if pnpm test >/tmp/afterglow-stop-gate.log 2>&1; then exit 0; else r=$(tail -40 /tmp/afterglow-stop-gate.log | jq -Rs . 2>/dev/null || echo '\"tests are red; see /tmp/afterglow-stop-gate.log\"'); printf '{\"decision\":\"block\",\"reason\":%s}\\n' \"$r\"; echo 'Agent stop gate: invariant tests are RED. Fix before completing.' >&2; exit 0; fi",
+        "timeout": 600
       }
     }
   ]
