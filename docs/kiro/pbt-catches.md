@@ -139,3 +139,47 @@ All four were found by the property suite during the first runs of `heliograph.p
 **Property:** `HL-12 a noisy, jittery fast recording is read at 40 to 120 fps`. **Shrunken counterexample:** `SAFE, slot 0, sequence 0, 40 fps, jitter ~0, sender clock 0.97, no noise` returned `noSignal`.
 **Root cause (implementation):** the eligibility test was `median interval <= 1000/40`. A 40 fps recording's median interval is `25.000000000000004` ms in floating point, so the very speed the rule names was refused. **Fix:** a 5% margin (`SPEED_TOLERANCE`) stated in HL-12, and a test at 40, 39 and 36 fps.
 **Test gap found by mutation:** ignoring a disagreement between the two profiles survived the first suite. A test now joins a fast and a standard transmission of different messages and requires `repeatRequested`.
+
+---
+
+## 2026-11-25 · HL-07 / HL-08 · back-to-back repeats spelled a false frame, so three messages could not be read
+
+**Requirement:** HL-07 (the receiver reads a recording within the spec envelope), HL-08 (two agreeing repeats are required), HL-09 (never a wrong message).
+
+**Property:** `HL-07 a noisy, jittery, drifting recording is read at any frame rate from 20 to 60`.
+
+**How it surfaced:** the property failed in about one full run in four on a random seed and passed alone, which looked like load. Re-running it alone four times reproduced it once, and fast-check shrank it to a clean case: no noise, no jitter, no lead-in, 20 fps, a sender clock 3% slow.
+
+**Shrunken counterexample:**
+```
+{ msg: { code: "CHARGE_HERE", slot: 58, sequence: 2 }, fps: 20, jitter: 0,
+  clockScale: 0.97, leadMs: 0, noise: 0, drift: 0 }  →  repeatRequested (expected message)
+```
+
+**What narrowed it:** a sweep over timing found nothing, so the failure depended on the *content*. A sweep over all 2,816 messages at the failing timing found three that fail at **every** timing, including a perfect clock with a 1.5 s lead-in: `ACK/57/0`, `NEED_COOL/31/3`, `CHARGE_HERE/58/2`. Tracing the stages showed the receiver finding five frames where three were sent.
+
+**Root cause (implementation bug):** with repeats back to back, the tail of one frame and the head of the next can spell a preamble 16 bits in, and the 32 bits after it can pass the Hamming and CRC checks. That is a second, false frame, half a frame out of step, and it recurs at every repeat boundary. For these three messages the receiver then saw two different messages each supported twice and refused (`repeatRequested`). Refusing is the safe outcome, but those messages could never be read, so a roster slot of 57 or 58 could not have received an ACK or CHARGE-HERE.
+
+It was also a latent safety defect: had a real repeat been damaged, the false pair could have been the only group with two agreeing repeats, and the app would have shown a message the sender never sent (HL-09).
+
+**Fix:** frames cannot overlap in time, so `accept` drops a frame that overlaps a better supported one. Support is the number of detected frames on the same repeat lattice: the real frames have three, the false ones two. Where support ties, neither wins and the existing conflict rule still refuses. One corner remains refused by design (`CHARGE_HERE/58/2` at 20 fps, clock 3% fast, recording cut 48 ms before the last repeat ends), where a real and a false lattice tie exactly.
+
+**Tests added:** an exhaustive test over every one of the 2,816 messages (the random property had been the only thing exercising this, and it found it about once in four runs), a named test for the three messages at the spec corners, and a HL-09 test that damages a repeat of a message that spells a false frame and asserts the answer is the message or a refusal, never another message. **Mutation check:** with the old `receive.ts` restored, the exhaustive test fails on exactly those three messages and the corner test fails; with the fix they pass, and the suite passed six runs in a row.
+
+**What was wrong:** the implementation. The requirement and the property were correct. The exhaustive enumeration the property lacked is now a test.
+
+---
+
+## 2026-11-25 · CE-13 · a held verdict is forgotten after 30 minutes (a design tension, not a shrunk counterexample)
+
+**Honest framing:** this was found by a hand-built timeline test written for the new windowing layer (`cellTimeline`), not by a fast-check shrink. It is recorded here because it is exactly the kind of defect the evidence file exists for: the test failed, the cause was a conflict between two written rules, and no implementation bug was involved.
+
+**Requirement:** CE-01 (k distinct devices in the last 30 minutes) against `privacy-aggregation.md` rule 4 (a device reports on verdict change only).
+
+**Test:** `CE-13 a timeline threads each window into the next`: six devices go dark at minute 20 and are restored at minute 60.
+
+**Failure:** the cell read `lit`, not `comingBack`, at minute 60. At minute 55 nothing had been reported for 35 minutes, so the cell had already fallen to `unknown` and so was never `dark` when the restore edges arrived. CE-05 correctly refuses to say a cell that was not dark is "coming back".
+
+**Root cause (requirements conflict):** a 30-minute distinct-device window forgets any verdict nobody repeats. With change-only reporting, every long outage turns `unknown` after 30 minutes, which is the opposite of what a map is for.
+
+**Resolution so far:** pinned, not hidden. The kernel behaves correctly and is unchanged. A named test (`Q1`) pins that a verdict nobody repeats falls back to `unknown` at 30 minutes. The simulator assumes a re-confirmation every 20 minutes while a verdict holds (SIM-03). **Open question Q1** in `.kiro/specs/cells/requirements.md` needs a privacy review: either allow re-confirmation reports (same fields, no new data) or have the Flink job carry each device's last verdict forward with a TTL. Until then the map is simulated and labelled as such.
