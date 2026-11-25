@@ -1,0 +1,10 @@
+{
+  "checks": [
+    { "name": "typecheck", "command": "pnpm exec turbo run typecheck --force", "timeoutSeconds": 900 },
+    { "name": "lint", "command": "pnpm exec turbo run lint --force", "timeoutSeconds": 600 },
+    { "name": "property-suite", "command": "pnpm exec turbo run test --force", "repeats": 3, "timeoutSeconds": 1200, "parser": "vitest" },
+    { "name": "core-in-chromium", "command": "pnpm --filter @afterglow/core test:browser", "timeoutSeconds": 900, "parser": "vitest" },
+    { "name": "app-build", "command": "pnpm --filter @afterglow/mobile run build", "timeoutSeconds": 600 },
+    { "name": "night-shell-pixel-scan", "command": "pnpm --filter @afterglow/mobile exec playwright test", "timeoutSeconds": 1500, "parser": "playwright" }
+  ]
+}
