@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Session brief",
+      "trigger": "SessionStart",
+      "description": "Starts every session informed: the latest property-test catches, open questions that block work, open human gates, and how much of the working tree is uncommitted. Reads files only; runs no tests.",
+      "action": {
+        "type": "command",
+        "command": "cd \"$KIRO_WORKSPACE_ROOT\" 2>/dev/null || exit 0; echo 'Afterglow session brief'; echo 'Latest property-test catches:'; grep '^## ' docs/kiro/pbt-catches.md 2>/dev/null | tail -3 | sed 's/^## /  - /'; echo 'Open questions and human gates:'; grep -h -E '^## Open question|\\[ \\] \\[H\\]' .kiro/specs/*/requirements.md .kiro/specs/*/tasks.md 2>/dev/null | head -8 | sed 's/^/  - /'; echo \"Uncommitted paths: $(git status --short 2>/dev/null | wc -l | tr -d ' ')\"; exit 0",
+        "timeout": 15
+      }
+    }
+  ]
+}

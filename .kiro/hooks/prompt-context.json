@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Prompt context and secret scan",
+      "trigger": "UserPromptSubmit",
+      "description": "Blocks a prompt that contains a secret (AGENTS.md: no secrets in prompts), and otherwise adds a short shared vocabulary and the count of open spec tasks to every turn.",
+      "action": {
+        "type": "command",
+        "command": "in=$(cat 2>/dev/null); p=$(printf '%s' \"$in\" | jq -r '.prompt? // empty' 2>/dev/null); [ -n \"$p\" ] || p=\"$USER_PROMPT\"; [ -n \"$p\" ] || p=\"$in\"; if printf '%s' \"$p\" | grep -Eq 'AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|(password|passwd|secret|api[_-]?key|access[_-]?token)[[:space:]]*[=:][[:space:]]*[^[:space:]]{8,}'; then echo 'prompt-context: this prompt looks like it contains a secret. Remove it and use an environment variable or the keychain; secrets never go in prompts or logs.' >&2; exit 2; fi; cd \"$KIRO_WORKSPACE_ROOT\" 2>/dev/null || exit 0; open=$(cat .kiro/specs/*/tasks.md 2>/dev/null | grep -c '^- \\[ \\]'); echo \"Afterglow vocabulary: unknown = fail closed; cell = geohash-6 with k >= 5 devices; ward = refused unsafe action; label is the law (validated formulary only); Night Shell = red on black, tokens only. Open spec tasks: $open.\"; exit 0",
+        "timeout": 10
+      }
+    }
+  ]
+}
