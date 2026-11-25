@@ -3,3 +3,4 @@ packages:
   - "apps/*"
   - "services/*"
   - "tools/*"
+  - "afterglow-formulary"
