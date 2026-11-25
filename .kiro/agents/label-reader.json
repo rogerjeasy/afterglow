@@ -1,0 +1,76 @@
+{
+  "name": "label-reader",
+  "description": "Proposes a formulary entry from a stored label. Family A. Writes only afterglow-formulary/proposals/. Never approves, signs or reads the validated table.",
+  "prompt": "file://./prompts/label-reader.md",
+  "model": "claude-sonnet-5.5",
+  "tools": [
+    "read",
+    "write"
+  ],
+  "includeMcpJson": false,
+  "includePowers": false,
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/label-only-medicine.md",
+    "file://.kiro/steering/fail-closed.md",
+    "file://afterglow-formulary/src/proposal.ts",
+    "skill://.kiro/skills/formulary-review/SKILL.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_read",
+        "match": [
+          "afterglow-formulary/validated/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "afterglow-formulary/proposals/**"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**"
+        ],
+        "exclude": [
+          "afterglow-formulary/proposals/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_fetch",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_search",
+        "effect": "deny"
+      }
+    ]
+  },
+  "welcomeMessage": "Label Reader. Give me a stored source and I will propose an entry, or tell you why I cannot."
+}

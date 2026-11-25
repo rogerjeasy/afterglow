@@ -1,0 +1,76 @@
+{
+  "name": "pharmacist-validator",
+  "description": "Independently checks a formulary proposal against its source label. Family B (a different vendor from the Label Reader). Writes only afterglow-formulary/reports/. Not the pharmacist.",
+  "prompt": "file://./prompts/pharmacist-validator.md",
+  "model": "gpt-5.6-terra",
+  "tools": [
+    "read",
+    "write"
+  ],
+  "includeMcpJson": false,
+  "includePowers": false,
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/label-only-medicine.md",
+    "file://.kiro/steering/fail-closed.md",
+    "file://afterglow-formulary/src/proposal.ts",
+    "skill://.kiro/skills/formulary-review/SKILL.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_read",
+        "match": [
+          "afterglow-formulary/validated/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "afterglow-formulary/reports/**"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**"
+        ],
+        "exclude": [
+          "afterglow-formulary/reports/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_fetch",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_search",
+        "effect": "deny"
+      }
+    ]
+  },
+  "welcomeMessage": "Pharmacist Validator. I read the label myself first, then compare. When in doubt, I disagree."
+}

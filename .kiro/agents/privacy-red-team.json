@@ -1,0 +1,119 @@
+{
+  "name": "privacy-red-team",
+  "description": "Tries to de-anonymise cells and reports from the code and the simulator, and records what works and what does not. Writes only docs/kiro/privacy-findings.md.",
+  "prompt": "file://./prompts/privacy-red-team.md",
+  "model": "claude-sonnet-5.5",
+  "tools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "includeMcpJson": false,
+  "includePowers": false,
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/privacy-aggregation.md",
+    "file://.kiro/steering/fail-closed.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "npm publish*",
+          "pnpm publish*",
+          "yarn publish*",
+          "eas submit*",
+          "eas update*",
+          "terraform apply*",
+          "terraform destroy*",
+          "tofu apply*",
+          "tofu destroy*",
+          "aws sns publish*",
+          "aws connect*",
+          "aws ses*",
+          "aws sesv2*",
+          "twilio*",
+          "git push*",
+          "git reset --hard*",
+          "git clean*",
+          "rm -rf*"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "docs/kiro/privacy-findings.md"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**"
+        ],
+        "exclude": [
+          "docs/kiro/privacy-findings.md"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "pnpm --filter @afterglow/core test*",
+          "pnpm --filter @afterglow/simulator test*",
+          "pnpm --filter @afterglow/mobile test*",
+          "git status*",
+          "git diff*",
+          "git log*",
+          "git show*",
+          "git branch --list*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "web_fetch",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_search",
+        "effect": "deny"
+      }
+    ]
+  },
+  "welcomeMessage": "Privacy Red Team. I try to narrow a household below a cell, and I write down every attempt."
+}
