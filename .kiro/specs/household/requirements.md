@@ -75,9 +75,21 @@ The Household module is the user's own data for the cold-chain and hours-of-safe
 - IF the slot belongs to no member THEN THE SYSTEM SHALL report `unknownSlot`. IF it belongs to two or more THEN THE SYSTEM SHALL report `ambiguousSlot`. In both cases it SHALL NOT attribute the message to anyone.
 - THE SYSTEM SHALL offer the lowest free slot for a new member, and none when all 64 are taken.
 
+### HH-14 — Energy stores and loads are the user's own numbers, validated by the planner's rules
+- THE SYSTEM SHALL record a store as `{ storeId, name, kind, capacityWh, chargePct, ac, usableFraction? }` and a load as `{ loadId, name, watts, class, needs, drawsFrom? }`, accepting exactly what the energy planner accepts and ignoring anything else (HH-03).
+- WHEN a removal is later than the last set THE SYSTEM SHALL omit the item (HH-02). WHEN a store is removed THE SYSTEM SHALL keep loads that were pinned to it, and the plan SHALL report them unsupplied.
+
+### HH-15 — The plan horizon is the user's, or a labelled default
+- THE SYSTEM SHALL use the horizon the user set, from 0.25 to 168 hours, and otherwise 12 hours, and SHALL mark the 12 hours as a default so the screen can say so.
+
+### HH-16 — Ward answers are the user's, one per check, latest wins
+- THE SYSTEM SHALL record each CO Guard answer as `{ check, answer, atMs }`, keep the latest per check whatever the order of events, and judge them with the CO Guard module at the current time.
+- THE SYSTEM SHALL NOT record that a symptom was reported. Symptoms are asked for on the screen only, and nothing about the person's health is stored.
+
 ## Analysis
 - **Door model.** `thermal.applyDoorEvents` folds door openings into the start state, so a door opened at hour 3 is modelled as warming from minute 0. That is earlier and therefore conservative (fail closed). A time-resolved door model is future work.
 - **Time.** The core has no clock. Event payloads carry wall-clock milliseconds supplied by the caller, and derivations take `nowMs` as an argument.
+- **Energy and the ward (HH-14 to HH-16).** The household stores only what the user typed: capacities, charges, watts and answers. The planner and the CO Guard judge them. A symptom report is deliberately not stored: it is the one piece of health information in this feature, it is needed only in the moment, and storing it would create data nobody needs.
 - **Roster (HH-11 to HH-13).** The roster is the receiver's own list, so the slot is meaningful only on this device (pair-local, never a global identifier). Names are the user's own words and stay on the device. A message whose slot is shared by two people is refused rather than attributed, because guessing who said "SAFE" is the failure the product exists to avoid. Until QR pairing exists, a sender and a watcher agree a slot by hand.
 - **Medicines (HH-08 to HH-10).** The household stores only the user's choice of product and condition. Numbers come from the `formulary` module and only for validated entries (`label-only-medicine.md`). A medicine in an appliance is driven by that appliance's modelled temperature, so one model serves food and medicine. The outage start is taken as the moment the medicine began to warm, which is the earliest and therefore conservative.
 - **Out of scope:** sync, SQLite persistence (Wave 2), forecast-driven outdoor temperature (Wave 4), BLE thermometers (sensing wave).

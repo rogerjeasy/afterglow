@@ -17,7 +17,9 @@
     "./foodkeeper": "./src/foodkeeper/index.ts",
     "./household": "./src/household/index.ts",
     "./formulary": "./src/formulary/index.ts",
-    "./heliograph": "./src/heliograph/index.ts"
+    "./heliograph": "./src/heliograph/index.ts",
+    "./energy": "./src/energy/index.ts",
+    "./coguard": "./src/coguard/index.ts"
   },
   "scripts": {
     "test": "vitest run",

@@ -1,3 +1,4 @@
+import type { EnergyLoad, EnergyStore } from '../energy/types.js';
 import type { EventLog } from '../events/log.js';
 import { type Versioned, lwwField, reduce } from '../events/reduce.js';
 import type { AfterglowEvent } from '../events/types.js';
@@ -11,8 +12,12 @@ import {
   isAppliancePayload,
   isApplianceRemovedPayload,
   isDoorOpenedPayload,
+  isEnergyLoadPayload,
+  isEnergyRemovedPayload,
+  isEnergyStorePayload,
   isHeardPayload,
   isHomePayload,
+  isHorizonPayload,
   isIceCheckedPayload,
   isItemAddedPayload,
   isItemRemovedPayload,
@@ -21,6 +26,7 @@ import {
   isOutageSetPayload,
   isRosterRemovedPayload,
   isRosterSetPayload,
+  isWardAnsweredPayload,
 } from './events.js';
 
 export interface Appliance {
@@ -50,6 +56,10 @@ export interface RosterMember {
   /** The latest word from them, or null when nothing has been heard. */
   readonly heard: Omit<HeardPayload, 'personId'> | null;
 }
+export interface WardAnswer {
+  readonly answer: 'yes' | 'no' | 'unknown';
+  readonly atMs: number;
+}
 export interface DoorOpening {
   readonly applianceId: string;
   readonly openMinutes: number;
@@ -65,6 +75,11 @@ export interface HouseholdView {
   readonly items: readonly FoodItem[];
   readonly medicines: readonly MedicineItem[];
   readonly roster: readonly RosterMember[];
+  readonly energyStores: readonly EnergyStore[];
+  readonly energyLoads: readonly EnergyLoad[];
+  /** The hours the user chose to plan for, or null (a labelled default applies). */
+  readonly horizonHours: number | null;
+  readonly wardAnswers: Readonly<Record<string, WardAnswer>>;
   readonly doors: readonly DoorOpening[];
   readonly outageStartedAtMs: number | null;
   readonly iceChecks: Readonly<Record<string, IceCheck>>;
@@ -77,6 +92,10 @@ interface Internal {
   readonly medicines: ReadonlyMap<string, Versioned<MedicineItem | null>>;
   readonly people: ReadonlyMap<string, Versioned<{ name: string; slot: number } | null>>;
   readonly heard: ReadonlyMap<string, HeardPayload>;
+  readonly stores: ReadonlyMap<string, Versioned<EnergyStore | null>>;
+  readonly eloads: ReadonlyMap<string, Versioned<EnergyLoad | null>>;
+  readonly horizon: Versioned<number> | undefined;
+  readonly ward: ReadonlyMap<string, Versioned<WardAnswer>>;
   readonly doors: readonly DoorOpening[];
   readonly outage: Versioned<number | null> | undefined;
   readonly iceChecks: ReadonlyMap<string, Versioned<IceCheck>>;
@@ -89,6 +108,10 @@ const INITIAL: Internal = {
   medicines: new Map(),
   people: new Map(),
   heard: new Map(),
+  stores: new Map(),
+  eloads: new Map(),
+  horizon: undefined,
+  ward: new Map(),
   doors: [],
   outage: undefined,
   iceChecks: new Map(),
@@ -174,6 +197,38 @@ function step(state: Internal, event: AfterglowEvent): Internal {
       }
       return { ...state, heard: next };
     }
+    case HOUSEHOLD_EVENT.energyStoreSet: {
+      if (!isEnergyStorePayload(p)) return state;
+      const { storeId, ...rest } = p;
+      return { ...state, stores: put(state.stores, storeId, event, { id: storeId, ...rest }) };
+    }
+    case HOUSEHOLD_EVENT.energyStoreRemoved: {
+      if (!isEnergyRemovedPayload(p, 'storeId')) return state;
+      return {
+        ...state,
+        stores: put(state.stores, (p as { storeId: string }).storeId, event, null),
+      };
+    }
+    case HOUSEHOLD_EVENT.energyLoadSet: {
+      if (!isEnergyLoadPayload(p)) return state;
+      const { loadId, ...rest } = p;
+      return { ...state, eloads: put(state.eloads, loadId, event, { id: loadId, ...rest }) };
+    }
+    case HOUSEHOLD_EVENT.energyLoadRemoved: {
+      if (!isEnergyRemovedPayload(p, 'loadId')) return state;
+      return { ...state, eloads: put(state.eloads, (p as { loadId: string }).loadId, event, null) };
+    }
+    case HOUSEHOLD_EVENT.horizonSet: {
+      if (!isHorizonPayload(p)) return state;
+      return { ...state, horizon: lwwField(state.horizon, event, p.hours) };
+    }
+    case HOUSEHOLD_EVENT.wardAnswered: {
+      if (!isWardAnsweredPayload(p)) return state;
+      return {
+        ...state,
+        ward: put(state.ward, p.check, event, { answer: p.answer, atMs: p.atMs }),
+      };
+    }
     case HOUSEHOLD_EVENT.doorOpened: {
       if (!isDoorOpenedPayload(p)) return state;
       const door: DoorOpening = {
@@ -233,6 +288,18 @@ export function buildHouseholdView(log: EventLog): HouseholdView {
       return { ...m, heard: h ? { code: h.code, atMs: h.atMs, channel: h.channel } : null };
     })
     .sort(byId);
+  const energyStores = [...s.stores.values()]
+    .map((v) => v.value)
+    .filter((x): x is EnergyStore => x !== null)
+    .sort(byId);
+  const energyLoads = [...s.eloads.values()]
+    .map((v) => v.value)
+    .filter((x): x is EnergyLoad => x !== null)
+    .sort(byId);
+  const wardAnswers: Record<string, WardAnswer> = {};
+  for (const [id, v] of [...s.ward.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    wardAnswers[id] = v.value;
+  }
   const iceChecks: Record<string, IceCheck> = {};
   for (const [id, v] of [...s.iceChecks.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
     iceChecks[id] = v.value;
@@ -248,6 +315,10 @@ export function buildHouseholdView(log: EventLog): HouseholdView {
     items,
     medicines,
     roster,
+    energyStores,
+    energyLoads,
+    horizonHours: s.horizon?.value ?? null,
+    wardAnswers,
     doors,
     outageStartedAtMs: s.outage?.value ?? null,
     iceChecks,

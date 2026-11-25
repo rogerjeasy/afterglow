@@ -7,3 +7,5 @@ export * as foodkeeper from './foodkeeper/index.js';
 export * as household from './household/index.js';
 export * as formulary from './formulary/index.js';
 export * as heliograph from './heliograph/index.js';
+export * as energy from './energy/index.js';
+export * as coguard from './coguard/index.js';

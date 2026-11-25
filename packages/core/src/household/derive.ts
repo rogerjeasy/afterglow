@@ -1,3 +1,6 @@
+import { type WardResult, assessWard } from '../coguard/ward.js';
+import { planEnergy } from '../energy/plan.js';
+import type { PlanResult } from '../energy/types.js';
 import {
   type CompartmentKind,
   type FoodIndex,
@@ -337,4 +340,32 @@ export function freeSlot(view: HouseholdView): number | null {
   const used = new Set(view.roster.map((m) => m.slot));
   for (let slot = 0; slot <= MAX_SLOT; slot++) if (!used.has(slot)) return slot;
   return null;
+}
+
+// ---------------------------------------------------------------- energy and the ward
+/** HH-15: used when the user has not chosen, and always labelled as a default. */
+export const DEFAULT_HORIZON_HOURS = 12;
+
+export interface EnergyAssessment {
+  readonly result: PlanResult;
+  readonly horizonHours: number;
+  readonly horizonIsDefault: boolean;
+}
+
+/** The candle plan for the household's stores and loads (HH-14, HH-15). */
+export function assessEnergy(view: HouseholdView): EnergyAssessment {
+  const horizonHours = view.horizonHours ?? DEFAULT_HORIZON_HOURS;
+  return {
+    result: planEnergy({ stores: view.energyStores, loads: view.energyLoads, horizonHours }),
+    horizonHours,
+    horizonIsDefault: view.horizonHours === null,
+  };
+}
+
+/**
+ * The ward for this household at `nowMs` (HH-16). `symptoms` is asked on the
+ * screen and never stored.
+ */
+export function assessWardOf(view: HouseholdView, nowMs: number, symptoms = false): WardResult {
+  return assessWard(view.wardAnswers, nowMs, symptoms);
 }

@@ -1,3 +1,6 @@
+import { CHECKS } from '../coguard/ward.js';
+import { MAX_HORIZON_HOURS, MIN_HORIZON_HOURS, loadProblem, storeProblem } from '../energy/plan.js';
+import type { EnergyLoad, EnergyStore } from '../energy/types.js';
 import type { AfterglowEvent } from '../events/types.js';
 import type { IceCrystals } from '../foodkeeper/types.js';
 import { MAX_SLOT, MESSAGE_CODES, type MessageName, nameOfCode } from '../heliograph/codes.js';
@@ -22,6 +25,12 @@ export const HOUSEHOLD_EVENT = {
   rosterSet: 'household.roster.set',
   rosterRemoved: 'household.roster.removed',
   heard: 'household.roster.heard',
+  energyStoreSet: 'household.energy.store.set',
+  energyStoreRemoved: 'household.energy.store.removed',
+  energyLoadSet: 'household.energy.load.set',
+  energyLoadRemoved: 'household.energy.load.removed',
+  horizonSet: 'household.energy.horizon.set',
+  wardAnswered: 'household.coguard.answered',
 } as const;
 
 export type HouseholdEventType = (typeof HOUSEHOLD_EVENT)[keyof typeof HOUSEHOLD_EVENT];
@@ -107,6 +116,17 @@ export interface HeardPayload {
   readonly code: MessageName;
   readonly atMs: number;
   readonly channel: HeardChannel;
+}
+export interface EnergyStorePayload extends Omit<EnergyStore, 'id'> {
+  readonly storeId: string;
+}
+export interface EnergyLoadPayload extends Omit<EnergyLoad, 'id'> {
+  readonly loadId: string;
+}
+export interface WardAnsweredPayload {
+  readonly check: string;
+  readonly answer: 'yes' | 'no' | 'unknown';
+  readonly atMs: number;
 }
 const isRecord = (x: unknown): x is Record<string, unknown> =>
   typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -230,6 +250,37 @@ export function isHeardPayload(x: unknown): x is HeardPayload {
     isMs(x.atMs) &&
     typeof x.channel === 'string' &&
     HEARD_CHANNELS.has(x.channel)
+  );
+}
+export function isEnergyStorePayload(x: unknown): x is EnergyStorePayload {
+  if (!isRecord(x) || !isId(x.storeId)) return false;
+  const { storeId, ...rest } = x;
+  return storeProblem({ id: storeId, ...rest }) === null;
+}
+export function isEnergyLoadPayload(x: unknown): x is EnergyLoadPayload {
+  if (!isRecord(x) || !isId(x.loadId)) return false;
+  const { loadId, ...rest } = x;
+  return loadProblem({ id: loadId, ...rest }) === null;
+}
+export function isEnergyRemovedPayload(x: unknown, key: 'storeId' | 'loadId'): boolean {
+  return isRecord(x) && isId(x[key]);
+}
+export function isHorizonPayload(x: unknown): x is { readonly hours: number } {
+  return (
+    isRecord(x) &&
+    typeof x.hours === 'number' &&
+    Number.isFinite(x.hours) &&
+    x.hours >= MIN_HORIZON_HOURS &&
+    x.hours <= MAX_HORIZON_HOURS
+  );
+}
+export function isWardAnsweredPayload(x: unknown): x is WardAnsweredPayload {
+  return (
+    isRecord(x) &&
+    typeof x.check === 'string' &&
+    CHECKS.some((c) => c.id === x.check) &&
+    (x.answer === 'yes' || x.answer === 'no' || x.answer === 'unknown') &&
+    isMs(x.atMs)
   );
 }
 /** Build a household event; the caller supplies identity (device epoch, lamport) and model version. */
