@@ -1,0 +1,109 @@
+{
+  "name": "night-watch",
+  "description": "Read-only reviewer and the judge stage of review loops: rejects non-red pixels, unsourced numbers, verdict-path AI and missing states.",
+  "prompt": "file://./prompts/night-watch.md",
+  "model": "claude-opus-5.5",
+  "tools": [
+    "read",
+    "shell"
+  ],
+  "includeMcpJson": false,
+  "includePowers": false,
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/night-vision.md",
+    "file://.kiro/steering/fail-closed.md",
+    "file://.kiro/steering/privacy-aggregation.md",
+    "file://.kiro/steering/label-only-medicine.md",
+    "file://docs/afterglow-design.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "npm publish*",
+          "pnpm publish*",
+          "yarn publish*",
+          "eas submit*",
+          "eas update*",
+          "terraform apply*",
+          "terraform destroy*",
+          "tofu apply*",
+          "tofu destroy*",
+          "aws sns publish*",
+          "aws connect*",
+          "aws ses*",
+          "aws sesv2*",
+          "twilio*",
+          "git push*",
+          "git reset --hard*",
+          "git clean*",
+          "rm -rf*"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "pnpm exec playwright test*",
+          "pnpm typecheck*",
+          "pnpm lint*",
+          "pnpm test*",
+          "git status*",
+          "git diff*",
+          "git log*",
+          "git show*",
+          "git branch --list*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "web_fetch",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_search",
+        "effect": "deny"
+      }
+    ]
+  },
+  "welcomeMessage": "Night Watch. Show me the change; I will check it against the invariants and say what I could not verify."
+}

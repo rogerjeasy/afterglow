@@ -1,0 +1,129 @@
+{
+  "name": "quartermaster",
+  "description": "Owns the physics and the clocks in packages/core: thermal, food, energy, CO Guard, formulary clock, restoration. Pure code, no network.",
+  "prompt": "file://./prompts/quartermaster.md",
+  "model": "claude-sonnet-5.5",
+  "tools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "includeMcpJson": false,
+  "includePowers": false,
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/fail-closed.md",
+    "file://.kiro/steering/label-only-medicine.md",
+    "file://.kiro/steering/privacy-aggregation.md",
+    "file://.kiro/steering/structure.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "npm publish*",
+          "pnpm publish*",
+          "yarn publish*",
+          "eas submit*",
+          "eas update*",
+          "terraform apply*",
+          "terraform destroy*",
+          "tofu apply*",
+          "tofu destroy*",
+          "aws sns publish*",
+          "aws connect*",
+          "aws ses*",
+          "aws sesv2*",
+          "twilio*",
+          "git push*",
+          "git reset --hard*",
+          "git clean*",
+          "rm -rf*"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "packages/core/src/**",
+          ".kiro/specs/**",
+          "docs/kiro/pbt-catches.md"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**"
+        ],
+        "exclude": [
+          "packages/core/src/**",
+          ".kiro/specs/**",
+          "docs/kiro/pbt-catches.md"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "pnpm test*",
+          "pnpm lint*",
+          "pnpm typecheck*",
+          "pnpm build*",
+          "pnpm --filter * test*",
+          "pnpm --filter * typecheck*",
+          "pnpm --filter * lint*",
+          "git status*",
+          "git diff*",
+          "git log*",
+          "git show*",
+          "git branch --list*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "web_fetch",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_search",
+        "effect": "deny"
+      }
+    ]
+  },
+  "welcomeMessage": "Quartermaster. Every verdict has an unknown branch, and every requirement has a property."
+}

@@ -1,0 +1,132 @@
+{
+  "name": "lamplighter",
+  "description": "Builds the Night Shell UI: screens, tokens and components. Writes only under apps/mobile and the design system.",
+  "prompt": "file://./prompts/lamplighter.md",
+  "model": "claude-sonnet-5.5",
+  "tools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "includeMcpJson": false,
+  "includePowers": false,
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/night-vision.md",
+    "file://.kiro/steering/fail-closed.md",
+    "file://.kiro/steering/privacy-aggregation.md",
+    "file://.kiro/steering/structure.md",
+    "file://docs/afterglow-design.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "npm publish*",
+          "pnpm publish*",
+          "yarn publish*",
+          "eas submit*",
+          "eas update*",
+          "terraform apply*",
+          "terraform destroy*",
+          "tofu apply*",
+          "tofu destroy*",
+          "aws sns publish*",
+          "aws connect*",
+          "aws ses*",
+          "aws sesv2*",
+          "twilio*",
+          "git push*",
+          "git reset --hard*",
+          "git clean*",
+          "rm -rf*"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "apps/mobile/src/**",
+          "apps/mobile/e2e/**",
+          "packages/design-system/**"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**"
+        ],
+        "exclude": [
+          "apps/mobile/src/**",
+          "apps/mobile/e2e/**",
+          "packages/design-system/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "pnpm test*",
+          "pnpm lint*",
+          "pnpm typecheck*",
+          "pnpm build*",
+          "pnpm --filter * test*",
+          "pnpm --filter * typecheck*",
+          "pnpm --filter * lint*",
+          "pnpm exec playwright test*",
+          "pnpm --filter @afterglow/mobile e2e*",
+          "git status*",
+          "git diff*",
+          "git log*",
+          "git show*",
+          "git branch --list*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "web_fetch",
+        "effect": "deny"
+      },
+      {
+        "capability": "web_search",
+        "effect": "deny"
+      }
+    ]
+  },
+  "welcomeMessage": "Lamplighter. I build screens that can be read at one lux, and prove it with the pixel scan."
+}

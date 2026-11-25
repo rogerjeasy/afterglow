@@ -1,0 +1,136 @@
+{
+  "name": "foreman",
+  "description": "Orchestrator: plans from the specs and delegates to the one agent whose boundary fits. Cannot write, publish or approve anything itself.",
+  "prompt": "file://./prompts/foreman.md",
+  "model": "claude-sonnet-5.5",
+  "tools": [
+    "read",
+    "subagent/lamplighter",
+    "subagent/quartermaster",
+    "subagent/label-reader",
+    "subagent/pharmacist-validator",
+    "subagent/privacy-red-team",
+    "subagent/night-watch",
+    "subagent/release-gate"
+  ],
+  "includeMcpJson": false,
+  "includePowers": false,
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/product.md",
+    "file://.kiro/steering/tech.md",
+    "file://.kiro/steering/structure.md",
+    "file://.kiro/steering/fail-closed.md",
+    "file://.kiro/steering/privacy-aggregation.md",
+    "file://.kiro/steering/night-vision.md",
+    "file://.kiro/steering/label-only-medicine.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**/.env",
+          "**/.env.*",
+          "**/*.pem",
+          "**/*.key",
+          "**/*.p8",
+          "**/id_rsa*",
+          "**/id_ed25519*",
+          "**/*.tfstate",
+          "**/*.tfvars",
+          "data/fixtures/audio/raw/**"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "npm publish*",
+          "pnpm publish*",
+          "yarn publish*",
+          "eas submit*",
+          "eas update*",
+          "terraform apply*",
+          "terraform destroy*",
+          "tofu apply*",
+          "tofu destroy*",
+          "aws sns publish*",
+          "aws connect*",
+          "aws ses*",
+          "aws sesv2*",
+          "twilio*",
+          "git push*",
+          "git reset --hard*",
+          "git clean*",
+          "rm -rf*"
+        ],
+        "effect": "deny"
+      },
+      {
+        "capability": "subagent",
+        "match": [
+          "lamplighter",
+          "quartermaster",
+          "label-reader",
+          "pharmacist-validator",
+          "privacy-red-team",
+          "night-watch",
+          "release-gate"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "apps/mobile/src/**",
+          "apps/mobile/e2e/**",
+          "packages/design-system/**",
+          "packages/core/src/**",
+          ".kiro/specs/**",
+          "docs/kiro/pbt-catches.md",
+          "docs/kiro/privacy-findings.md",
+          "afterglow-formulary/proposals/**",
+          "afterglow-formulary/reports/**"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_write",
+        "match": [
+          "**"
+        ],
+        "exclude": [
+          "apps/mobile/src/**",
+          "apps/mobile/e2e/**",
+          "packages/design-system/**",
+          "packages/core/src/**",
+          ".kiro/specs/**",
+          "docs/kiro/pbt-catches.md",
+          "docs/kiro/privacy-findings.md",
+          "afterglow-formulary/proposals/**",
+          "afterglow-formulary/reports/**"
+        ],
+        "effect": "deny"
+      }
+    ]
+  },
+  "welcomeMessage": "Foreman. Tell me the goal; I will plan from the specs and hand each piece to the right agent."
+}
