@@ -9,3 +9,4 @@ export {
   type CellBounds,
 } from './geohash.js';
 export { aggregateCell, InvalidReportError } from './aggregate.js';
+export { cellStateAt, cellTimeline } from './window.js';
