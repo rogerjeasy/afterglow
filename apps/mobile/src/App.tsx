@@ -7,6 +7,7 @@ import { decideMode } from './night-shell/modePolicy';
 import { applyMode, token } from './night-shell/theme';
 import { Cold } from './screens/Cold';
 import { Hearth } from './screens/Hearth';
+import { Plan } from './screens/Plan';
 import { Seance } from './screens/Seance';
 import { You } from './screens/You';
 import { getSpaceController, useIdleLock, useSpace } from './spaces/useSpace';
@@ -17,6 +18,7 @@ function tabFromHash(): TabId {
   const h = window.location.hash;
   if (h.startsWith('#/cold')) return 'cold';
   if (h.startsWith('#/seance')) return 'seance';
+  if (h.startsWith('#/plan')) return 'plan';
   if (h.startsWith('#/you')) return 'you';
   return 'hearth';
 }
@@ -24,6 +26,7 @@ const HASH: Record<TabId, string> = {
   hearth: '#/',
   seance: '#/seance',
   cold: '#/cold',
+  plan: '#/plan',
   you: '#/you',
 };
 
@@ -175,6 +178,8 @@ export function App(): ReactNode {
         />
       ) : tab === 'seance' ? (
         <Seance nowMs={nowMs} />
+      ) : tab === 'plan' ? (
+        <Plan nowMs={nowMs} />
       ) : tab === 'cold' ? (
         <Cold nowMs={nowMs} selectedId={coldSelected} onSelect={setColdSelected} />
       ) : (

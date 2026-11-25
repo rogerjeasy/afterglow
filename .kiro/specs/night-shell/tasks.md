@@ -50,6 +50,7 @@ Tasks map to requirement ids. Property tests are the definition of done (`tech.m
 - [x] Pure scanner `scanRgba` / `judgePixel` in `packages/design-system/src/pixelScan.ts`, property-tested (NS-10..NS-12)
 - [x] Playwright harness `apps/mobile/e2e/pixel-scan.e2e.ts`: Hearth, Cold and You, power on and in an outage, plus a seeded medicine with no table, in Night, Dusk and Ember; includes a probe that proves the scan detects a bright pixel and a non-red pixel. `pnpm e2e` in `apps/mobile`.
 - [x] CI job `pixel-scan` in `.github/workflows/ci.yml` (written; not yet run on GitHub)
+- [x] Plan added (power on, demo outage, and a populated plan with a partly covered load, a refused ward check and a symptom alert, in all three modes)
 - [x] Séance added (power on, demo outage, and the lit and dark lamp itself in all three modes)
 - [ ] Add screens as they are built (medicines with a loaded table needs a signed fixture served to the browser; Lantern, Plan)
 - [ ] Dynamic Type 200% and 320 px width variants

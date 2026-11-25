@@ -173,3 +173,56 @@ export function WardCard({
     </div>
   );
 }
+
+/**
+ * A candle: one store of energy. The wax is the charge it starts with; the
+ * bright line is what is left after the plan. The flame is out when nothing is
+ * left. It encodes two numbers and nothing else (costume is function), and it
+ * does not animate: the only ambient animation is the Hearth flame.
+ */
+export function Candle({
+  startPct,
+  afterPct,
+  label,
+}: {
+  startPct: number;
+  afterPct: number;
+  label: string;
+}): ReactNode {
+  const clamp = (n: number): number => (Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0);
+  const start = clamp(startPct);
+  const after = clamp(afterPct);
+  return (
+    <div
+      role="img"
+      aria-label={`${label}: ${Math.round(start)} percent now, ${Math.round(after)} percent after the plan`}
+      style={{
+        flex: 'none',
+        width: 28,
+        height: 72,
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
+        border: `2px solid ${token('hairline')}`,
+        borderRadius: '4px 4px 2px 2px',
+        overflow: 'hidden',
+        background: token('surface.1'),
+      }}
+    >
+      <div style={{ height: `${start}%`, background: token('control.fill.primary') }} />
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: `${after}%`,
+          height: 2,
+          background: token('text.emphasis'),
+          opacity: after > 0 ? 1 : 0,
+        }}
+      />
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import { events, household } from '@afterglow/core';
+import { events, type coguard, type energy, household } from '@afterglow/core';
 
 /**
  * The household store: an append-only event log persisted to local storage.
@@ -45,6 +45,13 @@ export interface HouseholdStore {
   removeMedicine(medicineId: string): void;
   addPerson(name: string, slot: number): string;
   removePerson(personId: string): void;
+  addEnergyStore(input: Omit<energy.EnergyStore, 'id'>): string;
+  updateEnergyStore(id: string, input: Omit<energy.EnergyStore, 'id'>): void;
+  removeEnergyStore(id: string): void;
+  addEnergyLoad(input: Omit<energy.EnergyLoad, 'id'>): string;
+  removeEnergyLoad(id: string): void;
+  setHorizon(hours: number): void;
+  answerWard(check: coguard.CheckId, answer: coguard.Answer): void;
   recordHeard(
     personId: string,
     code: household.HeardPayload['code'],
@@ -177,6 +184,31 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
     },
     removeMedicine(medicineId) {
       append(E.medicineRemoved, { medicineId });
+    },
+    addEnergyStore(input) {
+      const id = nextId('s');
+      append(E.energyStoreSet, { storeId: id, ...input });
+      return id;
+    },
+    updateEnergyStore(id, input) {
+      append(E.energyStoreSet, { storeId: id, ...input });
+    },
+    removeEnergyStore(id) {
+      append(E.energyStoreRemoved, { storeId: id });
+    },
+    addEnergyLoad(input) {
+      const id = nextId('l');
+      append(E.energyLoadSet, { loadId: id, ...input });
+      return id;
+    },
+    removeEnergyLoad(id) {
+      append(E.energyLoadRemoved, { loadId: id });
+    },
+    setHorizon(hours) {
+      append(E.horizonSet, { hours });
+    },
+    answerWard(check, answer) {
+      append(E.wardAnswered, { check, answer, atMs: now() });
     },
     addPerson(name, slot) {
       const id = nextId('p');
