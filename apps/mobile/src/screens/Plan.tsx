@@ -6,7 +6,9 @@ import { useHousehold } from '../household/useHousehold';
 import { SourceChip } from '../night-shell/components';
 import { Button, ChoiceChip, Notice, Section, Stepper, TextField } from '../night-shell/controls';
 import { Candle } from '../night-shell/costume';
+import { GraveyardChart } from '../night-shell/graveyard';
 import { token } from '../night-shell/theme';
+import { nightText } from '../plan/graveyard';
 import {
   CLASS_LABEL,
   KIND_LABEL,
@@ -125,6 +127,8 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
   // ---- hours of safety
   const hours = useMemo(() => household.hoursOfSafety(view, nowMs), [view, nowMs]);
   const homeText = hoursOfSafetyText(hours);
+  const shift = useMemo(() => household.graveyardShift(view, nowMs), [view, nowMs]);
+  const shiftText = shift.kind === 'night' ? nightText(shift, nowMs) : null;
   const [settingUpHome, setSettingUpHome] = useState(false);
 
   // ---- candles
@@ -247,6 +251,38 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
           ) : null}
         </div>
       </Section>
+
+      {shift.kind === 'night' && shiftText ? (
+        <Section title="Graveyard shift">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div
+              className="clock"
+              style={{ fontSize: 'var(--type-clock-lg)', color: token('text.emphasis') }}
+            >
+              {shiftText.headline}
+            </div>
+            <div style={{ fontSize: 'var(--type-body)', overflowWrap: 'anywhere' }}>
+              {shiftText.detail}
+            </div>
+            <GraveyardChart night={shift} nowMs={nowMs} />
+            <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
+              {shiftText.axis}
+              {view.outageStartedAtMs === null
+                ? ' No outage has started, so this is what a power cut now would do.'
+                : ''}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {shiftText.sources.map((s) => (
+                <SourceChip key={s} label={s} />
+              ))}
+            </div>
+            <Notice>
+              An indoor-temperature estimate from the building's heat-loss time constant. Warming
+              centres and where to go are not shown yet.
+            </Notice>
+          </div>
+        </Section>
+      ) : null}
 
       <Section title="Candles">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
