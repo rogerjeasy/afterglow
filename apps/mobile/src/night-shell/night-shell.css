@@ -146,6 +146,80 @@ h3 {
 }
 
 /*
+ * Restoration, the one signature moment on the map: a coming-back cell breathes
+ * twice (opacity only), then holds. Never an ambient loop; reduced motion makes
+ * it a single instant step (see the reduced-motion block above).
+ */
+.breathe {
+  animation: breathe 2400ms ease-in-out 2 both;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Visible to assistive technology only: a live region that announces map changes. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * The playback scrubber. A native range input paints a pale track in some
+ * browsers, so both parts are rebuilt from tokens (no light pixel can appear).
+ */
+.scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.scrubber::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  border: 1px solid var(--hairline);
+}
+.scrubber::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  border: 1px solid var(--hairline);
+}
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -11px;
+  border-radius: 14px;
+  background: var(--control-fill-primary);
+  border: 2px solid var(--focus-ring);
+}
+.scrubber::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 14px;
+  background: var(--control-fill-primary);
+  border: 2px solid var(--focus-ring);
+}
+
+/*
  * Browser autofill paints a pale background. Cover it with the surface token so
  * no light pixel can appear, and keep the text colour on token (night-vision rule 1).
  */
