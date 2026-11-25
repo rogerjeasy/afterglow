@@ -1,0 +1,25 @@
+{
+  "name": "@afterglow/formulary-pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Afterglow formulary review pipeline: source, proposal, checks, pharmacist approval, signature, snapshot. Contains no drug data.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src",
+    "pipeline": "vite-node src/cli.ts --"
+  },
+  "dependencies": {
+    "@afterglow/adapters": "workspace:*",
+    "@afterglow/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22",
+    "fast-check": "3.23.2",
+    "typescript": "5.7.2",
+    "vite-node": "2.1.8",
+    "vitest": "2.1.8"
+  }
+}

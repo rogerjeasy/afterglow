@@ -1,0 +1,6 @@
+node_modules/
+dist-ts/
+# Private keys never live here (the pipeline refuses to write or read one inside this folder).
+*.key
+*.pem
+*.p8
