@@ -404,6 +404,72 @@ describe('Heliograph properties', () => {
     );
   });
 
+  // Back-to-back repeats can spell a false frame half a frame out of step across each
+  // boundary (the tail of one frame and the head of the next). It passes its own CRC, so
+  // some messages were unreadable and, with a damaged repeat, a false pair could have won.
+  // A random property found this once in about four runs; this checks every message.
+  it('HL-07 every one of the 2816 possible messages is read from a clean recording', () => {
+    const unread: string[] = [];
+    for (const code of NAMES) {
+      for (let slot = 0; slot <= MAX_SLOT; slot++) {
+        for (let sequence = 0; sequence <= MAX_SEQUENCE; sequence++) {
+          const msg = { code, slot, sequence };
+          const r = heard(msg, 3, { fps: 30 });
+          const ok =
+            r.kind === 'message' &&
+            r.message.code === code &&
+            r.message.slot === slot &&
+            r.message.sequence === sequence;
+          if (!ok) unread.push(`${code}/${slot}/${sequence}: ${r.kind}`);
+        }
+      }
+    }
+    expect(unread).toEqual([]);
+  });
+
+  it('HL-07 the messages that once spelled a false frame are read at the spec corners', () => {
+    const once: HeliographMessage[] = [
+      { code: 'ACK', slot: 57, sequence: 0 },
+      { code: 'NEED_COOL', slot: 31, sequence: 3 },
+      { code: 'CHARGE_HERE', slot: 58, sequence: 2 },
+    ];
+    for (const msg of once) {
+      for (const [fps, clockScale] of [
+        [20, 0.97],
+        [20, 1.03],
+        [20, 1],
+        [60, 0.97],
+        [30, 1],
+      ] as const) {
+        // A real recording has a little quiet before and after the sender.
+        const r = heard(msg, 3, { fps, clockScale, leadMs: 300, trailMs: 300 });
+        expect(r, `${msg.code} ${msg.slot} at ${fps} fps, clock ${clockScale}`).toMatchObject({
+          kind: 'message',
+          message: msg,
+        });
+      }
+    }
+  });
+
+  it('HL-09 a damaged repeat is never answered with the false frame that sits between repeats', () => {
+    // Wipe out the middle of the second repeat of a message that spells a false frame. The
+    // honest answers are the message or a request to repeat, never a different message.
+    const msg: HeliographMessage = { code: 'ACK', slot: 57, sequence: 0 };
+    for (const [from, to] of [
+      [4000, 9000],
+      [6000, 11000],
+      [14000, 19000],
+      [8000, 15000],
+    ] as const) {
+      const clean = record(symbolsOf([msg], [3]), { ...BASE, fps: 30 });
+      const damaged = clean.map((s) =>
+        s.tMs >= from + BASE.leadMs && s.tMs <= to + BASE.leadMs ? { ...s, level: BASE.dark } : s,
+      );
+      const r = decodeBrightness(damaged);
+      if (r.kind === 'message') expect(r.message).toEqual(msg);
+    }
+  });
+
   it('HL-07 the lit and dark levels may sit anywhere on the scale', () => {
     for (const [dark, lit] of [
       [0, 255],

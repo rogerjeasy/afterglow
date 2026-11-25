@@ -26,3 +26,4 @@ Status: `[x]` done, `[ ]` planned.
 - [x] 16. Roster and ghost board in `household` (HH-11..HH-13): people with a slot, latest word, ghosts, attribution that refuses unknown and shared numbers
 - [x] 17. Photosensitivity: standard by default, fast only after confirmation, warning before every send, one-tap stop (HL-17)
 - [x] 18. Browser tests: board, add, send, fast confirmation, HELP note, lamp pixels in three modes, camera denied and absent, and three real fake-camera streams (read a message, ignore a steady lamp, refuse to name an unknown number)
+- [x] 9. Overlap rule in `accept`: a frame that overlaps a better supported frame lattice is dropped (a false frame spelled across a repeat boundary). Exhaustive test over all 2,816 messages, a corner test, and an HL-09 damaged-repeat test; mutation-checked against the old receiver. See `docs/kiro/pbt-catches.md`, 2026-11-25
