@@ -69,21 +69,3 @@ export function loadDemoHousehold(store: HouseholdStore, index: foodkeeper.FoodI
     });
   }
 }
-
-/**
- * The simulated neighbourhood shown beside a demo outage. There is no crowd
- * network in this build, so these figures are a labelled simulation, never real
- * evidence. They stand where the Ember Map and provider adapters will plug in.
- */
-export function simulatedNeighbourhood(outageStartedAtMs: number): {
-  readonly neighboursAbsent: number;
-  readonly providerRestoreAtMs: number;
-  readonly crowdRestoreAtMs: number;
-} {
-  const minute = 60_000;
-  return {
-    neighboursAbsent: 14,
-    providerRestoreAtMs: outageStartedAtMs + 143 * minute,
-    crowdRestoreAtMs: outageStartedAtMs + 163 * minute,
-  };
-}

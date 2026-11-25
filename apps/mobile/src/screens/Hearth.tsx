@@ -2,7 +2,6 @@ import { household, thermal } from '@afterglow/core';
 import { type ReactNode, useMemo, useState } from 'react';
 import { foodIndex } from '../data/foodkeeper';
 import { useFormulary } from '../data/formulary';
-import { simulatedNeighbourhood } from '../demo/household';
 import { type DemoPhase, runScenario } from '../demo/scenario';
 import { formatClockTime, formatTimer } from '../format';
 import {
@@ -14,6 +13,8 @@ import {
   worstMedicine,
 } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
+import { buildLanternModel, estimateAt, toMinute, viewAt } from '../lantern/model';
+import { hearthLine } from '../lantern/present';
 import { SourceChip, StatusLine, Tile } from '../night-shell/components';
 import { Button, Notice, Section } from '../night-shell/controls';
 import { WardCard } from '../night-shell/costume';
@@ -31,10 +32,12 @@ export function Hearth({
   nowMs,
   onOpenCold,
   onOpenSeance,
+  onStartDemo,
 }: {
   nowMs: number;
   onOpenCold: (applianceId: string | null) => void;
   onOpenSeance: () => void;
+  onStartDemo: () => void;
 }): ReactNode {
   const { store, state, demo } = useHousehold();
   const { view } = state;
@@ -59,7 +62,14 @@ export function Hearth({
   // neighbourhood standing in for the crowd network that does not exist yet.
   const phase: DemoPhase = outage ? 'outage' : 'powered';
   const scenario = runScenario(phase);
-  const sim = outage && demo ? simulatedNeighbourhood(view.outageStartedAtMs as number) : null;
+  // The neighbourhood is simulated, but its cells and estimate are computed by the real
+  // core (cellTimeline, estimateRestoration), exactly as the Lantern tab shows them.
+  const sim = useMemo(() => {
+    if (!outage || !demo) return null;
+    const model = buildLanternModel(toMinute(view.outageStartedAtMs as number));
+    const at = viewAt(model, toMinute(nowMs));
+    return { user: at.user, estimate: estimateAt(model, at) };
+  }, [outage, demo, view.outageStartedAtMs, nowMs]);
 
   const timer = outage
     ? `GRID DOWN ${formatTimer(nowMs - (view.outageStartedAtMs as number))}`
@@ -71,11 +81,7 @@ export function Hearth({
 
   const line = outage
     ? sim
-      ? `${sim.neighboursAbsent} neighbours lost power at ${formatClockTime(
-          view.outageStartedAtMs as number,
-        )} · provider says ${formatClockTime(sim.providerRestoreAtMs)} · crowd says ${formatClockTime(
-          sim.crowdRestoreAtMs,
-        )}`
+      ? hearthLine(sim.user, sim.estimate, view.outageStartedAtMs as number)
       : `You reported the power out at ${formatClockTime(
           view.outageStartedAtMs as number,
         )}. Not enough neighbour reports to compare yet: a cell needs at least 5 devices.`
@@ -244,13 +250,20 @@ export function Hearth({
             Power is back
           </Button>
         ) : (
-          <Button
-            variant="primary"
-            style={{ width: '100%', minHeight: 72 }}
-            onClick={() => store.startOutage(Date.now())}
-          >
-            Power just went out
-          </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {demo ? null : (
+              <Button style={{ width: '100%' }} onClick={onStartDemo}>
+                Demo night: a simulated neighbourhood
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              style={{ width: '100%', minHeight: 72 }}
+              onClick={() => store.startOutage(Date.now())}
+            >
+              Power just went out
+            </Button>
+          </div>
         )}
       </div>
     </main>
