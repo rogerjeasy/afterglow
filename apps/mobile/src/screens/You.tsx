@@ -569,6 +569,14 @@ export function You(): ReactNode {
           The demo is a simulated household and neighbourhood. Nothing in it is saved or sent.
         </Notice>
         <Button onClick={() => controller.enterDemo()}>Open the demo</Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            window.location.hash = '#/welcome';
+          }}
+        >
+          Show the welcome again
+        </Button>
       </Section>
     </>,
   );

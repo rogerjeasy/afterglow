@@ -1,12 +1,16 @@
 import type { LuminanceMode } from '@afterglow/design-system';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { browserStorage } from './household/store';
 import { useHousehold, useNow } from './household/useHousehold';
 import { ModeSwitch } from './night-shell/components';
-import { Button, Notice, TabBar, type TabId } from './night-shell/controls';
+import { Button, Notice, TabBar, type TabId, YouButton } from './night-shell/controls';
 import { decideMode } from './night-shell/modePolicy';
 import { applyMode, token } from './night-shell/theme';
+import { readFlag, shouldOnboard, writeFlag } from './onboarding/logic';
 import { Cold } from './screens/Cold';
 import { Hearth } from './screens/Hearth';
+import { Lantern } from './screens/Lantern';
+import { Onboarding } from './screens/Onboarding';
 import { Plan } from './screens/Plan';
 import { Seance } from './screens/Seance';
 import { You } from './screens/You';
@@ -16,6 +20,7 @@ const MODE_CYCLE: readonly LuminanceMode[] = ['night', 'dusk', 'ember'];
 
 function tabFromHash(): TabId {
   const h = window.location.hash;
+  if (h.startsWith('#/lantern')) return 'lantern';
   if (h.startsWith('#/cold')) return 'cold';
   if (h.startsWith('#/seance')) return 'seance';
   if (h.startsWith('#/plan')) return 'plan';
@@ -24,6 +29,7 @@ function tabFromHash(): TabId {
 }
 const HASH: Record<TabId, string> = {
   hearth: '#/',
+  lantern: '#/lantern',
   seance: '#/seance',
   cold: '#/cold',
   plan: '#/plan',
@@ -50,6 +56,23 @@ export function App(): ReactNode {
   const [coldSelected, setColdSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<LuminanceMode>(outage ? 'night' : 'ember');
   const [igniting, setIgniting] = useState(false);
+  // First run: welcome a first visit to the real space (never the demo or an account).
+  // `#/welcome` replays it for guests on demand.
+  const [onboarding, setOnboarding] = useState<boolean>(
+    () =>
+      window.location.hash.startsWith('#/welcome') ||
+      shouldOnboard({
+        flag: readFlag(browserStorage()),
+        spaceKind: space.kind,
+        hasHouseholdData:
+          state.view.appliances.length > 0 ||
+          state.view.roster.length > 0 ||
+          state.view.home !== null ||
+          state.view.outageStartedAtMs !== null,
+        search: window.location.search,
+      }),
+  );
+  const showOnboarding = onboarding && space.kind === 'guest';
   const wasOutage = useRef(outage);
 
   useEffect(() => {
@@ -57,7 +80,10 @@ export function App(): ReactNode {
   }, [mode]);
 
   useEffect(() => {
-    const onHash = (): void => setTab(tabFromHash());
+    const onHash = (): void => {
+      if (window.location.hash.startsWith('#/welcome')) setOnboarding(true);
+      setTab(tabFromHash());
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -112,33 +138,6 @@ export function App(): ReactNode {
     controller.getState().store.startOutage(Date.now());
   };
 
-  const right =
-    space.kind === 'demo' ? (
-      <Button
-        size="sm"
-        variant="primary"
-        onClick={() => controller.exitDemo()}
-        style={{ borderRadius: 999 }}
-      >
-        Exit demo
-      </Button>
-    ) : space.kind === 'account' ? (
-      <Button
-        size="sm"
-        variant="primary"
-        onClick={() => void controller.lock()}
-        style={{ borderRadius: 999 }}
-      >
-        Lock
-      </Button>
-    ) : !outage ? (
-      <Button size="sm" variant="primary" onClick={startDemo} style={{ borderRadius: 999 }}>
-        Demo night
-      </Button>
-    ) : (
-      <span style={{ width: 96 }} aria-hidden />
-    );
-
   return (
     <div style={{ position: 'relative', minHeight: '100vh', background: token('bg') }}>
       <header
@@ -155,7 +154,11 @@ export function App(): ReactNode {
         <span style={{ fontSize: 'var(--type-title)', color: token('text.emphasis') }}>
           Afterglow
         </span>
-        {right}
+        {showOnboarding ? (
+          <span style={{ width: 44 }} aria-hidden />
+        ) : (
+          <YouButton active={tab === 'you'} onClick={() => go('you')} />
+        )}
       </header>
 
       {space.kind === 'demo' ? (
@@ -163,11 +166,37 @@ export function App(): ReactNode {
           <Notice>
             Demo: simulated household and neighbourhood. Nothing is saved or sent, and it cannot
             touch real data.
+            <div style={{ marginTop: 10 }}>
+              <Button size="sm" variant="primary" onClick={() => controller.exitDemo()}>
+                Exit demo
+              </Button>
+            </div>
+          </Notice>
+        </div>
+      ) : space.kind === 'account' ? (
+        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px 8px' }}>
+          <Notice>
+            Signed in as {space.account?.name ?? 'your account'}. Your household is saved encrypted
+            on this device.
+            <div style={{ marginTop: 10 }}>
+              <Button size="sm" variant="primary" onClick={() => void controller.lock()}>
+                Lock
+              </Button>
+            </div>
           </Notice>
         </div>
       ) : null}
 
-      {tab === 'hearth' ? (
+      {showOnboarding ? (
+        <Onboarding
+          onFinish={(how) => {
+            writeFlag(browserStorage(), how);
+            setOnboarding(false);
+            go('hearth');
+          }}
+          onStartDemo={startDemo}
+        />
+      ) : tab === 'hearth' ? (
         <Hearth
           nowMs={nowMs}
           onOpenCold={(id) => {
@@ -175,7 +204,10 @@ export function App(): ReactNode {
             go('cold');
           }}
           onOpenSeance={() => go('seance')}
+          onStartDemo={startDemo}
         />
+      ) : tab === 'lantern' ? (
+        <Lantern nowMs={nowMs} onStartDemo={startDemo} />
       ) : tab === 'seance' ? (
         <Seance nowMs={nowMs} />
       ) : tab === 'plan' ? (
@@ -186,7 +218,7 @@ export function App(): ReactNode {
         <You />
       )}
 
-      <TabBar active={tab} onSelect={go} />
+      {showOnboarding ? null : <TabBar active={tab} onSelect={go} />}
 
       {/* Lights-Out scrim: fades to pure black during the transition. */}
       <div
