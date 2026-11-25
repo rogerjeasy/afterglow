@@ -1,0 +1,26 @@
+{
+  "name": "@afterglow/simulator",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Afterglow virtual neighbourhood: a seeded, pure simulation that drives demos, tests and chaos drills through the real core.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src"
+  },
+  "dependencies": {
+    "@afterglow/core": "workspace:*"
+  },
+  "devDependencies": {
+    "fast-check": "3.23.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}
