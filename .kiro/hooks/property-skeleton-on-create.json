@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Property skeleton on create",
+      "trigger": "PostFileCreate",
+      "description": "Properties are the definition of done, so every new core source file starts with its property test. Skips tests and barrel files.",
+      "matcher": "^(?!.*(\\.test\\.ts|/index\\.ts)$).*packages/core/src/.+\\.ts$",
+      "action": {
+        "type": "agent",
+        "prompt": "A new source file was just created in packages/core/src. Properties are the definition of done in this repository. Do this now: (1) find its spec at .kiro/specs/<module>/requirements.md, where <module> is the folder under packages/core/src; (2) create a *.property.test.ts beside the file, using Vitest and fast-check, with one test per requirement id the file implements, and each test name starting with that id (for example 'CE-09 ...'); (3) cover the unknown branch of every verdict the file can return. If there is no spec for this module, say so and write the spec first instead of inventing ids. Do not change the new file's behaviour to make a test pass; if a property fails, record the shrunken counterexample in docs/kiro/pbt-catches.md."
+      }
+    }
+  ]
+}

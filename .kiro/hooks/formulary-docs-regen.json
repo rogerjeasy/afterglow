@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Formulary docs regen",
+      "trigger": "PostFileSave",
+      "description": "Regenerates docs/FORMULARY.md from the validated entries whenever one changes, so the documentation can never drift from the table (FP-10). It only reads validated/ and writes the generated document.",
+      "matcher": "afterglow-formulary/validated/.*\\.json$",
+      "action": {
+        "type": "command",
+        "command": "cd \"$KIRO_WORKSPACE_ROOT/afterglow-formulary\" && pnpm pipeline docs",
+        "timeout": 60
+      }
+    }
+  ]
+}
