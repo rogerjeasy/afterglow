@@ -19,7 +19,8 @@
     "./formulary": "./src/formulary/index.ts",
     "./heliograph": "./src/heliograph/index.ts",
     "./energy": "./src/energy/index.ts",
-    "./coguard": "./src/coguard/index.ts"
+    "./coguard": "./src/coguard/index.ts",
+    "./restoration": "./src/restoration/index.ts"
   },
   "scripts": {
     "test": "vitest run",
