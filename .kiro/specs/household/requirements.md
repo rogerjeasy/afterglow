@@ -86,6 +86,17 @@ The Household module is the user's own data for the cold-chain and hours-of-safe
 - THE SYSTEM SHALL record each CO Guard answer as `{ check, answer, atMs }`, keep the latest per check whatever the order of events, and judge them with the CO Guard module at the current time.
 - THE SYSTEM SHALL NOT record that a symptom was reported. Symptoms are asked for on the screen only, and nothing about the person's health is stored.
 
+### HH-17 — The night axis is the hours-of-safety model, sampled
+**User story:** As someone with a cold flat and a long night ahead, I want to see the temperature fall against my threshold, with the moment it crosses and how unsure that is.
+- THE SYSTEM SHALL return, for a home, the indoor temperature every 30 minutes from now to the end of the plan horizon, as a likely curve (the archetype's mid time constant) between a fast and a slow curve (its smallest and largest).
+- THE SYSTEM SHALL take the crossing (earliest, likely, latest) from `hoursOfSafety`, never from a second calculation, so the headstone and the hours-of-safety figure cannot disagree.
+- THE SYSTEM SHALL keep the likely curve at the threshold at the likely crossing, and the fast and slow curves at it at the earliest and latest crossings.
+- THE SYSTEM SHALL keep every curve moving only toward the outdoor temperature, and keep the fast curve at least as close to it as the likely curve, and the likely curve at least as close as the slow one.
+- IF the home is not known THEN THE SYSTEM SHALL return `unknown` with the reason, and no curve.
+- IF the building has no archetype THEN THE SYSTEM SHALL use the wide default band and say so.
+- IF the threshold is never reached at this outdoor temperature THEN THE SYSTEM SHALL return the curve with no crossing and the reason, never a headstone.
+- THE SYSTEM SHALL use the plan horizon as the length of the night and say when it is the default (a labelled 12 hours). It SHALL NOT invent a sunrise.
+
 ## Analysis
 - **Door model.** `thermal.applyDoorEvents` folds door openings into the start state, so a door opened at hour 3 is modelled as warming from minute 0. That is earlier and therefore conservative (fail closed). A time-resolved door model is future work.
 - **Time.** The core has no clock. Event payloads carry wall-clock milliseconds supplied by the caller, and derivations take `nowMs` as an argument.
