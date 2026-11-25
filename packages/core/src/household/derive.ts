@@ -20,10 +20,11 @@ import { MAX_SLOT, type MessageName } from '../heliograph/codes.js';
 import {
   type ApplianceClass,
   BUILDING_MODEL_VERSION,
+  buildingBand,
   buildingCrossing,
   compartmentFor,
 } from '../thermal/archetypes.js';
-import { InvalidThermalInputError, applyDoorEvents } from '../thermal/model.js';
+import { InvalidThermalInputError, applyDoorEvents, temperatureAt } from '../thermal/model.js';
 import type { CompartmentState, CrossingTime } from '../thermal/types.js';
 import type { Appliance, FoodItem, HouseholdView, MedicineItem, RosterMember } from './view.js';
 
@@ -209,6 +210,96 @@ export function hoursOfSafety(view: HouseholdView, nowMs: number): HoursOfSafety
     latestMinutes: latest,
     isDefaultBand: result.isDefaultBand,
     thresholdC: home.thresholdC,
+    modelVersion: BUILDING_MODEL_VERSION,
+  };
+}
+
+// ---------------------------------------------------------------- graveyard shift
+
+/** The night axis is sampled this often (minutes). */
+export const GRAVEYARD_STEP_MINUTES = 30;
+
+export interface GraveyardPoint {
+  /** Minutes from now. */
+  readonly tMinutes: number;
+  /** The likely indoor temperature (the archetype's mid time constant). */
+  readonly midC: number;
+  /** The home changing fastest (the archetype's smallest time constant). */
+  readonly fastC: number;
+  /** The home changing slowest (the archetype's largest time constant). */
+  readonly slowC: number;
+}
+
+export type GraveyardShift =
+  | { readonly kind: 'unknown'; readonly reason: string }
+  | {
+      readonly kind: 'night';
+      readonly points: readonly GraveyardPoint[];
+      /** The axis runs from now to this many minutes ahead (the plan horizon). */
+      readonly spanMinutes: number;
+      readonly spanIsDefault: boolean;
+      readonly mode: 'cold' | 'heat';
+      readonly thresholdC: number;
+      readonly outdoorC: number;
+      /** Minutes from now to the threshold: the headstone, with its band. Null when never reached. */
+      readonly crossing: {
+        readonly earliestMinutes: number;
+        readonly midMinutes: number;
+        readonly latestMinutes: number | null;
+      } | null;
+      readonly notReachedReason: string | null;
+      readonly isDefaultBand: boolean;
+      readonly modelVersion: string;
+    };
+
+/**
+ * The night at a glance (design 7.7, 11.7): the indoor temperature from now to the
+ * end of the plan horizon, as a likely curve inside a band, and where it meets the
+ * threshold. It is the same model as `hoursOfSafety`, sampled, so the headstone and the
+ * hours-of-safety figure cannot disagree. A home I know nothing about is `unknown`;
+ * a building with no archetype gets the wide band and says so.
+ */
+export function graveyardShift(view: HouseholdView, nowMs: number): GraveyardShift {
+  const home = view.home;
+  if (!home) return { kind: 'unknown', reason: 'I do not know your home yet.' };
+  const hours = hoursOfSafety(view, nowMs);
+  if (hours.kind === 'unknown') return { kind: 'unknown', reason: hours.reason };
+
+  const elapsed = elapsedMinutes(view, nowMs) ?? 0;
+  const band = buildingBand(home.archetype);
+  const at = (tauHours: number, t: number): number =>
+    temperatureAt(
+      { startC: home.indoorC, ambientC: home.outdoorC, tauMinutes: tauHours * 60 },
+      elapsed + t,
+    );
+  const spanMinutes = (view.horizonHours ?? DEFAULT_HORIZON_HOURS) * 60;
+  const points: GraveyardPoint[] = [];
+  for (let t = 0; t <= spanMinutes; t += GRAVEYARD_STEP_MINUTES) {
+    points.push({
+      tMinutes: t,
+      midC: at(band.midHours, t),
+      fastC: at(band.minHours, t),
+      slowC: at(band.maxHours, t),
+    });
+  }
+  return {
+    kind: 'night',
+    points,
+    spanMinutes,
+    spanIsDefault: view.horizonHours === null,
+    mode: home.mode,
+    thresholdC: home.thresholdC,
+    outdoorC: home.outdoorC,
+    crossing:
+      hours.kind === 'band'
+        ? {
+            earliestMinutes: hours.earliestMinutes,
+            midMinutes: hours.midMinutes,
+            latestMinutes: hours.latestMinutes,
+          }
+        : null,
+    notReachedReason: hours.kind === 'notReached' ? hours.reason : null,
+    isDefaultBand: band.isDefault,
     modelVersion: BUILDING_MODEL_VERSION,
   };
 }
