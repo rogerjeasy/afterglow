@@ -315,7 +315,7 @@ export function Notice({ children }: { children: ReactNode }): ReactNode {
   );
 }
 
-export type TabId = 'hearth' | 'seance' | 'cold' | 'plan' | 'you';
+export type TabId = 'hearth' | 'lantern' | 'seance' | 'cold' | 'plan' | 'you';
 
 function Glyph({ children }: { children: ReactNode }): ReactNode {
   return (
@@ -359,6 +359,15 @@ const YouGlyph = (): ReactNode => (
   </Glyph>
 );
 
+/** Lantern: a hanging lantern with its flame (design 7.1). */
+const LanternGlyph = (): ReactNode => (
+  <Glyph>
+    <path d="M9 2.5h6M12 2.5V5" />
+    <path d="M8 5h8l1.5 4v8a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V9z" transform="translate(-0.5 0)" />
+    <circle cx="12" cy="13" r="2" />
+  </Glyph>
+);
+
 function SeanceGlyph(): ReactNode {
   // A lamp with rays: the séance (design 7.1).
   return (
@@ -379,11 +388,48 @@ function PlanGlyph(): ReactNode {
 }
 const TABS: readonly { id: TabId; label: string; glyph: () => ReactNode }[] = [
   { id: 'hearth', label: 'Hearth', glyph: HearthGlyph },
+  { id: 'lantern', label: 'Lantern', glyph: LanternGlyph },
   { id: 'seance', label: 'Séance', glyph: SeanceGlyph },
   { id: 'cold', label: 'Cold', glyph: TombstoneGlyph },
   { id: 'plan', label: 'Plan', glyph: PlanGlyph },
-  { id: 'you', label: 'You', glyph: YouGlyph },
 ];
+
+/**
+ * "You" (settings, account, privacy) is not a destination of its own: the design
+ * keeps five tabs and puts the rest behind "more" in the header (design 10.1). Six
+ * tabs also do not fit at 320 px with labels, and a label is never dropped.
+ */
+export function YouButton({
+  active,
+  onClick,
+}: {
+  active: boolean;
+  onClick: () => void;
+}): ReactNode {
+  return (
+    <button
+      type="button"
+      className="press"
+      onClick={onClick}
+      aria-label="You: settings, account and privacy"
+      aria-current={active ? 'page' : undefined}
+      style={{
+        width: 44,
+        height: 44,
+        flex: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 999,
+        border: `1px solid ${active ? token('focus.ring') : token('hairline')}`,
+        background: active ? token('control.fill.primary') : token('control.fill'),
+        color: active ? token('control.label.primary') : token('text.secondary'),
+      }}
+    >
+      <YouGlyph />
+    </button>
+  );
+}
 
 /** The platform-style tab bar. Tabs are peers and never slide (design 10.1). */
 export function TabBar({
