@@ -17,6 +17,16 @@ export default defineConfig({
     deviceScaleFactor: 1,
     colorScheme: 'dark',
     reducedMotion: 'reduce',
+    // Every test but the onboarding one starts as a person who has already been welcomed.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: 'http://localhost:4173',
+          localStorage: [{ name: 'afterglow.onboarding.v1', value: 'skipped' }],
+        },
+      ],
+    },
   },
   webServer: {
     command: 'pnpm exec vite preview --port 4173 --strictPort',
