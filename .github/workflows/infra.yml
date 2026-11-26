@@ -7,11 +7,13 @@ on:
   pull_request:
     paths:
       - 'infra/**'
+      - 'services/**'
       - '.github/workflows/infra.yml'
   push:
     branches: [main]
     paths:
       - 'infra/**'
+      - 'services/**'
       - '.github/workflows/infra.yml'
 
 permissions:
@@ -35,6 +37,17 @@ jobs:
       - name: Format
         run: terraform fmt -check -recursive -diff infra
 
+      # The regional stack zips the vault function's bundle at plan time.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Build the vault function bundle
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @afterglow/vault-service build
+
       - name: Validate and test the two roots (provider versions locked)
         run: |
           set -euo pipefail
@@ -52,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           for dir in infra/modules/s3-bucket infra/modules/dynamodb-table \
-                     infra/modules/edge infra/modules/identity; do
+                     infra/modules/edge infra/modules/identity infra/modules/vault-api; do
             echo "::group::$dir"
             (cd "$dir" && terraform init -backend=false -input=false >/dev/null && terraform test)
             echo "::endgroup::"

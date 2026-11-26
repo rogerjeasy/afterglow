@@ -41,6 +41,7 @@ output "accounts" {
     user_pool_id  = module.identity.user_pool_id
     app_client_id = module.identity.app_client_id
     issuer        = module.identity.issuer
+    vault_api_url = module.vault_api.api_url
   }
 }
 

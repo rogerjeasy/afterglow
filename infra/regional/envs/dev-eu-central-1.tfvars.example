@@ -10,6 +10,9 @@ protect_resources = false
 # Exact https origins of the web app (no wildcards, no trailing slash).
 web_origins = ["https://afterglow-flax.vercel.app"]
 
+# Local development and browser tests may call the vault API from these (dev only).
+dev_origins = ["http://localhost:5173", "http://localhost:4173"]
+
 # The domain passkeys are bound to. Choose the domain you will KEEP before anyone registers a passkey.
 webauthn_relying_party_id = "afterglow-flax.vercel.app"
 

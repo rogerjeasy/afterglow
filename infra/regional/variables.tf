@@ -113,3 +113,14 @@ variable "table_max_read_units" {
   type        = number
   default     = null
 }
+
+variable "dev_origins" {
+  description = "Extra origins allowed to call the vault API, for local development and browser tests only, for example http://localhost:5173. Leave empty in production."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for o in var.dev_origins : can(regex("^http://localhost:[0-9]+$", o))])
+    error_message = "Development origins must be http://localhost:<port>."
+  }
+}

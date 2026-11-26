@@ -279,6 +279,25 @@ module "identity" {
   enable_email_otp          = var.enable_email_otp
 }
 
+# ------------------------------------------------------------------ Vault API
+
+# Server accounts (.kiro/specs/cloud-accounts): API Gateway with a Cognito JWT
+# authorizer in front of one function that stores each account's encrypted
+# vault record, keyed by the verified `sub` only. Build the bundle first:
+#   pnpm --filter @afterglow/vault-service build
+module "vault_api" {
+  source = "../modules/vault-api"
+
+  name        = "${local.prefix}-vault"
+  table_name  = module.table["vault"].name
+  table_arn   = module.table["vault"].arn
+  kms_key_arn = module.kms.key_arn
+  issuer      = module.identity.issuer
+  client_id   = module.identity.app_client_id
+  web_origins = concat(var.web_origins, var.dev_origins)
+  bundle_path = "${path.root}/../../services/vault/dist/index.mjs"
+}
+
 # ------------------------------------------------------------------- Alerting
 
 module "alerts" {
