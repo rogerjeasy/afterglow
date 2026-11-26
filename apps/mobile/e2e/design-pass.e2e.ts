@@ -6,7 +6,7 @@ import { type Page, expect, test } from '@playwright/test';
  * src/night-shell/designPass.property.test.ts.
  */
 
-const ROUTES = ['#/', '#/lantern', '#/seance', '#/cold', '#/plan', '#/you'] as const;
+const ROUTES = ['#/', '#/lantern', '#/seance', '#/cold', '#/plan', '#/you', '#/alerts'] as const;
 const OUTAGE = '/?phase=outage&elapsed=45';
 /** Engine identifiers that must not reach the main text (NS-14). */
 const ENGINE = /chargingEdge|fusion core|\b[a-z]+(?:-[a-z]+)*-v\d+\b|demo votes/;
