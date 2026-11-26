@@ -18,7 +18,7 @@ export interface NotifyPrefs {
   readonly area: string | null;
 }
 
-const KEY = 'afterglow.notify.v1';
+const KEY = 'afterglow.notify.v1'; // gitleaks:allow (a localStorage key name, not a secret)
 const VAPID: string | null =
   typeof (raw as { vapidPublicKey?: unknown }).vapidPublicKey === 'string'
     ? ((raw as { vapidPublicKey: string }).vapidPublicKey ?? null)
