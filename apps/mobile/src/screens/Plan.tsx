@@ -17,6 +17,7 @@ import { Candle } from '../night-shell/costume';
 import { GraveyardChart } from '../night-shell/graveyard';
 import { token } from '../night-shell/theme';
 import { ForecastAndDestinations } from '../places/ForecastAndDestinations';
+import { type DeviceProfile, MEDICAL_DEVICES } from '../plan/devices';
 import { nightText } from '../plan/graveyard';
 import {
   CLASS_LABEL,
@@ -152,6 +153,7 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
   const [wattsText, setWattsText] = useState('');
   const [lClass, setLClass] = useState<energy.LoadClass>('communication');
   const [needs, setNeeds] = useState<energy.Need>('usb');
+  const [device, setDevice] = useState<DeviceProfile | null>(null);
   const [touched, setTouched] = useState(false);
 
   const capacity =
@@ -183,6 +185,7 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
     store.addEnergyLoad({ name: lName.trim(), watts, class: lClass, needs });
     setLName('');
     setWattsText('');
+    setDevice(null);
     setTouched(false);
   };
 
@@ -546,12 +549,36 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
 
           <Fold label="Add something to power">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
+                  A medical device? Pick it and I will power it first.
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {MEDICAL_DEVICES.map((d) => (
+                    <ChoiceChip
+                      key={d.name}
+                      label={d.name}
+                      selected={device?.name === d.name}
+                      onClick={() => {
+                        setDevice(d);
+                        setLName(d.name);
+                        setLClass('medical');
+                        setNeeds(d.needs);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
               <NumberField label="Name" value={lName} onChange={setLName} />
               <NumberField
                 label="Power draw (watts)"
                 value={wattsText}
                 onChange={setWattsText}
-                hint="From its label or manual. I do not guess watts."
+                hint={
+                  device && lName === device.name
+                    ? `${device.name}: ${device.typical}. Use the watts on your own device's label: I do not guess watts.`
+                    : 'From its label or manual. I do not guess watts.'
+                }
                 error={
                   touched && watts === null ? 'Enter the watts as a number above zero.' : undefined
                 }

@@ -39,3 +39,4 @@ Built without new tests at the founder's request; the existing HH-11 expectation
 - [x] `household/care.ts`: `checkIns`, `careThresholdC`, `householdNeeds`; alert kind `missedCheckIn` with the escalation at two — HH-18
 - [x] Séance edit mode: rhythm and needs per person; each row says when the next check-in is due or how many were missed; HomeSetup offers the care line — HH-18
 - [ ] Escalating to a second guardian's phone (needs the end-to-end roster relay)
+- [x] Medical device profiles in the Plan's load form (`plan/devices.ts`): CPAP, oxygen concentrators, home ventilator, feeding pump, dialysis cycler, powered wheelchair, nebuliser. A profile sets name, medical class and plug and shows the typical range; the watts always come from the person's label (EN-06 "never defaulted")
