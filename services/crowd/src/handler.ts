@@ -3,6 +3,7 @@ import { DEFAULT_CONFIG, type Neighbourhood, buildNeighbourhood } from '@aftergl
 import { type PlacesResult, type WeatherResult, fetchPlaces, fetchWeather } from './publicData.js';
 import { type PushSubscriptionJson, parseSubscription, transition } from './push.js';
 import type { CrowdStore } from './store.js';
+import { type AreaStatus, smsReply, twiml, ussdReply } from './voice.js';
 
 /**
  * The public, anonymous API (crowd-reports spec, CR-01..CR-10).
@@ -31,6 +32,8 @@ export interface PublicResponse {
   readonly body: string;
   /** Seconds a browser or CDN may cache this answer; 0 for never. */
   readonly maxAge: number;
+  /** Defaults to JSON; the voice webhooks answer in plain text or TwiML. */
+  readonly contentType?: string;
 }
 
 export interface PublicDeps {
@@ -166,6 +169,19 @@ async function takeSlot(
     if (await deps.store.claim(`${prefix}:${minute}:${i}`, '1', nowS + 120, nowS)) return true;
   }
   return false;
+}
+
+/** One cell's published state, for the voice channels (k = 5 applies as everywhere). */
+async function areaStatus(deps: PublicDeps, g: string, nowS: number): Promise<AreaStatus | null> {
+  if (!cells.isGeohash6(g)) return null;
+  const now = toMinute(deps.nowMs());
+  const reports = await deps.store.reportsSince(
+    g,
+    now - cells.DEVICE_COUNT_WINDOW_MINUTES - 5,
+    nowS,
+  );
+  const pub = publish(stateNow(g, reports, now));
+  return { state: pub.state as AreaStatus['state'], deviceCount: pub.deviceCount };
 }
 
 /** A subscription's id: not reversible to its endpoint, the same for every cell. */
@@ -462,6 +478,46 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
         const id = await subscriptionId(endpoint);
         for (const c of follow as string[]) await deps.store.deleteSub(c, id);
         return json(200, { removed: follow.length });
+      }
+
+      // Afterglow Voice (7.17). The providers post form-encoded fields; nothing about the
+      // caller (number, text) is stored or logged, and the answers are public anyway.
+      case 'POST /v1/voice/ussd': {
+        if (!(await takeSlot(deps, `voice:${req.requester ?? 'none'}`, 60, nowS))) {
+          return {
+            status: 200,
+            body: 'END Busy. Try again in a minute.',
+            maxAge: 0,
+            contentType: 'text/plain',
+          };
+        }
+        const form = new URLSearchParams(req.body ?? '');
+        const text = (form.get('text') ?? '').slice(0, 64);
+        return {
+          status: 200,
+          body: await ussdReply(text, (g) => areaStatus(deps, g, nowS)),
+          maxAge: 0,
+          contentType: 'text/plain',
+        };
+      }
+
+      case 'POST /v1/voice/sms': {
+        if (!(await takeSlot(deps, `voice:${req.requester ?? 'none'}`, 60, nowS))) {
+          return {
+            status: 200,
+            body: twiml('Busy. Try again in a minute.'),
+            maxAge: 0,
+            contentType: 'text/xml',
+          };
+        }
+        const form = new URLSearchParams(req.body ?? '');
+        const text = (form.get('Body') ?? '').slice(0, 160);
+        return {
+          status: 200,
+          body: twiml(await smsReply(text, (g) => areaStatus(deps, g, nowS))),
+          maxAge: 0,
+          contentType: 'text/xml',
+        };
       }
 
       case 'GET /v1/cells':

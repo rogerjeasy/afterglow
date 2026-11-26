@@ -1,0 +1,187 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Afterglow public API",
+    "version": "1.0.0",
+    "description": "The anonymous API behind Afterglow: signed crowd reports, k-anonymous outage cells (a cell is published only when at least 5 devices reported), public places and forecasts by cell, push notifications for a followed cell, and the feature-phone voice webhooks. No account and no personal data. Requirements: .kiro/specs/crowd-reports."
+  },
+  "servers": [{ "url": "https://z52uri28c1.execute-api.eu-central-1.amazonaws.com" }],
+  "paths": {
+    "/v1/health": {
+      "get": { "summary": "Liveness", "responses": { "200": { "description": "OK" } } }
+    },
+    "/v1/cells": {
+      "get": {
+        "summary": "Crowd outage state around a cell",
+        "description": "A grid of cells around `center`. Cells under k = 5 devices are `unknown` with deviceCount 0. With scope=demo, the simulated night through the same aggregation.",
+        "parameters": [
+          { "name": "center", "in": "query", "schema": { "$ref": "#/components/schemas/Geohash6" } },
+          { "name": "cols", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 7, "default": 5 } },
+          { "name": "rows", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 7, "default": 5 } },
+          { "name": "scope", "in": "query", "schema": { "type": "string", "enum": ["demo"] } },
+          { "name": "start", "in": "query", "description": "Demo only: the night's start in whole minutes since the epoch.", "schema": { "type": "integer" } },
+          { "name": "at", "in": "query", "description": "Demo only: the minute to show.", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "The grid", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Cells" } } } },
+          "400": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/places": {
+      "get": {
+        "summary": "Public places near a cell (OpenStreetMap)",
+        "parameters": [{ "$ref": "#/components/parameters/Cell" }],
+        "responses": {
+          "200": { "description": "Places, cached 7 days", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Places" } } } },
+          "202": { "description": "Being fetched in the background; ask again after retryAfterS." },
+          "400": { "$ref": "#/components/responses/Refused" },
+          "503": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/weather": {
+      "get": {
+        "summary": "Hourly forecast for the cell's ~5 km area (Open-Meteo)",
+        "parameters": [{ "$ref": "#/components/parameters/Cell" }],
+        "responses": {
+          "200": { "description": "72 hours, cached 30 minutes" },
+          "400": { "$ref": "#/components/responses/Refused" },
+          "503": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/devices": {
+      "post": {
+        "summary": "Register today's device key",
+        "description": "An ECDSA P-256 public key made on the device and replaced every UTC day, with a 20-bit proof of work: sha256('afterglow-device:v1:<day>:<x>.<y>:<nonce>') must start with 20 zero bits.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["publicKey", "nonce"],
+                "properties": {
+                  "publicKey": {
+                    "type": "object",
+                    "required": ["kty", "crv", "x", "y"],
+                    "properties": { "kty": { "const": "EC" }, "crv": { "const": "P-256" }, "x": { "type": "string" }, "y": { "type": "string" } }
+                  },
+                  "nonce": { "type": "string", "pattern": "^[0-9]{1,16}$" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "deviceId and expiry" }, "400": { "$ref": "#/components/responses/Refused" } }
+      }
+    },
+    "/v1/reports": {
+      "post": {
+        "summary": "Send a signed report",
+        "description": "`report` is the JSON text of {geohash6, minute, verdict, confidence, senses, restoreEdge}; `signature` is ECDSA P-256 with SHA-256 over it, base64url. A key may report from at most 2 cells a day.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["deviceId", "report", "signature"],
+                "properties": { "deviceId": { "type": "string" }, "report": { "type": "string", "maxLength": 2048 }, "signature": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Accepted, or a duplicate" },
+          "400": { "$ref": "#/components/responses/Refused" },
+          "401": { "$ref": "#/components/responses/Refused" },
+          "429": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/push/subscribe": {
+      "post": {
+        "summary": "Follow up to 3 cells for push notifications",
+        "description": "A browser push subscription (FCM, Mozilla, Apple or Windows push services only), with a 20-bit proof of work over 'afterglow-push:v1:<day>:<endpoint>:<nonce>'. A new subscription is confirmed with a real notification before it is stored; kept 30 days.",
+        "responses": {
+          "201": { "description": "Following" },
+          "400": { "$ref": "#/components/responses/Refused" },
+          "429": { "$ref": "#/components/responses/Refused" },
+          "503": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/push/unsubscribe": {
+      "post": {
+        "summary": "Stop following cells",
+        "responses": { "200": { "description": "Removed" }, "400": { "$ref": "#/components/responses/Refused" } }
+      }
+    },
+    "/v1/voice/ussd": {
+      "post": {
+        "summary": "USSD callback (Africa's Talking format)",
+        "description": "Form fields sessionId, serviceCode, phoneNumber and text. Answers 'CON …' or 'END …' as text/plain, at most 182 characters. Nothing about the caller is stored or logged.",
+        "requestBody": { "content": { "application/x-www-form-urlencoded": { "schema": { "type": "object", "properties": { "text": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "A USSD screen", "content": { "text/plain": {} } } }
+      }
+    },
+    "/v1/voice/sms": {
+      "post": {
+        "summary": "Inbound SMS webhook (Twilio format)",
+        "description": "Form field Body: STATUS <area code>, FOOD, MEDS, CO or WATER. Answers with TwiML: one message of at most 160 characters.",
+        "requestBody": { "content": { "application/x-www-form-urlencoded": { "schema": { "type": "object", "properties": { "Body": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "TwiML", "content": { "text/xml": {} } } }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Cell": { "name": "cell", "in": "query", "required": true, "description": "A geohash-6 cell (about 1 km).", "schema": { "$ref": "#/components/schemas/Geohash6" } }
+    },
+    "responses": {
+      "Refused": { "description": "Refused, with a plain-language message.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    },
+    "schemas": {
+      "Geohash6": { "type": "string", "pattern": "^[0-9b-hjkmnp-z]{6}$" },
+      "Error": { "type": "object", "properties": { "message": { "type": "string" } } },
+      "Cell": {
+        "type": "object",
+        "properties": {
+          "geohash6": { "$ref": "#/components/schemas/Geohash6" },
+          "row": { "type": "integer" },
+          "col": { "type": "integer" },
+          "state": { "type": "string", "enum": ["dark", "lit", "mixed", "comingBack", "unknown"] },
+          "deviceCount": { "type": "integer", "description": "0 when under k = 5" },
+          "provenance": { "type": "array", "items": { "type": "string" } },
+          "windowStart": { "type": "integer" }
+        }
+      },
+      "Cells": {
+        "type": "object",
+        "properties": { "cols": { "type": "integer" }, "rows": { "type": "integer" }, "cells": { "type": "array", "items": { "$ref": "#/components/schemas/Cell" } } }
+      },
+      "Places": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string" },
+          "fetchedAt": { "type": "string" },
+          "places": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "kind": { "type": "string", "enum": ["hospital", "clinic", "pharmacy", "shelter", "community", "fuel", "charging", "water", "police", "fire", "tower"] },
+                "name": { "type": ["string", "null"] },
+                "lat": { "type": "number" },
+                "lng": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

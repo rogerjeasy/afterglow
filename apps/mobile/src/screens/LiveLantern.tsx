@@ -5,6 +5,7 @@ import { STATE_WORD } from '../lantern/present';
 import { SourceChip, Sources, StatusLine, Tile } from '../night-shell/components';
 import { Button, Notice, Section } from '../night-shell/controls';
 import { LanternMap, type MapCell, MapLegend } from '../night-shell/lantern';
+import { token } from '../night-shell/theme';
 import { unfollowArea } from '../notify/notify';
 import { PlacesSection } from '../places/PlacesSection';
 import { SignalSection } from '../places/SignalSection';
@@ -133,6 +134,10 @@ export function LiveLantern({ cell }: { cell: string }): ReactNode {
       <SignalSection cell={cell} places={places} />
 
       <Section title="Your area">
+        <span style={{ fontSize: 'var(--type-body)', color: token('text.primary') }}>
+          Your area code is <span style={{ color: token('text.emphasis') }}>{cell}</span>. Write it
+          down for neighbours with basic phones: it is what Afterglow's text and USSD menus ask for.
+        </span>
         <Sources labels={['a ~1 km cell (geohash-6)', 'never your position']}>
           Only the cell is kept and sent. The map, places and forecast are asked for by cell.
         </Sources>

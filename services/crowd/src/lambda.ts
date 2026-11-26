@@ -180,7 +180,7 @@ export async function handler(event: HttpEvent) {
   return {
     statusCode: res.status,
     headers: {
-      'content-type': 'application/json',
+      'content-type': res.contentType ?? 'application/json',
       'cache-control': res.maxAge > 0 ? `public, max-age=${res.maxAge}` : 'no-store',
       'x-content-type-options': 'nosniff',
     },

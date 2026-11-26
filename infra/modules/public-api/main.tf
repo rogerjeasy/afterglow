@@ -13,6 +13,8 @@ locals {
     "POST /v1/reports",
     "POST /v1/push/subscribe",
     "POST /v1/push/unsubscribe",
+    "POST /v1/voice/ussd",
+    "POST /v1/voice/sms",
     "GET /v1/cells",
     "GET /v1/places",
     "GET /v1/weather",
