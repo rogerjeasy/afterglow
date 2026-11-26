@@ -249,3 +249,17 @@ tour step 5 in night: 1 pixel at r=166, ceiling red.700 = 165   (after a first f
 **Fix:** each sync round saves pending edits first, and applying a merge merges once more with what is in memory at that moment, so nothing typed during the network round-trip is lost. The first version of the flush re-armed the sync on every round (the link counted its own save as a new edit) and ended in "error"; the link now ignores its own save.
 
 **What was wrong:** the implementation. Recorded because it is the classic sync bug (a merge that clobbers local state), and it was caught before any person's data existed.
+
+---
+
+## 2026-11-26 · CA-12 · an email over 40 characters could never open a cloud account
+
+**Requirement:** CA-12 (cloud accounts work for every adult with an email) and ACC's account-name rule (1 to 40 characters after NFKC normalisation).
+
+**How it surfaced:** testing the deployed app in a real browser with a throwaway user whose email was 41 characters. Cognito sign-in succeeded and the vault answered 404 (no vault yet), then the app showed "Use a name of 1 to 40 characters." and opened nothing. The earlier live check used shorter emails and passed.
+
+**Root cause (implementation):** long emails were shortened to 39 characters plus "…" (one character, 40 in all). The account service normalises names with NFKC first, which turns "…" into "...", so the name became 42 characters and was refused. Every email over 40 characters was locked out, on sign-up as well as sign-in.
+
+**Fix:** shorten after normalising, with ASCII dots. A new property, `CA-12 any email up to 254 characters makes a valid account name (NFKC, at most 40)`, and a controller test that signs up and signs in elsewhere with a 68-character email; both fail on the old code. A failed sign-in or confirmation now also signs out of Cognito, so no half-open session stays in memory.
+
+**What was wrong:** the implementation, and a gap in tests that only ever used short emails. Worth recording because only a test of the deployed app, with realistic data, found it.

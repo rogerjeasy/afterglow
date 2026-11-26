@@ -366,8 +366,9 @@ export function You({
           {manage === 'delete' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <Notice>
-                This removes the account and its encrypted data from this device for good. It cannot
-                be undone, and nobody, including us, can bring it back.
+                {space.cloud
+                  ? 'This removes the account, its encrypted copy on the server and the copy on this phone, for good. It needs a connection. It cannot be undone, and nobody, including us, can bring it back.'
+                  : 'This removes the account and its encrypted data from this device for good. It cannot be undone, and nobody, including us, can bring it back.'}
               </Notice>
               <TextField
                 label="Your passphrase"

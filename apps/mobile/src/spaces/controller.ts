@@ -159,9 +159,16 @@ interface Active {
 const LINKS_KEY = 'afterglow.cloud.links.v1';
 /** Account ids whose other sessions still need ending. Ids only; no secret. */
 const REVOKE_KEY = 'afterglow.cloud.revoke.v1';
-/** Account names on the device are at most 40 characters; long emails are shortened for display only. */
-const displayName = (email: string): string =>
-  email.length <= 40 ? email : `${email.slice(0, 39)}…`;
+/**
+ * Account names on the device are at most 40 characters after NFKC normalisation (the
+ * account service's rule); long emails are shortened for display only. Shorten AFTER
+ * normalising and with ASCII dots: an ellipsis character becomes three dots under NFKC,
+ * which once pushed a 41-character email over the limit and blocked its sign-in.
+ */
+export const displayName = (email: string): string => {
+  const n = email.normalize('NFKC').trim();
+  return n.length <= 40 ? n : `${n.slice(0, 37)}...`;
+};
 
 function describe(e: unknown): { message: string; retryAfterMs?: number } {
   if (e instanceof CloudError) return { message: e.message };
@@ -688,11 +695,18 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
         if (!cloud || !p || state.kind !== 'guest') return false;
         await cloud.auth.confirm(p.email, code);
         await cloud.auth.signIn(p.email, p.secret);
-        const { session, recoveryCode } = await service.createAccount({
-          name: displayName(p.email),
-          passphrase: p.passphrase,
-          confirmedAdult: p.confirmedAdult,
-        });
+        let created: Awaited<ReturnType<AccountService['createAccount']>>;
+        try {
+          created = await service.createAccount({
+            name: displayName(p.email),
+            passphrase: p.passphrase,
+            confirmedAdult: p.confirmedAdult,
+          });
+        } catch (e) {
+          cloud.auth.signOut();
+          throw e;
+        }
+        const { session, recoveryCode } = created;
         if (p.moveGuestData) {
           const raw = rawStorage.getItem(KEYS.events);
           if (raw) {
@@ -748,44 +762,51 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
             }
             throw e;
           }
-          const remote = await cloud.api.get(await cloud.auth.accessToken());
-          if (localId) {
-            // This device has its own copy, possibly with offline changes. Open it and let
-            // the first push merge with the server's copy (expected version null -> 409 -> merge).
-            const session = await service.signIn(localId, passphrase);
+          // Signed in to Cognito from here on: if opening the household fails, sign out again
+          // so no half-open session stays in memory.
+          try {
+            const remote = await cloud.api.get(await cloud.auth.accessToken());
+            if (localId) {
+              // This device has its own copy, possibly with offline changes. Open it and let
+              // the first push merge with the server's copy (expected version null -> 409 -> merge).
+              const session = await service.signIn(localId, passphrase);
+              await enter(
+                session,
+                {},
+                { email, secret, version: null, signedIn: true, freshDevice: false },
+              );
+              return true;
+            }
+            if (remote) {
+              // Installed only once the passphrase has opened it, never over a local account.
+              const session = await service.adoptRecord(
+                remote.record,
+                displayName(email),
+                passphrase,
+              );
+              await enter(
+                session,
+                {},
+                { email, secret, version: remote.version, signedIn: true, freshDevice: true },
+              );
+              return true;
+            }
+            // Confirmed but never uploaded (sign-up was interrupted): start the vault here.
+            const { session, recoveryCode } = await service.createAccount({
+              name: displayName(email),
+              passphrase,
+              confirmedAdult: true,
+            });
             await enter(
               session,
-              {},
+              { recoveryCode },
               { email, secret, version: null, signedIn: true, freshDevice: false },
             );
             return true;
+          } catch (e) {
+            cloud.auth.signOut();
+            throw e;
           }
-          if (remote) {
-            // Installed only once the passphrase has opened it, never over a local account.
-            const session = await service.adoptRecord(
-              remote.record,
-              displayName(email),
-              passphrase,
-            );
-            await enter(
-              session,
-              {},
-              { email, secret, version: remote.version, signedIn: true, freshDevice: true },
-            );
-            return true;
-          }
-          // Confirmed but never uploaded (sign-up was interrupted): start the vault here.
-          const { session, recoveryCode } = await service.createAccount({
-            name: displayName(email),
-            passphrase,
-            confirmedAdult: true,
-          });
-          await enter(
-            session,
-            { recoveryCode },
-            { email, secret, version: null, signedIn: true, freshDevice: false },
-          );
-          return true;
         },
         () => linkFor(email),
       );

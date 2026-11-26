@@ -1,9 +1,10 @@
 import { type VaultStore, handle, memoryStore } from '@afterglow/vault-service/handler';
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { VaultApi } from '../cloud/api';
 import { type CloudAuth, CloudError } from '../cloud/auth';
 import { type StorageLike, memoryStorage } from '../household/store';
-import { createSpaceController } from './controller';
+import { createSpaceController, displayName } from './controller';
 
 /**
  * Cloud accounts through the real controller and the REAL server handler
@@ -481,5 +482,44 @@ describe('Cloud accounts through the controller and the real server handler', ()
     expect(await fresh.controller.cloudSignIn('ana@example.com', PASS_B)).toBe(true);
     const old = device(cloud);
     expect(await old.controller.cloudSignIn('ana@example.com', PASS_A)).toBe(false);
+  }, 60_000);
+
+  it('CA-12 any email up to 254 characters makes a valid account name (NFKC, at most 40)', () => {
+    const long = fc
+      .tuple(
+        fc.stringOf(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789.-_+'.split('')), {
+          minLength: 1,
+          maxLength: 200,
+        }),
+        fc.domain(),
+      )
+      .map(([local, domain]) => `${local}@${domain}`.slice(0, 254));
+    fc.assert(
+      fc.property(fc.oneof(long, fc.emailAddress()), (email) => {
+        const name = displayName(email).normalize('NFKC').trim();
+        expect(name.length).toBeGreaterThanOrEqual(1);
+        expect(name.length).toBeLessThanOrEqual(40);
+        expect(name).not.toMatch(/\p{Cc}/u);
+      }),
+      { numRuns: 2000 },
+    );
+    // The email that found the bug: 41 characters.
+    expect(displayName('afterglow-demo-ana-1795725684@example.com').normalize('NFKC').length).toBe(
+      40,
+    );
+  });
+
+  it('CA-12 a long email signs up, signs in elsewhere and keeps its household', async () => {
+    const cloud = fakeCloud([]);
+    const email = `${'a-very-long-local-part-for-testing'.repeat(2)}@example.com`;
+    expect(email.length).toBeGreaterThan(40);
+    const one = device(cloud);
+    await signUp(one, email, PASS_A);
+    one.controller.getState().store.addPerson('Mom', 3);
+    await settle(one.controller);
+    const two = device(cloud);
+    expect(await two.controller.cloudSignIn(email, PASS_A)).toBe(true);
+    await settle(two.controller);
+    expect(names(two.controller)).toEqual(['Mom']);
   }, 60_000);
 });
