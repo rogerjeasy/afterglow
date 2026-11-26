@@ -15,6 +15,7 @@ import {
 } from '../night-shell/controls';
 import { GhostGlyph } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
+import { CarePanel, checkInLine } from '../seance/CarePanel';
 import { Lamp } from '../seance/Lamp';
 import { PairConfirm, PairSection, useOfferFromHash } from '../seance/PairSection';
 import { type ToneListening, listenErrorText, listenTones, sendTones } from '../seance/acoustic';
@@ -60,6 +61,10 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
   const { view } = state;
   const outage = view.outageStartedAtMs !== null;
   const board = useMemo(() => household.assessRoster(view), [view]);
+  const dueById = useMemo(
+    () => new Map(household.checkIns(view, nowMs).map((c) => [c.member.id, c])),
+    [view, nowMs],
+  );
   const free = household.freeSlot(view);
 
   const [editingList, setEditingList] = useState(false);
@@ -348,6 +353,9 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
                       }}
                     >
                       {t.line}
+                      {checkInLine(dueById.get(b.member.id)) ? (
+                        <span> {checkInLine(dueById.get(b.member.id))}</span>
+                      ) : null}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
@@ -375,6 +383,7 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
             })}
           </div>
         )}
+        {editingList ? <CarePanel roster={view.roster} store={store} /> : null}
       </Section>
 
       <Fold label="Add someone" defaultOpen={board.length === 0}>

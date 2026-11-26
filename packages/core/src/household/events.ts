@@ -25,6 +25,7 @@ export const HOUSEHOLD_EVENT = {
   rosterSet: 'household.roster.set',
   rosterRemoved: 'household.roster.removed',
   heard: 'household.roster.heard',
+  careSet: 'household.roster.care.set',
   energyStoreSet: 'household.energy.store.set',
   energyStoreRemoved: 'household.energy.store.removed',
   energyLoadSet: 'household.energy.load.set',
@@ -115,6 +116,18 @@ export interface RosterSetPayload {
   readonly personId: string;
   readonly name: string;
   readonly slot: number;
+}
+/** Who needs extra care (product description 7.10, 7.6 "personal risk profiles"). */
+export type CareNeed = 'infant' | 'elderly' | 'medical';
+export const CARE_NEEDS: readonly CareNeed[] = ['infant', 'elderly', 'medical'];
+/**
+ * A guardian's settings for one person: how often they should check in during an
+ * outage (null: no rhythm) and what makes them vulnerable. Stored on the device only.
+ */
+export interface CareSetPayload {
+  readonly personId: string;
+  readonly cadenceHours: number | null;
+  readonly needs: readonly CareNeed[];
 }
 export interface RosterRemovedPayload {
   readonly personId: string;
@@ -235,6 +248,20 @@ export function isMedicineRemovedPayload(x: unknown): x is MedicineRemovedPayloa
 }
 // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+export function isCareSetPayload(x: unknown): x is CareSetPayload {
+  if (!isRecord(x) || !isId(x.personId)) return false;
+  const c = x.cadenceHours;
+  const cadenceOk =
+    c === null || (typeof c === 'number' && Number.isInteger(c) && c >= 1 && c <= 24);
+  const n = x.needs;
+  return (
+    cadenceOk &&
+    Array.isArray(n) &&
+    n.length <= CARE_NEEDS.length &&
+    n.every((v) => CARE_NEEDS.includes(v as CareNeed)) &&
+    new Set(n).size === n.length
+  );
+}
 export function isRosterSetPayload(x: unknown): x is RosterSetPayload {
   return (
     isRecord(x) &&

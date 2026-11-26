@@ -5,12 +5,14 @@ import type { AfterglowEvent } from '../events/types.js';
 import type { IceCrystals } from '../foodkeeper/types.js';
 import type { ApplianceClass, Fullness } from '../thermal/archetypes.js';
 import {
+  type CareNeed,
   DEFAULT_AMBIENT_C,
   HOUSEHOLD_EVENT,
   type HeardPayload,
   type HomePayload,
   isAppliancePayload,
   isApplianceRemovedPayload,
+  isCareSetPayload,
   isDoorOpenedPayload,
   isEnergyLoadPayload,
   isEnergyRemovedPayload,
@@ -55,6 +57,11 @@ export interface RosterMember {
   readonly slot: number;
   /** The latest word from them, or null when nothing has been heard. */
   readonly heard: Omit<HeardPayload, 'personId'> | null;
+  /** The guardian's settings for them, or null when none were set. */
+  readonly care?: {
+    readonly cadenceHours: number | null;
+    readonly needs: readonly CareNeed[];
+  } | null;
 }
 export interface WardAnswer {
   readonly answer: 'yes' | 'no' | 'unknown';
@@ -92,6 +99,10 @@ interface Internal {
   readonly medicines: ReadonlyMap<string, Versioned<MedicineItem | null>>;
   readonly people: ReadonlyMap<string, Versioned<{ name: string; slot: number } | null>>;
   readonly heard: ReadonlyMap<string, HeardPayload>;
+  readonly care: ReadonlyMap<
+    string,
+    Versioned<{ cadenceHours: number | null; needs: readonly CareNeed[] }>
+  >;
   readonly stores: ReadonlyMap<string, Versioned<EnergyStore | null>>;
   readonly eloads: ReadonlyMap<string, Versioned<EnergyLoad | null>>;
   readonly horizon: Versioned<number> | undefined;
@@ -108,6 +119,7 @@ const INITIAL: Internal = {
   medicines: new Map(),
   people: new Map(),
   heard: new Map(),
+  care: new Map(),
   stores: new Map(),
   eloads: new Map(),
   horizon: undefined,
@@ -185,6 +197,16 @@ function step(state: Internal, event: AfterglowEvent): Internal {
     case HOUSEHOLD_EVENT.rosterRemoved: {
       if (!isRosterRemovedPayload(p)) return state;
       return { ...state, people: put(state.people, p.personId, event, null) };
+    }
+    case HOUSEHOLD_EVENT.careSet: {
+      if (!isCareSetPayload(p)) return state;
+      return {
+        ...state,
+        care: put(state.care, p.personId, event, {
+          cadenceHours: p.cadenceHours,
+          needs: [...p.needs].sort(),
+        }),
+      };
     }
     case HOUSEHOLD_EVENT.heard: {
       if (!isHeardPayload(p)) return state;
@@ -285,7 +307,12 @@ export function buildHouseholdView(log: EventLog): HouseholdView {
     )
     .map((m) => {
       const h = s.heard.get(m.id);
-      return { ...m, heard: h ? { code: h.code, atMs: h.atMs, channel: h.channel } : null };
+      const c = s.care.get(m.id)?.value ?? null;
+      return {
+        ...m,
+        heard: h ? { code: h.code, atMs: h.atMs, channel: h.channel } : null,
+        care: c,
+      };
     })
     .sort(byId);
   const energyStores = [...s.stores.values()]

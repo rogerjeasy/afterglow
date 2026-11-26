@@ -20,6 +20,8 @@ export type AlertKind =
   | 'homeReached'
   /** A roster member's latest word is HELP. */
   | 'help'
+  /** A person with a check-in rhythm has missed one (high) or two or more (critical). */
+  | 'missedCheckIn'
   /** The user's cell is coming back, by the crowd. */
   | 'comingBack';
 

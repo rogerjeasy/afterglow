@@ -1,5 +1,6 @@
 import type { CellState } from '../cells/types.js';
 import type { FoodIndex } from '../foodkeeper/types.js';
+import { ESCALATE_AFTER_MISSED, checkIns } from '../household/care.js';
 import { assessAll, assessRoster, hoursOfSafety } from '../household/derive.js';
 import type { HouseholdView } from '../household/view.js';
 import { APPLIANCE_MODEL_VERSION, BUILDING_MODEL_VERSION } from '../thermal/archetypes.js';
@@ -57,6 +58,25 @@ export function evaluateAlerts(input: AlertInput): readonly Alert[] {
     minutes: null,
     sources: [nonEmpty(input.outageSource, 'reported outage')],
   });
+
+  // Check-ins (7.10): one missed is high; the escalation at two is critical and a new
+  // alert, so it is announced again.
+  for (const c of checkIns(view, nowMs)) {
+    if (c.missed === 0 || c.overdueSinceMs === null) continue;
+    const escalated = c.missed >= ESCALATE_AFTER_MISSED;
+    out.push({
+      key: `missedCheckIn:${c.member.id}:${epoch}:${escalated ? 'escalated' : 'first'}`,
+      kind: 'missedCheckIn',
+      priority: escalated ? 'critical' : 'high',
+      subject: c.member.name,
+      sinceMs: c.overdueSinceMs,
+      minutes: c.missed,
+      sources: [
+        `check-in every ${c.cadenceHours} h (your setting)`,
+        c.member.heard ? `last word by ${c.member.heard.channel}` : 'no word this outage',
+      ],
+    });
+  }
 
   // Food: the clock the Cold screen shows, or nothing (AL-04).
   for (const a of assessAll(view, foodIndex, nowMs)) {

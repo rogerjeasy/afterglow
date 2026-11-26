@@ -30,3 +30,12 @@ Status: `[x]` done, `[ ]` planned.
 - [ ] 8. SQLite persistence replaces localStorage (Wave 2.2)
 - [ ] 9. Time-resolved door model; learned household tau (thermal tasks 6 and 8)
 - [ ] 10. Outdoor temperature from the forecast adapter (Wave 4)
+
+## Guardians and risk profiles (2026-11-26)
+
+Built without new tests at the founder's request; the existing HH-11 expectation now includes `care: null` (the field comes only from its own event). Checked by evaluating the alerts for a person on a 1-hour rhythm: none at +0.5 h, high at +1.5 h, critical at +2.5 h; 18 °C offered for an older person.
+
+- [x] `household.roster.care.set` event, validator and view field — HH-18
+- [x] `household/care.ts`: `checkIns`, `careThresholdC`, `householdNeeds`; alert kind `missedCheckIn` with the escalation at two — HH-18
+- [x] Séance edit mode: rhythm and needs per person; each row says when the next check-in is due or how many were missed; HomeSetup offers the care line — HH-18
+- [ ] Escalating to a second guardian's phone (needs the end-to-end roster relay)

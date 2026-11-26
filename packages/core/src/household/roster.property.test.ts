@@ -34,7 +34,10 @@ describe('Roster properties', () => {
         1,
       ),
     ]);
-    expect(v.roster).toEqual([{ id: 'p1', name: 'Mrs Dlamini', slot: 12, heard: null }]);
+    // `care` comes only from its own guardian event (HH-18), never from this payload.
+    expect(v.roster).toEqual([
+      { id: 'p1', name: 'Mrs Dlamini', slot: 12, heard: null, care: null },
+    ]);
     expect(JSON.stringify(v.roster)).not.toMatch(/phone|address|27 82/);
   });
 

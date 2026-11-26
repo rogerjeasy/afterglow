@@ -64,6 +64,11 @@ The Household module is the user's own data for the cold-chain and hours-of-safe
 - IF a roster event is malformed THEN THE SYSTEM SHALL ignore it (HH-03). WHEN a removal is later than the last set THE SYSTEM SHALL omit the member (HH-02).
 - THE SYSTEM SHALL record a word from a member as `{ personId, code, atMs, channel }` with a Heliograph message name and a channel of light, sound, sms, ble or manual, and SHALL keep the latest per member, breaking ties deterministically, whatever the order the events arrive in.
 
+### HH-18 — A guardian's care settings for a member (2026-11-26)
+- THE SYSTEM SHALL record a guardian's settings for a member only through their own event, `{ personId, cadenceHours, needs }`, with `cadenceHours` a whole number from 1 to 24 or null and `needs` a set of `infant`, `elderly`, `medical`; latest wins (HH-02), malformed is ignored (HH-03), and nothing else about the person is kept (HH-11).
+- WHILE an outage is under way, a member with a rhythm has missed one check-in per whole rhythm since the later of the outage start and their last word; THE SYSTEM SHALL raise a high alert at one and a critical alert at two (the escalation), each announced once.
+- WHEN anyone in the household has a need recorded THE SYSTEM SHALL offer the stricter home line: 18 °C for cold (the WHO housing guideline's minimum) and 30 °C for heat.
+
 ### HH-12 — A ghost is someone not heard from
 **User story:** As a caretaker, I want the board to say who I have not heard from, and to never call someone safe on old news.
 - THE SYSTEM SHALL mark a member a **ghost** when nothing has been heard from them, or, during an outage, when the latest word is from before the outage began.

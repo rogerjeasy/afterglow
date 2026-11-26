@@ -44,6 +44,12 @@ export interface HouseholdStore {
   addMedicine(applianceId: string, product: string, condition: 'unopened' | 'inUse'): string;
   removeMedicine(medicineId: string, reason?: household.RemovalReason): void;
   addPerson(name: string, slot: number): string;
+  /** A guardian's check-in rhythm and care needs for one person (HH-18). */
+  setCare(
+    personId: string,
+    cadenceHours: number | null,
+    needs: readonly household.CareNeed[],
+  ): void;
   removePerson(personId: string): void;
   addEnergyStore(input: Omit<energy.EnergyStore, 'id'>): string;
   updateEnergyStore(id: string, input: Omit<energy.EnergyStore, 'id'>): void;
@@ -215,6 +221,9 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
     },
     answerWard(check, answer) {
       append(E.wardAnswered, { check, answer, atMs: now() });
+    },
+    setCare(personId, cadenceHours, needs) {
+      append(E.careSet, { personId, cadenceHours, needs: [...needs] });
     },
     addPerson(name, slot) {
       const id = nextId('p');

@@ -1,7 +1,8 @@
-import { type household, thermal } from '@afterglow/core';
+import { household, thermal } from '@afterglow/core';
 import { type ReactNode, useState } from 'react';
 import { formatTemp } from '../format';
-import { Button, ChoiceChip, Stepper } from '../night-shell/controls';
+import { useHousehold } from '../household/useHousehold';
+import { Button, ChoiceChip, Notice, Stepper } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -62,6 +63,13 @@ export function HomeSetup({
   const [indoorC, setIndoorC] = useState(current?.indoorC ?? 20);
   const [outdoorC, setOutdoorC] = useState(current?.outdoorC ?? 5);
   const [thresholdC, setThresholdC] = useState(current?.thresholdC ?? COLD_DEFAULT_C);
+  // Personal risk profiles (HH-18): a stricter line when someone here is vulnerable.
+  const { state: hh } = useHousehold();
+  const needs = household.householdNeeds(hh.view);
+  const careLine = household.careThresholdC(mode, needs);
+  const needsWords = needs
+    .map((n) => (n === 'infant' ? 'a baby' : n === 'elderly' ? 'older' : 'medically fragile'))
+    .join(', ');
 
   const pickMode = (m: 'cold' | 'heat'): void => {
     setMode(m);
@@ -126,7 +134,7 @@ export function HomeSetup({
       <Stepper
         label="Outdoor"
         valueText={formatTemp(outdoorC)}
-        hint="Type today's outdoor temperature. A forecast feed comes later."
+        hint="Type today's outdoor temperature, or use tonight's forecast on the Plan tab."
         onDecrement={() => setOutdoorC((v) => Math.max(-40, v - 1))}
         onIncrement={() => setOutdoorC((v) => Math.min(50, v + 1))}
       />
@@ -141,6 +149,15 @@ export function HomeSetup({
         onDecrement={() => setThresholdC((v) => v - 1)}
         onIncrement={() => setThresholdC((v) => v + 1)}
       />
+      {careLine !== null && (mode === 'cold' ? thresholdC < careLine : thresholdC > careLine) ? (
+        <Notice>
+          Someone you look after is marked {needsWords}. A safer line for them is{' '}
+          {formatTemp(careLine)}.{' '}
+          <Button size="sm" onClick={() => setThresholdC(careLine)}>
+            Use {formatTemp(careLine)}
+          </Button>
+        </Notice>
+      ) : null}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Button
