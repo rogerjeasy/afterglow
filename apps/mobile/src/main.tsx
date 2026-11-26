@@ -18,3 +18,11 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+// Offline first: the service worker caches the whole app (production builds only, so
+// the dev server always serves fresh code).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
+  });
+}
