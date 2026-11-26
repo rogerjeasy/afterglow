@@ -5,9 +5,15 @@ import {
   type RawStorage,
   type Session,
   type VaultStorage,
+  checkPassphrase,
   createAccountService,
   openVaultStorage,
 } from '@afterglow/adapters';
+import type { VaultApi } from '../cloud/api';
+import { type CloudAuth, CloudError } from '../cloud/auth';
+import { type CloudLink, type SyncState, createCloudLink } from '../cloud/link';
+import { deriveLoginSecret, isPlausibleEmail, normaliseEmail } from '../cloud/loginSecret';
+import { mergeData } from '../cloud/merge';
 import { type HouseholdStore, KEYS, createHouseholdStore, memoryStorage } from '../household/store';
 
 /**
@@ -42,6 +48,27 @@ export interface SpaceState {
   readonly retryUntilMs: number | null;
   /** True when the last encrypted save failed, so the UI can say changes are not yet stored. */
   readonly saveFailed: boolean;
+  /** True when this build is connected to a deployed account service (cloud-accounts). */
+  readonly cloudAvailable: boolean;
+  /** The signed-in cloud account and how its sync stands, or null. */
+  readonly cloud: CloudStatus | null;
+  /** A sign-up waiting for the emailed code, or null. Holds no secret. */
+  readonly cloudPending: { readonly email: string } | null;
+  /** Account ids on this device that are linked to a cloud account, with their email. */
+  readonly cloudLinks: Readonly<Record<string, string>>;
+}
+
+export interface CloudStatus {
+  readonly email: string;
+  readonly sync: SyncState;
+  readonly lastSyncedAt: number | null;
+}
+
+export interface CloudSignUpArgs {
+  readonly email: string;
+  readonly passphrase: string;
+  readonly confirmedAdult: boolean;
+  readonly moveGuestData: boolean;
 }
 
 export interface CreateAccountArgs {
@@ -75,6 +102,24 @@ export interface SpaceController {
   checkIdle(): void;
   /** Surface a failed encrypted save instead of losing data silently. */
   checkSaveHealth(): void;
+  /** Start a cloud account: Cognito sends a code to the email (CA-09). */
+  cloudSignUp(args: CloudSignUpArgs): Promise<boolean>;
+  /** Finish sign-up with the emailed code: sign in, create the vault, upload it. */
+  cloudConfirm(code: string): Promise<boolean>;
+  cloudResend(): Promise<boolean>;
+  cloudCancel(): void;
+  /** Sign in on any device; opens offline from this device's encrypted copy when there is one (CA-10). */
+  cloudSignIn(email: string, passphrase: string): Promise<boolean>;
+  /** Try to reach the server again (after reconnecting). */
+  cloudRetry(): Promise<void>;
+}
+
+/** The account service and API, injected so tests can run without AWS. */
+export interface CloudDeps {
+  readonly auth: CloudAuth;
+  readonly api: VaultApi;
+  /** Tests inject a small number; production leaves it unset (600,000). */
+  readonly loginIterations?: number;
 }
 
 export interface SpaceDeps {
@@ -85,15 +130,32 @@ export interface SpaceDeps {
   readonly seedDemo: (store: HouseholdStore) => void;
   /** Tests inject a small number; production leaves it unset. */
   readonly kdfIterations?: number;
+  /** The cloud account service, when this build has one. */
+  readonly cloud?: CloudDeps;
+}
+
+interface CloudActive {
+  readonly email: string;
+  /** In memory only while unlocked, to reconnect after an offline sign-in (CA-11 drops it). */
+  readonly secret: string;
+  link: CloudLink;
+  signedIn: boolean;
 }
 
 interface Active {
   readonly session: Session;
   readonly vault: VaultStorage;
-  readonly store: HouseholdStore;
+  store: HouseholdStore;
+  cloud: CloudActive | null;
 }
 
+const LINKS_KEY = 'afterglow.cloud.links.v1';
+/** Account names on the device are at most 40 characters; long emails are shortened for display only. */
+const displayName = (email: string): string =>
+  email.length <= 40 ? email : `${email.slice(0, 39)}…`;
+
 function describe(e: unknown): { message: string; retryAfterMs?: number } {
+  if (e instanceof CloudError) return { message: e.message };
   if (e instanceof AccountError) {
     return e.retryAfterMs === undefined
       ? { message: e.message }
@@ -110,6 +172,29 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     ...(deps.kdfIterations === undefined ? {} : { kdfIterations: deps.kdfIterations }),
   });
   const storeDeps = { now, randomId };
+  const cloud = deps.cloud ?? null;
+
+  const readLinks = (): Record<string, string> => {
+    try {
+      const x: unknown = JSON.parse(rawStorage.getItem(LINKS_KEY) ?? '{}');
+      if (typeof x !== 'object' || x === null || Array.isArray(x)) return {};
+      const known = new Set(service.listAccounts().map((a) => a.id));
+      const out: Record<string, string> = {};
+      for (const [id, email] of Object.entries(x)) {
+        if (typeof email === 'string' && known.has(id)) out[id] = email;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  };
+  const writeLinks = (links: Record<string, string>): void =>
+    rawStorage.setItem(LINKS_KEY, JSON.stringify(links));
+  const linkFor = (email: string): string | null =>
+    Object.entries(readLinks()).find(([, e]) => e === email)?.[0] ?? null;
+
+  // A sign-up waiting for its code. Held in memory only; dropped on cancel or success.
+  let pending: (CloudSignUpArgs & { readonly secret: string }) | null = null;
 
   let guest: HouseholdStore | null = null;
   const guestStore = (): HouseholdStore => {
@@ -133,6 +218,10 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     recoveryCode: null,
     retryUntilMs: null,
     saveFailed: false,
+    cloudAvailable: cloud !== null,
+    cloud: null,
+    cloudPending: null,
+    cloudLinks: readLinks(),
   };
   const set = (patch: Partial<SpaceState>): void => {
     state = { ...state, ...patch };
@@ -147,7 +236,11 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     if (!a) return;
     try {
       await a.vault.close();
+      // Give the last change its chance to reach the server before the key goes.
+      if (a.cloud?.signedIn) await a.cloud.link.push();
     } finally {
+      a.cloud?.link.close();
+      if (a.cloud) cloud?.auth.signOut();
       a.session.close();
     }
   }
@@ -178,18 +271,79 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     }
   }
 
-  async function enter(session: Session, extra: Partial<SpaceState> = {}): Promise<void> {
-    const vault = await openVaultStorage(service, session);
+  interface CloudEntry {
+    readonly email: string;
+    readonly secret: string;
+    readonly version: number | null;
+    readonly signedIn: boolean;
+    /** First time this device opens the account: give it its own event epoch (CA-10). */
+    readonly freshDevice: boolean;
+  }
+
+  async function enter(
+    session: Session,
+    extra: Partial<SpaceState> = {},
+    cloudEntry: CloudEntry | null = null,
+  ): Promise<void> {
+    const vault = await openVaultStorage(service, session, 150, () =>
+      active?.cloud?.link.schedule(),
+    );
+    if (cloudEntry?.freshDevice) vault.setItem(KEYS.epoch, `dev-${randomId()}`);
     const store = createHouseholdStore({ storage: vault, ...storeDeps });
-    active = { session, vault, store };
+    const a: Active = { session, vault, store, cloud: null };
+    active = a;
+    if (cloudEntry && cloud) {
+      const setSync = (sync: SyncState, at: number | null): void => {
+        if (active !== a) return;
+        set({
+          cloud: {
+            email: cloudEntry.email,
+            sync,
+            lastSyncedAt: at ?? state.cloud?.lastSyncedAt ?? null,
+          },
+        });
+      };
+      const link = createCloudLink(
+        {
+          service,
+          session,
+          api: cloud.api,
+          auth: cloud.auth,
+          now,
+          onStatus: setSync,
+          flush: () => vault.flush(),
+          onMerged: async (data) => {
+            if (active !== a) return;
+            // Merge once more with what is in memory now, so an edit made while the
+            // network round-trip ran is kept, never overwritten (CA-10).
+            await vault.seed(mergeData(vault.snapshot(), data));
+            a.store = createHouseholdStore({ storage: vault, ...storeDeps });
+            set({ store: a.store });
+          },
+        },
+        cloudEntry.version,
+      );
+      a.cloud = {
+        email: cloudEntry.email,
+        secret: cloudEntry.secret,
+        link,
+        signedIn: cloudEntry.signedIn,
+      };
+      const links = readLinks();
+      links[session.accountId] = cloudEntry.email;
+      writeLinks(links);
+      setSync(cloudEntry.signedIn ? 'syncing' : 'offline', null);
+    }
     lastActivity = now();
     set({
       kind: 'account',
       store,
       account: { id: session.accountId, name: session.name },
       accounts: refreshAccounts(),
+      cloudLinks: readLinks(),
       ...extra,
     });
+    if (a.cloud?.signedIn) void a.cloud.link.push();
   }
 
   /** Lock: swap the UI to guest FIRST so nothing can hold an unlocked store, then flush and drop the key. */
@@ -201,6 +355,7 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
       account: null,
       recoveryCode: null,
       saveFailed: false,
+      cloud: null,
     });
     await closeActive();
   }
@@ -301,6 +456,20 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
         async () => {
           const a = active;
           if (!a) return false;
+          if (a.cloud && cloud) {
+            // CA-05: the server copy and the Cognito user go first, so nothing is left behind
+            // if the device step then fails. This needs a connection; offline, nothing changes.
+            if (!a.cloud.signedIn) {
+              throw new CloudError('network', 'Deleting a cloud account needs a connection.');
+            }
+            a.cloud.link.close();
+            const token = await cloud.auth.accessToken();
+            await cloud.api.delete(token);
+            await cloud.auth.deleteUser();
+            const links = readLinks();
+            delete links[a.session.accountId];
+            writeLinks(links);
+          }
           await service.deleteAccount(a.session, passphrase);
           a.vault.discard();
           active = null;
@@ -312,7 +481,11 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
             account: null,
             accounts: refreshAccounts(),
             recoveryCode: null,
-            notice: 'Account deleted. Its encrypted data is gone from this device.',
+            cloud: null,
+            cloudLinks: readLinks(),
+            notice: a.cloud
+              ? 'Account deleted, here and on the server.'
+              : 'Account deleted. Its encrypted data is gone from this device.',
           });
           return true;
         },
@@ -362,6 +535,146 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     checkSaveHealth() {
       const failed = active?.vault.lastError != null;
       if (failed !== state.saveFailed) set({ saveFailed: failed });
+    },
+
+    cloudSignUp(args) {
+      return run(async () => {
+        if (!cloud || state.kind !== 'guest') return false;
+        const email = normaliseEmail(args.email);
+        if (!isPlausibleEmail(email))
+          throw new CloudError('unknown', 'Enter a valid email address.');
+        if (!args.confirmedAdult) {
+          throw new AccountError('adult-required', 'Accounts are for people aged 18 or over.');
+        }
+        const policy = checkPassphrase(args.passphrase, email);
+        if (!policy.ok) throw new AccountError('policy', policy.reason);
+        const secret = await deriveLoginSecret(email, args.passphrase, cloud.loginIterations);
+        await cloud.auth.signUp(email, secret);
+        pending = { ...args, email, secret };
+        set({ cloudPending: { email } });
+        return true;
+      });
+    },
+
+    cloudConfirm(code) {
+      return run(async () => {
+        const p = pending;
+        if (!cloud || !p || state.kind !== 'guest') return false;
+        await cloud.auth.confirm(p.email, code);
+        await cloud.auth.signIn(p.email, p.secret);
+        const { session, recoveryCode } = await service.createAccount({
+          name: displayName(p.email),
+          passphrase: p.passphrase,
+          confirmedAdult: p.confirmedAdult,
+        });
+        if (p.moveGuestData) {
+          const raw = rawStorage.getItem(KEYS.events);
+          if (raw) {
+            const v = await openVaultStorage(service, session);
+            await v.seed({ [KEYS.events]: raw });
+            v.discard();
+            guestStore().deleteAllData();
+          }
+        }
+        pending = null;
+        await enter(
+          session,
+          { recoveryCode, cloudPending: null },
+          { email: p.email, secret: p.secret, version: null, signedIn: true, freshDevice: false },
+        );
+        return true;
+      });
+    },
+
+    cloudResend() {
+      return run(async () => {
+        if (!cloud || !pending) return false;
+        await cloud.auth.resend(pending.email);
+        set({ notice: `A new code was sent to ${pending.email}.` });
+        return true;
+      });
+    },
+
+    cloudCancel() {
+      pending = null;
+      set({ cloudPending: null, error: null });
+    },
+
+    cloudSignIn(rawEmail, passphrase) {
+      const email = normaliseEmail(rawEmail);
+      return run(
+        async () => {
+          if (!cloud || state.kind !== 'guest') return false;
+          const secret = await deriveLoginSecret(email, passphrase, cloud.loginIterations);
+          const localId = linkFor(email);
+          try {
+            await cloud.auth.signIn(email, secret);
+          } catch (e) {
+            // Offline with a copy on this device: open it; sync waits for the network (CA-10).
+            if (e instanceof CloudError && e.code === 'network' && localId) {
+              const session = await service.signIn(localId, passphrase);
+              await enter(
+                session,
+                { notice: 'Opened from this device. Changes will sync when you are back online.' },
+                { email, secret, version: null, signedIn: false, freshDevice: false },
+              );
+              return true;
+            }
+            throw e;
+          }
+          const remote = await cloud.api.get(await cloud.auth.accessToken());
+          if (localId) {
+            // This device has its own copy, possibly with offline changes. Open it and let
+            // the first push merge with the server's copy (expected version null -> 409 -> merge).
+            const session = await service.signIn(localId, passphrase);
+            await enter(
+              session,
+              {},
+              { email, secret, version: null, signedIn: true, freshDevice: false },
+            );
+            return true;
+          }
+          if (remote) {
+            const id = service.importRecord(remote.record, displayName(email));
+            if (!id) throw new CloudError('unknown', 'The account’s data could not be read.');
+            const session = await service.signIn(id, passphrase);
+            await enter(
+              session,
+              {},
+              { email, secret, version: remote.version, signedIn: true, freshDevice: true },
+            );
+            return true;
+          }
+          // Confirmed but never uploaded (sign-up was interrupted): start the vault here.
+          const { session, recoveryCode } = await service.createAccount({
+            name: displayName(email),
+            passphrase,
+            confirmedAdult: true,
+          });
+          await enter(
+            session,
+            { recoveryCode },
+            { email, secret, version: null, signedIn: true, freshDevice: false },
+          );
+          return true;
+        },
+        () => linkFor(email),
+      );
+    },
+
+    async cloudRetry() {
+      const a = active;
+      if (!a?.cloud || !cloud) return;
+      if (!a.cloud.signedIn) {
+        try {
+          await cloud.auth.signIn(a.cloud.email, a.cloud.secret);
+          a.cloud.signedIn = true;
+        } catch {
+          set({ cloud: state.cloud ? { ...state.cloud, sync: 'offline' } : null });
+          return;
+        }
+      }
+      await a.cloud.link.push();
     },
   };
 }

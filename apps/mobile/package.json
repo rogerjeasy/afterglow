@@ -19,10 +19,12 @@
     "@afterglow/core": "workspace:*",
     "@afterglow/design-system": "workspace:*",
     "@afterglow/simulator": "workspace:*",
+    "amazon-cognito-identity-js": "6.3.22",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@afterglow/vault-service": "workspace:*",
     "@playwright/test": "1.65.1",
     "@types/node": "22",
     "@types/pngjs": "6.0.5",

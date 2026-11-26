@@ -1,4 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
+import { fetchVaultApi } from '../cloud/api';
+import { cognitoAuth } from '../cloud/auth';
+import { cloudConfig } from '../cloud/config';
 import { foodIndex } from '../data/foodkeeper';
 import { loadDemoHousehold } from '../demo/household';
 import { browserStorage } from '../household/store';
@@ -17,6 +20,10 @@ export function getSpaceController(): SpaceController {
           ? crypto.randomUUID().slice(0, 12)
           : Math.random().toString(36).slice(2, 14),
       seedDemo: (store) => loadDemoHousehold(store, foodIndex),
+      // Cloud accounts only when this build is connected to a deployed account service.
+      ...(cloudConfig
+        ? { cloud: { auth: cognitoAuth(cloudConfig), api: fetchVaultApi(cloudConfig.apiUrl) } }
+        : {}),
     });
   }
   return singleton;
@@ -46,9 +53,13 @@ export function useIdleLock(): void {
       c.checkIdle();
       c.checkSaveHealth();
     }, 5000);
+    // Back online: a cloud account catches up (CA-10).
+    const online = (): void => void c.cloudRetry();
+    window.addEventListener('online', online);
     return () => {
       for (const e of events) window.removeEventListener(e, touch);
       window.clearInterval(id);
+      window.removeEventListener('online', online);
     };
   }, []);
 }
