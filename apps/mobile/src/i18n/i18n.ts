@@ -6,7 +6,7 @@ import { CATALOGUES, ENGLISH, type Key, LANGS, type Lang } from './catalogue';
  * a catalogue for it, else English. The page's `lang` follows, so screen readers and
  * the read-aloud voice speak the right language.
  */
-const KEY = 'afterglow.lang.v1';
+const KEY = 'afterglow.lang.v1'; // gitleaks:allow (a localStorage key name, not a secret)
 const isLang = (x: unknown): x is Lang => typeof x === 'string' && x in LANGS;
 
 function initial(): Lang {
