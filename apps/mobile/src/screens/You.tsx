@@ -5,18 +5,49 @@ import { Button, ChoiceChip, Notice, Section, TextField } from '../night-shell/c
 import { token } from '../night-shell/theme';
 import { useSpace } from '../spaces/useSpace';
 
-type Mode = 'home' | 'create' | 'signin' | 'recover';
+type Mode = 'home' | 'create' | 'signin' | 'recover' | 'cloudCreate' | 'cloudSignIn';
 type Manage = null | 'passphrase' | 'recovery' | 'delete';
 
 function Honest(): ReactNode {
   return (
     <Notice>
-      This account lives on this device only: there is no server yet, so it does not follow you to
-      another phone. Your passphrase never leaves the device and cannot be reset by anyone. If you
-      forget it and lose your recovery code, your data cannot be recovered. That is the price of
-      keeping it private.
+      A device-only account lives on this phone and does not follow you to another one; for that,
+      create an account with your email instead. Your passphrase never leaves the device and cannot
+      be reset by anyone. If you forget it and lose your recovery code, your data cannot be
+      recovered. That is the price of keeping it private.
     </Notice>
   );
+}
+
+/** What a cloud account is, and is not (cloud-accounts CA-09, CA-10). */
+function CloudHonest(): ReactNode {
+  return (
+    <Notice>
+      Your household is encrypted on this device before it goes anywhere. The server keeps only that
+      ciphertext, so nobody else can read it: not another user, and not Afterglow. Your passphrase
+      never leaves the device. Sign in on another phone with the same email and passphrase and your
+      household is there; with no network, this phone still opens it. If you forget the passphrase
+      and lose your recovery code, nobody can recover the data. That is the price of keeping it
+      private.
+    </Notice>
+  );
+}
+
+function syncWords(sync: string, at: number | null): string {
+  const when =
+    at === null
+      ? ''
+      : ` at ${new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  switch (sync) {
+    case 'synced':
+      return `Saved to your account${when}.`;
+    case 'syncing':
+      return 'Saving to your account…';
+    case 'offline':
+      return 'Offline. Changes are saved on this phone and will reach your account when you are back online.';
+    default:
+      return 'Your account could not be reached. Changes are safe on this phone.';
+  }
 }
 
 function RecoveryCodeCard({
@@ -83,8 +114,10 @@ export function You({
   const [code, setCode] = useState('');
   const [current, setCurrent] = useState('');
   const [sure, setSure] = useState(false);
+  const [email, setEmail] = useState('');
 
   const resetFields = (): void => {
+    setEmail('');
     setName('');
     setPass('');
     setPass2('');
@@ -104,8 +137,10 @@ export function You({
     return v.appliances.length > 0 || v.home !== null;
   })();
   const policy = pass.length > 0 ? checkPassphrase(pass, name) : null;
+  // Cloud-linked accounts open through "Sign in", so the server copy stays in step.
+  const localAccounts = space.accounts.filter((a) => !(a.id in space.cloudLinks));
   const mismatch = pass2.length > 0 && pass !== pass2;
-  const selected = accountId ?? space.accounts[0]?.id ?? null;
+  const selected = accountId ?? localAccounts[0]?.id ?? null;
   // Lockout is read from the service for the account in view, so it cannot be lost by navigating.
   const lockTarget = space.kind === 'account' ? (space.account?.id ?? null) : selected;
   const lockedUntil = controller.retryUntil(lockTarget);
@@ -200,6 +235,17 @@ export function You({
               </span>
             </Notice>
           </div>
+        ) : null}
+        {space.cloud ? (
+          <Section title="Your account">
+            <Notice>
+              Signed in as {space.cloud.email}.{' '}
+              {syncWords(space.cloud.sync, space.cloud.lastSyncedAt)}
+            </Notice>
+            {space.cloud.sync === 'offline' || space.cloud.sync === 'error' ? (
+              <Button onClick={() => void controller.cloudRetry()}>Try again now</Button>
+            ) : null}
+          </Section>
         ) : null}
         <Section title="Your private space">
           <Notice>
@@ -376,6 +422,181 @@ export function You({
   }
 
   // ---------------------------------------------------------------------- guest
+  if (space.cloudPending) {
+    return frame(
+      <>
+        {messages}
+        <Section title="Check your email">
+          <Notice>
+            We sent a code to {space.cloudPending.email}. Enter it here to finish creating your
+            account. It can take a minute to arrive; look in spam too.
+          </Notice>
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <TextField
+              label="Code from the email"
+              name="one-time-code"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={setCode}
+            />
+            <Button
+              variant="primary"
+              disabled={code.trim().length < 6 || space.busy}
+              onClick={() => {
+                void controller.cloudConfirm(code).then((ok) => {
+                  if (ok) {
+                    resetFields();
+                    setMode('home');
+                  }
+                });
+              }}
+            >
+              {space.busy ? 'Creating your account…' : 'Confirm and create my account'}
+            </Button>
+            <Button disabled={space.busy} onClick={() => void controller.cloudResend()}>
+              Send a new code
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                controller.cloudCancel();
+                resetFields();
+                setMode('home');
+              }}
+            >
+              Cancel
+            </Button>
+          </form>
+        </Section>
+      </>,
+    );
+  }
+
+  if (mode === 'cloudCreate') {
+    const cloudPolicy = pass.length > 0 ? checkPassphrase(pass, email) : null;
+    const ready =
+      email.includes('@') && cloudPolicy?.ok === true && pass === pass2 && adult && !space.busy;
+    return frame(
+      <>
+        {messages}
+        <Section title="Create your account">
+          <CloudHonest />
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <TextField
+              label="Email"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={setEmail}
+              hint="For signing in and the confirmation code. Never shared."
+            />
+            <TextField
+              label="Passphrase"
+              type="password"
+              autoComplete="new-password"
+              value={pass}
+              onChange={setPass}
+              error={cloudPolicy && !cloudPolicy.ok ? cloudPolicy.reason : null}
+              hint="At least 12 characters. A few ordinary words works well. It never leaves this phone."
+            />
+            <TextField
+              label="Passphrase again"
+              type="password"
+              autoComplete="new-password"
+              value={pass2}
+              onChange={setPass2}
+              error={mismatch ? 'These do not match yet.' : null}
+            />
+            <ChoiceChip
+              label={adult ? 'Yes, I am 18 or older' : 'I am 18 or older'}
+              selected={adult}
+              onClick={() => setAdult(!adult)}
+            />
+            {guestHasData ? (
+              <ChoiceChip
+                label={
+                  moveData
+                    ? 'Moving what I have now into the account'
+                    : 'Start the account empty (keep what I have as a guest)'
+                }
+                selected={moveData}
+                onClick={() => setMoveData(!moveData)}
+              />
+            ) : null}
+            <Button
+              variant="primary"
+              disabled={!ready}
+              onClick={() => {
+                void controller.cloudSignUp({
+                  email,
+                  passphrase: pass,
+                  confirmedAdult: adult,
+                  moveGuestData: guestHasData && moveData,
+                });
+              }}
+            >
+              {space.busy ? 'Preparing…' : 'Create account'}
+            </Button>
+            <Button variant="ghost" onClick={() => go('home')}>
+              Cancel
+            </Button>
+          </form>
+        </Section>
+      </>,
+    );
+  }
+
+  if (mode === 'cloudSignIn') {
+    const ready = email.includes('@') && pass.length > 0 && !space.busy && !locked;
+    return frame(
+      <>
+        {messages}
+        <Section title="Sign in">
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <TextField
+              label="Email"
+              name="email"
+              autoComplete="username"
+              value={email}
+              onChange={setEmail}
+            />
+            <TextField
+              label="Passphrase"
+              type="password"
+              autoComplete="current-password"
+              value={pass}
+              onChange={setPass}
+            />
+            <Button
+              variant="primary"
+              disabled={!ready}
+              onClick={() => {
+                void controller.cloudSignIn(email, pass).then((ok) => {
+                  resetFields();
+                  if (ok) setMode('home');
+                });
+              }}
+            >
+              {space.busy ? 'Opening your household…' : 'Sign in'}
+            </Button>
+            <Button variant="ghost" onClick={() => go('home')}>
+              Cancel
+            </Button>
+          </form>
+        </Section>
+      </>,
+    );
+  }
+
   if (mode === 'create') {
     const ready =
       name.trim().length > 0 && policy?.ok === true && pass === pass2 && adult && !space.busy;
@@ -467,7 +688,7 @@ export function You({
         {messages}
         <Section title={recovering ? 'Use your recovery code' : 'Sign in'}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {space.accounts.map((a) => (
+            {localAccounts.map((a) => (
               <ChoiceChip
                 key={a.id}
                 label={a.name}
@@ -560,12 +781,31 @@ export function You({
       </Section>
       <Section title="Accounts">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Button variant="primary" onClick={() => go('create')}>
-            Create an account
-          </Button>
-          {space.accounts.length > 0 ? (
-            <Button onClick={() => go('signin')}>
-              Sign in ({space.accounts.length} on this device)
+          {space.cloudAvailable ? (
+            <>
+              <Button variant="primary" onClick={() => go('cloudCreate')}>
+                Create an account
+              </Button>
+              <Button onClick={() => go('cloudSignIn')}>Sign in</Button>
+              <Notice>
+                Your household, encrypted, on every phone you sign in on. The server only ever holds
+                ciphertext.
+              </Notice>
+              <Button variant="ghost" onClick={() => go('create')}>
+                Keep an account on this device only
+              </Button>
+            </>
+          ) : (
+            <Button variant="primary" onClick={() => go('create')}>
+              Create an account
+            </Button>
+          )}
+          {localAccounts.length > 0 ? (
+            <Button
+              variant={space.cloudAvailable ? 'ghost' : 'secondary'}
+              onClick={() => go('signin')}
+            >
+              Open a device-only account ({localAccounts.length})
             </Button>
           ) : null}
         </div>

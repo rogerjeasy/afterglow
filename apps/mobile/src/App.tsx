@@ -279,8 +279,10 @@ export function App(): ReactNode {
       ) : space.kind === 'account' ? (
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px 8px' }}>
           <Notice>
-            Signed in as {space.account?.name ?? 'your account'}. Your household is saved encrypted
-            on this device.
+            Signed in as {space.cloud?.email ?? space.account?.name ?? 'your account'}.{' '}
+            {space.cloud
+              ? 'Your household is encrypted on this device and kept in step with your account.'
+              : 'Your household is saved encrypted on this device.'}
             <div style={{ marginTop: 10 }}>
               <Button size="sm" variant="primary" onClick={() => void controller.lock()}>
                 Lock
