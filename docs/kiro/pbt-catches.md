@@ -223,3 +223,29 @@ tour step 5 in night: 1 pixel at r=166, ceiling red.700 = 165   (after a first f
 **Fix:** only the body fades (`fillOpacity`, one layer). The outline is opaque, in `nontext.muted`, which is far below every ceiling, so no blend involving it can approach one.
 
 **What was wrong:** the implementation. Worth recording because the breach was one level in 255 on one pixel of a 56 px ghost, invisible to a reviewer, and a design rule written as "keep it dim" would never have caught it. A ceiling checked on every pixel did.
+
+---
+
+## 2026-11-26 · CA-10 · two devices minted the same person id, so a merge silently kept one
+
+**Requirement:** CA-10 (sync never drops an event; a household is the same on every device after a merge).
+
+**How it surfaced:** not a property at first. The cloud-account integration test (`apps/mobile/src/spaces/cloud.test.ts`, which drives two devices through the real controller and the real `services/vault` handler) added "Paulo" on device two and "Mom" on device one. After the 409 and the merge, device one showed only "Mom". Tracing the merge showed both events present, each with `personId: "p1"`.
+
+**Root cause (implementation, latent since Wave 1.5):** the household store made ids as `prefix + lamport`. Unique on one device; on two devices sharing a household, both mint `p1`, and the roster's last-writer-wins correctly keeps one. Harmless until sync existed, then silent data loss.
+
+**Fix:** ids are qualified by the device epoch (`p7.dev-<random>`), which is unique per device by construction. A new property, `CA-10 people added on two devices are all there after a merge (ids never collide)`, builds two real stores and checks the merged roster; with the old id code restored it fails on the first case.
+
+**What was wrong:** the implementation, and a gap in the first merge properties, which generated ids that never collided.
+
+---
+
+## 2026-11-26 · CA-10 · a merge could overwrite an edit made a moment before
+
+**Requirement:** CA-10.
+
+**How it surfaced:** the same integration test, offline then back online: "Paulo" was added offline and sync ran at once. The merge read the last *saved* copy (the save is debounced by 150 ms), so Paulo was not in it, and applying the merge replaced the in-memory data, losing him.
+
+**Fix:** each sync round saves pending edits first, and applying a merge merges once more with what is in memory at that moment, so nothing typed during the network round-trip is lost. The first version of the flush re-armed the sync on every round (the link counted its own save as a new edit) and ended in "error"; the link now ignores its own save.
+
+**What was wrong:** the implementation. Recorded because it is the classic sync bug (a merge that clobbers local state), and it was caught before any person's data existed.
