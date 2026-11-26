@@ -49,6 +49,8 @@ The fusion module and tokens are not demo artifacts; they are the first two real
 
 - [x] Design pass (`.kiro/specs/night-shell` NS-13..NS-17): sources one tap away behind "How I know", which still says "uses defaults" when one is in play; the Hearth says in words how it knows the power state; Hearth compartments are tombstones and the people tile shows the ghosts themselves; Séance ghosts are drawn at 0.35 until heard; add-forms and list editing fold; no ambient loop anywhere (Wisp's bob removed per `night-vision.md` rule 7). Screens are 7% to 34% shorter, guarded by measured height budgets. 3 pure tests, 6 browser tests, 126 browser tests green in all.
 
+- [x] **Real accounts on AWS** (`.kiro/specs/cloud-accounts`, CA-01..CA-12): email plus one passphrase, zero-knowledge (the device derives a Cognito login secret and a vault key that never leaves it; AWS stores ciphertext only), `services/vault` behind API Gateway with a Cognito JWT authorizer, keyed only by the verified `sub`; sync that merges two devices' event logs; offline sign-in from the device's encrypted copy. **Deployed** to account 503002144480 (`eu-central-1`, `dev`): bootstrap and the regional stack, 92 resources. Live-checked with two throwaway users: isolation, ciphertext only, cross-device restore. Two sync bugs and five security-review findings fixed, each with a test (`pbt-catches.md`). Still to do: forgotten-passphrase reset by email code, passkeys.
+
 **Open question blocking a real crowd map (Q1):** change-only reports and a 30-minute window cannot hold a long outage. Needs a privacy review. See `.kiro/specs/cells/requirements.md`.
 
 **Known gaps to close next (in order of value):** CI has never run on GitHub; core is not yet run on Hermes (0.1; Node and Chromium are done); the responsive/overflow pass and the 200% text and 320 px pixel-scan variants (0.6); no `trust anchor` is pinned and no table exists until the `afterglow-formulary` repo and its review pipeline are built (separate repo); a service-worker cache so the table works offline; `heliograph` (1.8).
@@ -162,7 +164,7 @@ TypeScript Lambda (Node 24), Python 3.13 jobs, Java 17 Flink. Real code, real Ia
 - [ ] **6.6 Restoration-forecast job** (Python) — weekly GBM over adherence history; precomputed estimates per cell/stage.
 - [ ] **6.7 Alerting service** — SNS → FCM/APNs/Web Push, Twilio/Africa's Talking SMS, Amazon Connect IVR; dedup; storm priorities.
 - [ ] **6.8 Roster relay** — WebSocket + DynamoDB TTL queue; ciphertext + routing only; ≤7-day retention.
-- [ ] **6.9 Identity** — Ed25519 device tokens + Play Integrity/App Attest; optional Cognito accounts; institutional SSO.
+- [~] **6.9 Identity** — Ed25519 device tokens + Play Integrity/App Attest; optional Cognito accounts (done and deployed, see cloud-accounts); institutional SSO.
   - [x] _Slice done (local, zero-knowledge):_ optional accounts with encrypted per-account vaults, isolated spaces (guest, demo, account), recovery code, throttling, idle lock, page-hardening headers. See `.kiro/specs/accounts`. Server accounts (Cognito, passkeys, OTP, ciphertext sync, per-account authorisation) are the remaining human-gated part.
 - [ ] **6.10 Open-data publisher** — Glue/Athena over S3 Parquet; nightly k-anonymous export with DCAT.
 - [ ] **6.11 Infra** — Terraform modules + per-region stacks (af-south-1, eu-central-1, us-east-1, ap-south-1, me-south-1); AppConfig flags; OpenTelemetry; SLO alarms; storm-mode control plane; chaos drill harness.

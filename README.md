@@ -59,7 +59,8 @@ The app runs fully offline in the browser. Install it as a PWA on a phone and tu
 Real and tested:
 - The deterministic core in [`packages/core`](packages/core/src): events, cells and k-anonymity, schedules, thermal models, USDA FoodKeeper rules over all 661 products, formulary clocks, the energy planner, CO Guard, the Heliograph codec and receiver, the restoration estimator, and alerts that gather all of them into one sourced, deduplicated list.
 - The Night Shell design system: luminance tokens and a pixel scanner that fails the build if any pixel on any screen exceeds the mode's brightness ceiling.
-- The web app, local encrypted accounts (AES-256-GCM, PBKDF2 with 600k iterations), the formulary signing pipeline, and the Terraform for five AWS regions (planned and policy-checked, never applied).
+- **Real accounts, live on AWS** (`eu-central-1`): sign up with an email and one passphrase, and your household follows you to any phone. It is encrypted on the device first (AES-256-GCM, PBKDF2 at 600k rounds), so AWS stores only ciphertext; API Gateway checks every request's Cognito token, and the vault function keys data only by the verified user id, so no account can reach another's. Property tests prove the isolation across thousands of interleaved requests, and a live check proved it against the deployed stack.
+- The web app, the formulary signing pipeline, and the Terraform for five AWS regions (one deployed; all policy-checked).
 
 Simulated, and labelled as simulated in the app:
 - The neighbourhood on the Lantern map is a seeded simulation of about 900 devices. Its reports still go through the real k-anonymity code.
@@ -70,7 +71,7 @@ Simulated, and labelled as simulated in the app:
 
 Afterglow was built spec-first in Kiro. Everything below is in the repository.
 
-**Specs: 19 modules, EARS requirements traced to property tests.** Each module in [`.kiro/specs/`](.kiro/specs) has `requirements.md` written in EARS with ids such as `GS-07` or `CE-03`, and a `tasks.md`. Every id appears in the name of the property test that proves it, so `grep CE-03` shows the requirement, the task and the test together.
+**Specs: 20 modules, EARS requirements traced to property tests.** Each module in [`.kiro/specs/`](.kiro/specs) has `requirements.md` written in EARS with ids such as `GS-07` or `CE-03`, and a `tasks.md`. Every id appears in the name of the property test that proves it, so `grep CE-03` shows the requirement, the task and the test together.
 
 **Steering: 9 files, three inclusion modes.** Four safety invariants are always included: [`fail-closed`](.kiro/steering/fail-closed.md), [`privacy-aggregation`](.kiro/steering/privacy-aggregation.md), [`night-vision`](.kiro/steering/night-vision.md) and [`label-only-medicine`](.kiro/steering/label-only-medicine.md). [`terraform-regions`](.kiro/steering/terraform-regions.md) loads only for `infra/**`. [`release-checklist`](.kiro/steering/release-checklist.md) is manual.
 
@@ -95,7 +96,7 @@ Afterglow was built spec-first in Kiro. Everything below is in the repository.
 **Skills: 4** in [`.kiro/skills/`](.kiro/skills): EARS authoring, property-test authoring, formulary review and Kiro evidence.
 
 **Evidence, not claims.**
-- [`docs/kiro/pbt-catches.md`](docs/kiro/pbt-catches.md): 12 real bugs found by property tests and the pixel scan that example tests missed, each with its shrunk counterexample. One example: back-to-back Heliograph repeats spelled a false frame, so three messages could not be read at all.
+- [`docs/kiro/pbt-catches.md`](docs/kiro/pbt-catches.md): 14 real bugs found by property tests, the pixel scan and integration tests that example tests missed, each with its shrunk counterexample. One example: back-to-back Heliograph repeats spelled a false frame, so three messages could not be read at all.
 - [`docs/kiro/experiments.md`](docs/kiro/experiments.md): what was measured about Kiro's hooks and permissions, including inconclusive results.
 - [`docs/kiro/implementation-plan.md`](docs/kiro/implementation-plan.md): the live plan, with what is done and what is not.
 
@@ -108,6 +109,7 @@ apps/mobile            web PWA today (Expo native targets planned), the five tab
 packages/design-system  Night Shell tokens, luminance maths, pixel scanner
 tools/simulator         seeded neighbourhood used by the demo and the tests
 afterglow-formulary     proposal → review → approval → Ed25519-signed snapshot pipeline (no drug data yet)
+services/vault          the vault API: encrypted records keyed by the verified Cognito user id (Lambda, Node 24)
 afterglow-crew          nightly checks, regression triage and digest (Python, Hypothesis)
 infra                   Terraform: bootstrap + regional stacks, KMS, S3, DynamoDB, identity, edge, alerts
 ```

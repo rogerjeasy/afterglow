@@ -4,10 +4,13 @@ This directory creates and manages Afterglow's AWS resources. **You apply it; no
 applies itself.** There is no automation that can create, change or delete resources, by design
 (`AGENTS.md`, architecture ADR-016).
 
-Everything here was checked offline: `terraform validate`, 63 plan-level tests against a mocked
-AWS provider, deliberate-regression ("mutation") checks, and a Checkov scan (0 failed). **It has
-not been planned or applied against a real AWS account**, because no credentials were available.
-Read "What could still go wrong on first apply" before you run it.
+Everything here is checked offline: `terraform validate`, plan-level tests against a mocked AWS
+provider, deliberate-regression ("mutation") checks, and a Checkov scan (0 failed).
+
+**Deployed 2026-11-26** to account 503002144480, `eu-central-1`, environment `dev`: bootstrap
+(20 resources) and the regional stack (72), with deletion protection on. The founder approved
+each plan before it was applied (`AGENTS.md`, scoped exception). A post-apply plan shows no drift.
+The live check (two throwaway users, then deleted) is recorded in `.kiro/specs/cloud-accounts/tasks.md`.
 
 ## Layout
 
@@ -181,6 +184,26 @@ The things that *do* bill while idle are deliberately **not** here:
 | A `cell_state` index "by region and time" | In a single-region table the region is constant, which makes a hot partition; the tile builder reads the change stream instead | If a real access path appears |
 
 Set `table_max_write_units` and `table_max_read_units` as a brake against runaway clients.
+
+## What went wrong on the first real apply
+
+- **Cognito refused the app client**: refresh-token rotation cannot be combined with
+  `ALLOW_REFRESH_TOKEN_AUTH`, and the app's SRP client refreshes through that flow. Rotation was
+  dropped (the app keeps tokens in memory only; revocation stays on). 64 of 72 resources had been
+  created; a re-plan created the remaining 8 and changed nothing else.
+
+## The vault API
+
+`modules/vault-api` puts API Gateway with a Cognito JWT authorizer in front of one function that
+stores each account's encrypted vault record, keyed only by the verified `sub`
+(`.kiro/specs/cloud-accounts`). Build its bundle before any plan:
+
+```bash
+pnpm --filter @afterglow/vault-service build      # writes services/vault/dist/index.mjs
+```
+
+`terraform output accounts` gives the values the app needs; they go in
+`apps/mobile/src/cloud/config.json`, and the API and Cognito hosts in the CSP in `apps/mobile/vercel.json`.
 
 ## What could still go wrong on first apply
 
