@@ -35,6 +35,11 @@ test('with a home the night is drawn, said in words, and sourced', async ({ page
   await expect(page.getByText(/falls to 15 °C/)).toBeVisible();
   await expect(page.getByText(/Likely between /)).toBeVisible();
   await expect(page.getByText(/The axis covers the next 12 h, a default\./)).toBeVisible();
+  // Sources sit one tap away (NS-13).
+  await page
+    .locator('[data-tour="graveyard"]')
+    .getByRole('button', { name: /^How I know/ })
+    .click();
   await expect(page.getByText('thermal-building-v1').first()).toBeVisible();
   await expect(page.getByText('archetype band')).toBeVisible();
   // The chart is one labelled image whose label is the same sentence.
@@ -107,6 +112,12 @@ test('an unknown building is a wide band and says so, never a good guess', async
   await page.goto('/#/plan');
   await page.waitForSelector('main');
   await expect(page.getByText(/I do not know your building, so this is a wide band/)).toBeVisible();
+  // The default is named on the closed control, and in full once it is opened (NS-13).
+  const control = page
+    .locator('[data-tour="graveyard"]')
+    .getByRole('button', { name: /^How I know/ });
+  await expect(control).toHaveText(/uses defaults/);
+  await control.click();
   await expect(page.getByText('default band').first()).toBeVisible();
 });
 

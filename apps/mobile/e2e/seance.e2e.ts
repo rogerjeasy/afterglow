@@ -34,7 +34,10 @@ test('marking someone safe by hand makes the ghost solid, and says you marked it
   page,
 }) => {
   await openDemoSeance(page);
-  await page.getByRole('button', { name: 'They told me they are safe' }).first().click();
+  await page
+    .getByRole('button', { name: /^They told me .* is safe$/ })
+    .first()
+    .click();
   await expect(page.getByText(/Safe · .* · you marked it/)).toBeVisible();
 });
 

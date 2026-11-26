@@ -69,6 +69,10 @@ test('in a demo outage the user cell is dark, with k enforced and an estimate wi
   // The estimate shows its source, its band and how many outages it is drawn from.
   await expect(page.getByText(/^Estimate \d/)).toBeVisible();
   await expect(page.getByText(/past outages here\./).first()).toBeVisible();
+  await page
+    .locator('[data-tour="lantern-estimate"]')
+    .getByRole('button', { name: /^How I know/ })
+    .click();
   await expect(page.getByText('restoration baseline')).toBeVisible();
   await expect(page.getByText(/Thin bar: provider’s promise/)).toBeVisible();
 });

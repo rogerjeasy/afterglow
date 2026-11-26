@@ -10,7 +10,14 @@ async function open(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
 }
 
+/** The add-forms start closed (NS-15); open one if it is not open yet. */
+async function openFold(page: Page, label: string): Promise<void> {
+  const button = page.getByRole('button', { name: label, exact: true });
+  if (await button.isVisible()) await button.click();
+}
+
 async function addBank(page: Page, capacity: string, name = 'Bank'): Promise<void> {
+  await openFold(page, 'Add a battery');
   await page.getByRole('button', { name: 'Power bank', exact: true }).click();
   await page.getByLabel('Name (optional)').fill(name);
   await page.getByLabel('Capacity (Wh)').fill(capacity);
@@ -24,6 +31,7 @@ async function addLoad(
   cls: string,
   ac = false,
 ): Promise<void> {
+  await openFold(page, 'Add something to power');
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Power draw (watts)').fill(watts);
   await page.getByRole('button', { name: cls, exact: true }).click();
@@ -42,6 +50,7 @@ test('an empty plan asks for what it needs and does not invent a capacity or a w
 
 test('a battery without a capacity is refused with a reason', async ({ page }) => {
   await open(page);
+  await openFold(page, 'Add a battery');
   await page.getByRole('button', { name: 'Add battery' }).click();
   await expect(page.getByText('Enter the capacity as a number above zero.')).toBeVisible();
   await expect(page.getByText(/% now/)).toHaveCount(0);
@@ -59,7 +68,9 @@ test('a covered load, then a medical load that cannot be sustained says so plain
   // A smaller load fits.
   await addLoad(page, 'Router', '2', 'Communication');
   await expect(page.getByText('COVERED')).toBeVisible();
-  // The defaults used are named.
+  // The defaults used are named: flagged on the closed control, listed once it is open (NS-13).
+  const control = page.getByRole('button', { name: /^How I know · uses defaults/ }).last();
+  await control.click();
   await expect(page.getByText(/default: power bank: 85%/)).toBeVisible();
 });
 
