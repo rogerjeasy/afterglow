@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parseCloudConfig } from './cloud/config';
+import rawCloud from './cloud/config.json';
 
 /**
  * ACC-17: the page is served with a strict Content-Security-Policy and the
@@ -35,10 +37,17 @@ describe('Page hardening (ACC-17)', () => {
     }
   });
 
-  it('denies everything by default and never allows other origins to connect', () => {
+  it('denies everything by default and connects only to itself and the account service', () => {
     expect(csp['default-src']).toEqual(["'none'"]);
-    expect(csp['connect-src']).toEqual(["'self'"]);
+    // CA-07 / ACC-17: exactly our origin, this region's Cognito, and this deployment's vault API.
+    const expected = ["'self'"];
+    const cloud = parseCloudConfig(rawCloud);
+    if (cloud) {
+      expected.push(`https://cognito-idp.${cloud.region}.amazonaws.com`, cloud.apiUrl);
+    }
+    expect(csp['connect-src']).toEqual(expected);
     for (const [name, values] of Object.entries(csp)) {
+      if (name === 'connect-src') continue;
       expect(
         values.some((v) => /^https?:/.test(v)),
         name,

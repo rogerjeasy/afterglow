@@ -1,6 +1,6 @@
 {
-  "region": null,
-  "userPoolId": null,
-  "clientId": null,
-  "apiUrl": null
+  "region": "eu-central-1",
+  "userPoolId": "eu-central-1_NG7Vy72Q2",
+  "clientId": "3815v5r59ch2p6urp4sccqa7vu",
+  "apiUrl": "https://xfq5jnmpdf.execute-api.eu-central-1.amazonaws.com"
 }
