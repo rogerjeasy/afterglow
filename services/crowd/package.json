@@ -1,0 +1,24 @@
+{
+  "name": "@afterglow/crowd-service",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Afterglow public API: anonymous signed crowd reports, k-anonymous cells, and privacy-preserving proxies for public places and weather.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src scripts",
+    "build": "node scripts/bundle.mjs"
+  },
+  "dependencies": {
+    "@afterglow/core": "workspace:*",
+    "@afterglow/simulator": "workspace:*"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "3.1178.0",
+    "@aws-sdk/client-lambda": "3.1178.0",
+    "@types/node": "22",
+    "esbuild": "0.24.0",
+    "typescript": "5.7.2"
+  }
+}
