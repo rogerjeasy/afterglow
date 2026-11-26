@@ -218,7 +218,7 @@ export function Cold({
           </Notice>
         </Section>
       ) : (
-        <Section title="Your cold things">
+        <Section title="Your cold things" tourId="cold-first">
           <div
             style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}
           >

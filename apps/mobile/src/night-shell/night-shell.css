@@ -236,3 +236,34 @@ input:-webkit-autofill:focus {
 html {
   scroll-padding-bottom: 112px;
 }
+
+/* Guide (Wisp). The target highlight is the focus ring, nothing brighter (GD-09). */
+.tour-target {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+  border-radius: var(--radius-tile);
+}
+
+/* While the bubble is open, keep the page's end clear of it (guide design §5). */
+html.tour-open main {
+  padding-bottom: calc(var(--tour-bubble-h, 260px) + 120px) !important;
+}
+
+/* The one ambient motion the guide spends: a 4 px bob, transform only (design §8.2). */
+@keyframes wisp-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.wisp-bob {
+  animation: wisp-bob 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wisp-bob {
+    animation: none;
+  }
+}

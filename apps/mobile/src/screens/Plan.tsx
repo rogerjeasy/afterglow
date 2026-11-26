@@ -253,7 +253,7 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
       </Section>
 
       {shift.kind === 'night' && shiftText ? (
-        <Section title="Graveyard shift">
+        <Section title="Graveyard shift" tourId="graveyard">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div
               className="clock"
@@ -581,7 +581,7 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
         </div>
       </Section>
 
-      <Section title="Generator ward">
+      <Section title="Generator ward" tourId="ward">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div
             style={{

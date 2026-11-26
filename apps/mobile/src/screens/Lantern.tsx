@@ -179,7 +179,7 @@ function Crowd({ startMs, nowMs }: { startMs: number; nowMs: number }): ReactNod
         </div>
       </div>
 
-      <Section title="The neighbourhood">
+      <Section title="The neighbourhood" tourId="lantern-map">
         <LanternMap
           cols={model.cols}
           rows={model.rows}
@@ -207,7 +207,7 @@ function Crowd({ startMs, nowMs }: { startMs: number; nowMs: number }): ReactNod
         ) : null}
       </Section>
 
-      <Section title="When will power return?">
+      <Section title="When will power return?" tourId="lantern-estimate">
         <Tile
           title="Your cell"
           value={said.headline}

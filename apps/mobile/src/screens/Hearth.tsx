@@ -33,11 +33,14 @@ export function Hearth({
   onOpenCold,
   onOpenSeance,
   onStartDemo,
+  onStartTour,
 }: {
   nowMs: number;
   onOpenCold: (applianceId: string | null) => void;
   onOpenSeance: () => void;
   onStartDemo: () => void;
+  /** Starts Wisp's tour; absent where a tour cannot run (inside an account). */
+  onStartTour?: (() => void) | undefined;
 }): ReactNode {
   const { store, state, demo } = useHousehold();
   const { view } = state;
@@ -102,7 +105,7 @@ export function Hearth({
       }}
     >
       <div>
-        <StatusLine timer={timer} line={line} live={outage} />
+        <StatusLine timer={timer} line={line} live={outage} tourId="status" />
         {sim ? <SourceChip label="simulated neighbourhood (demo)" /> : null}
         {demo && (outage || scenario.verdict) ? (
           <div
@@ -129,6 +132,7 @@ export function Hearth({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
           {assessments.map((a) => {
             const text = applianceTileText(a);
+            const firstFridge = assessments.find((x) => x.model.appliance.class === 'fridge') === a;
             return (
               <Tile
                 key={a.model.appliance.id}
@@ -138,6 +142,7 @@ export function Hearth({
                 sources={applianceSources(a, thermal.APPLIANCE_MODEL_VERSION)}
                 live={outage}
                 onClick={() => onOpenCold(a.model.appliance.id)}
+                tourId={firstFridge ? 'tile-fridge' : undefined}
               />
             );
           })}
@@ -179,6 +184,7 @@ export function Hearth({
               sources={['your list']}
               live={outage}
               onClick={onOpenSeance}
+              tourId="tile-people"
             />
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
@@ -263,6 +269,11 @@ export function Hearth({
             >
               Power just went out
             </Button>
+            {onStartTour ? (
+              <Button variant="ghost" style={{ width: '100%' }} onClick={onStartTour}>
+                Show me a night with Wisp, the guide
+              </Button>
+            ) : null}
           </div>
         )}
       </div>

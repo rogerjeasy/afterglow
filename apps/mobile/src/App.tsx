@@ -1,5 +1,20 @@
 import type { LuminanceMode } from '@afterglow/design-system';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { foodIndex } from './data/foodkeeper';
+import { Wisp, WispFinish } from './guide/Wisp';
+import { readFacts } from './guide/facts';
+import { renderLine } from './guide/render';
+import { TOUR } from './guide/script';
+import {
+  type Power,
+  TOUR_OFF,
+  TOUR_OUTAGE_OFFSET_MINUTES,
+  type TourAction,
+  type TourState,
+  opacity,
+  planPower,
+  step as tourStep,
+} from './guide/tour';
 import { browserStorage } from './household/store';
 import { useHousehold, useNow } from './household/useHousehold';
 import { ModeSwitch } from './night-shell/components';
@@ -75,6 +90,30 @@ export function App(): ReactNode {
   const showOnboarding = onboarding && space.kind === 'guest';
   const wasOutage = useRef(outage);
 
+  // ------------------------------------------------------------------ the guide
+  // Wisp's one-night tour runs only in the demo space (guide spec GD-03). The pure
+  // machine in guide/tour.ts decides; this shell only carries it out.
+  const [tour, setTour] = useState<TourState>(TOUR_OFF);
+  // Whether an outage has ended during this tour: "power is back", not just "on".
+  const [tourEnded, setTourEnded] = useState(false);
+  const tourAct = (a: TourAction): void => setTour((t) => tourStep(t, a, TOUR.length));
+  const tourIndex = tour.kind === 'on' ? tour.index : null;
+  const startTour = (): void => {
+    const c = getSpaceController();
+    if (c.getState().kind === 'account') return; // a tour never runs inside an account
+    if (c.getState().kind === 'guest') c.enterDemo();
+    setOnboarding(false);
+    setTourEnded(false);
+    setTour(tourStep(TOUR_OFF, 'start', TOUR.length));
+  };
+  const tourFacts = useMemo(
+    () =>
+      tour.kind === 'on'
+        ? readFacts({ view: state.view, nowMs, demo: space.kind === 'demo', foodIndex })
+        : {},
+    [tour.kind, state.view, nowMs, space.kind],
+  );
+
   useEffect(() => {
     applyMode(mode);
   }, [mode]);
@@ -86,6 +125,42 @@ export function App(): ReactNode {
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // Each step opens its own tab, once, when the step begins. Tapping another tab
+  // during the tour is allowed; the next step brings the visitor back.
+  useEffect(() => {
+    if (tourIndex === null) return;
+    const s = TOUR[tourIndex];
+    if (s) {
+      window.location.hash = HASH[s.tab];
+      setTab(s.tab);
+    }
+  }, [tourIndex]);
+
+  // Bring the demo to the power the step describes (GD-05). Outside the demo,
+  // planPower returns null and nothing is touched (GD-03).
+  useEffect(() => {
+    if (tourIndex === null) return;
+    const s = TOUR[tourIndex];
+    if (!s) return;
+    const power: Power = outage ? 'out' : tourEnded ? 'back' : 'on';
+    const action = planPower(space.kind, s.power, power);
+    if (action === null) return;
+    const evening = Date.now() - TOUR_OUTAGE_OFFSET_MINUTES * 60_000;
+    if (action === 'startOutage') {
+      store.startOutage(evening);
+    } else {
+      if (action === 'cycle') store.startOutage(evening);
+      store.endOutage();
+      setTourEnded(true);
+    }
+  }, [tourIndex, outage, tourEnded, space.kind, store]);
+
+  // Deep link for the tour: ?tour=1 (README, demo video). GD-11.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once, on load
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tour') === '1') startTour();
   }, []);
 
   // Deep link for demos and pixel-scan tooling: ?phase=outage[&elapsed=<minutes>]
@@ -195,6 +270,7 @@ export function App(): ReactNode {
             go('hearth');
           }}
           onStartDemo={startDemo}
+          onStartTour={startTour}
         />
       ) : tab === 'hearth' ? (
         <Hearth
@@ -205,6 +281,7 @@ export function App(): ReactNode {
           }}
           onOpenSeance={() => go('seance')}
           onStartDemo={startDemo}
+          onStartTour={space.kind === 'account' || tour.kind === 'on' ? undefined : startTour}
         />
       ) : tab === 'lantern' ? (
         <Lantern nowMs={nowMs} onStartDemo={startDemo} />
@@ -215,10 +292,37 @@ export function App(): ReactNode {
       ) : tab === 'cold' ? (
         <Cold nowMs={nowMs} selectedId={coldSelected} onSelect={setColdSelected} />
       ) : (
-        <You />
+        <You onStartTour={space.kind === 'account' ? undefined : startTour} />
       )}
 
       {showOnboarding ? null : <TabBar active={tab} onSelect={go} />}
+
+      {tour.kind === 'on' && TOUR[tour.index] ? (
+        <Wisp
+          line={renderLine(TOUR[tour.index] as (typeof TOUR)[number], tourFacts).text}
+          target={(TOUR[tour.index] as (typeof TOUR)[number]).target}
+          index={tour.index}
+          length={TOUR.length}
+          opacity={opacity(tour.index, TOUR.length)}
+          nextLabel={(TOUR[tour.index] as (typeof TOUR)[number]).nextLabel}
+          onNext={() => tourAct('next')}
+          onBack={() => tourAct('back')}
+          onSkip={() => tourAct('skip')}
+        />
+      ) : tour.kind === 'done' ? (
+        <WispFinish
+          onSetUp={() => {
+            controller.exitDemo();
+            setTour(TOUR_OFF);
+            setOnboarding(true);
+          }}
+          onExplore={() => setTour(TOUR_OFF)}
+          onReplay={() => {
+            setTourEnded(false);
+            tourAct('restart');
+          }}
+        />
+      ) : null}
 
       {/* Lights-Out scrim: fades to pure black during the transition. */}
       <div

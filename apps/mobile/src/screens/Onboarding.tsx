@@ -33,10 +33,13 @@ const COLD_CHOICES: readonly { cls: household.AppliancePayload['class']; label: 
 export function Onboarding({
   onFinish,
   onStartDemo,
+  onStartTour,
 }: {
   /** Called when setup ends, however it ends. */
   onFinish: (how: 'done' | 'skipped') => void;
   onStartDemo: () => void;
+  /** Starts Wisp's one-night tour in the demo (guide spec GD-11). */
+  onStartTour: () => void;
 }): ReactNode {
   const [step, setStep] = useState<StepId>('welcome');
   const go = (s: StepId): void => {
@@ -99,6 +102,10 @@ export function Onboarding({
             onStartDemo();
           }}
           onSkip={() => onFinish('skipped')}
+          onTour={() => {
+            onFinish('skipped');
+            onStartTour();
+          }}
         />
       ) : step === 'cold' ? (
         <ColdStep onBack={() => go(previousStep(step))} onNext={() => go(nextStep(step))} />
@@ -117,10 +124,12 @@ function Welcome({
   onStart,
   onDemo,
   onSkip,
+  onTour,
 }: {
   onStart: () => void;
   onDemo: () => void;
   onSkip: () => void;
+  onTour: () => void;
 }): ReactNode {
   const [previewing, setPreviewing] = useState(false);
   useEffect(() => {
@@ -165,6 +174,7 @@ function Welcome({
         <Button variant="primary" style={{ minHeight: 72 }} onClick={onStart}>
           Set it up (about 2 minutes)
         </Button>
+        <Button onClick={onTour}>Take the one-minute tour with Wisp</Button>
         <Button onClick={onDemo}>Show me a simulated night instead</Button>
         <Button variant="ghost" onClick={onSkip}>
           Skip for now

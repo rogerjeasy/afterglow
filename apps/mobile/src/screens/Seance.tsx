@@ -523,7 +523,7 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
                 <Button size="sm" onClick={() => simulate(false)}>
                   Simulate a message (standard)
                 </Button>
-                <Button size="sm" onClick={() => simulate(true)}>
+                <Button size="sm" onClick={() => simulate(true)} tourId="seance-simulate">
                   Simulate a message (fast)
                 </Button>
               </div>

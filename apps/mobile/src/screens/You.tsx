@@ -63,7 +63,12 @@ function RecoveryCodeCard({
   );
 }
 
-export function You(): ReactNode {
+export function You({
+  onStartTour,
+}: {
+  /** Starts Wisp's tour (guide spec GD-11). */
+  onStartTour?: (() => void) | undefined;
+} = {}): ReactNode {
   const { controller, space } = useSpace();
   const nowMs = useNow(1000);
   const [mode, setMode] = useState<Mode>('home');
@@ -176,6 +181,7 @@ export function You(): ReactNode {
         <Button variant="primary" onClick={() => controller.exitDemo()}>
           Exit demo and discard it
         </Button>
+        {onStartTour ? <Button onClick={onStartTour}>Replay the tour with Wisp</Button> : null}
       </Section>,
     );
   }
@@ -568,6 +574,11 @@ export function You(): ReactNode {
         <Notice>
           The demo is a simulated household and neighbourhood. Nothing in it is saved or sent.
         </Notice>
+        {onStartTour ? (
+          <Button variant="primary" onClick={onStartTour}>
+            Take the one-minute tour with Wisp
+          </Button>
+        ) : null}
         <Button onClick={() => controller.enterDemo()}>Open the demo</Button>
         <Button
           variant="ghost"
