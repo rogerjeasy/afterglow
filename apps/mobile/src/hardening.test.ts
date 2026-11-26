@@ -45,6 +45,8 @@ describe('Page hardening (ACC-17)', () => {
     if (cloud) {
       expected.push(`https://cognito-idp.${cloud.region}.amazonaws.com`, cloud.apiUrl);
     }
+    // The anonymous public API (crowd reports, cells, places, weather): crowd-reports CR-06.
+    if (typeof rawCloud.publicApiUrl === 'string') expected.push(rawCloud.publicApiUrl);
     expect(csp['connect-src']).toEqual(expected);
     for (const [name, values] of Object.entries(csp)) {
       if (name === 'connect-src') continue;
@@ -71,11 +73,13 @@ describe('Page hardening (ACC-17)', () => {
     expect(header('Cross-Origin-Resource-Policy')).toBe('same-origin');
   });
 
-  it('allows camera and microphone to our own origin only; denies the rest', () => {
+  it('allows camera, microphone and location to our own origin only; denies the rest', () => {
     const pp = header('Permissions-Policy');
     expect(pp).toContain('camera=(self)');
     expect(pp).toContain('microphone=(self)');
-    expect(pp).toContain('geolocation=()');
+    // Location to our own origin only, asked only when the person shares their area, and
+    // turned into a ~1 km cell on the device (crowd-reports CR-07).
+    expect(pp).toContain('geolocation=(self)');
     expect(pp).not.toMatch(/=\*/);
   });
 

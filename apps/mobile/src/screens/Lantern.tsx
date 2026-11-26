@@ -1,5 +1,6 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { formatClockTime } from '../format';
+import { useGridSense } from '../gridsense/useGridSense';
 import { useHousehold } from '../household/useHousehold';
 import {
   buildLanternModel,
@@ -23,6 +24,7 @@ import { SourceChip, StatusLine, Tile } from '../night-shell/components';
 import { Button, Notice, Section } from '../night-shell/controls';
 import { EstimateBand, LanternMap, type MapCell, MapLegend } from '../night-shell/lantern';
 import { token } from '../night-shell/theme';
+import { LiveLantern, ShareArea } from './LiveLantern';
 
 /**
  * The Lantern: the crowd-built map of where mains exists (design 7.3, 11.4).
@@ -42,6 +44,7 @@ export function Lantern({
   onStartDemo: () => void;
 }): ReactNode {
   const { store, state, demo } = useHousehold();
+  const gs = useGridSense();
   const startMs = state.view.outageStartedAtMs;
 
   return (
@@ -56,7 +59,14 @@ export function Lantern({
       }}
     >
       {!demo ? (
-        <NoCrowd onStartDemo={onStartDemo} />
+        gs.cell ? (
+          <LiveLantern cell={gs.cell} />
+        ) : (
+          <>
+            <NoCrowd onStartDemo={onStartDemo} />
+            <ShareArea />
+          </>
+        )
       ) : startMs === null ? (
         <Section title="Lantern">
           <Tile
@@ -99,7 +109,7 @@ function NoCrowd({ onStartDemo }: { onStartDemo: () => void }): ReactNode {
       <Section title="What would change that">
         <Notice>
           At least 5 devices running Afterglow in your cell, each telling the map when its power
-          changes. The crowd network is not live yet.
+          changes. Share your area below to join the live crowd map.
         </Notice>
         <Notice>
           A schedule provider for your area. None is connected yet, so no promised times are shown.

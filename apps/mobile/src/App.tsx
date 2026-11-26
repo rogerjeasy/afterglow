@@ -2,6 +2,7 @@ import type { LuminanceMode } from '@afterglow/design-system';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useAlerts } from './alerts/useAlerts';
 import { foodIndex } from './data/foodkeeper';
+import { gridSense } from './gridsense/engine';
 import { Wisp, WispFinish } from './guide/Wisp';
 import { readFacts } from './guide/facts';
 import { renderLine } from './guide/render';
@@ -168,6 +169,25 @@ export function App(): ReactNode {
       setTourEnded(true);
     }
   }, [tourIndex, outage, tourEnded, space.kind, store]);
+
+  // Grid Sense (crowd-reports CR-01): start the browser's senses once, and let the fused
+  // verdict start and end the household's outage clocks when the person allows it. Never
+  // in the demo, which has its own simulated night.
+  useEffect(() => {
+    gridSense.start();
+    gridSense.setHooks({
+      onVerdict(verdict, restoreEdge) {
+        const c = getSpaceController();
+        const sp = c.getState();
+        if (sp.kind === 'demo' || !gridSense.getState().auto) return;
+        const st = sp.store;
+        const going = st.getState().view.outageStartedAtMs !== null;
+        if (verdict === 'absent' && !going) st.startOutage(Date.now());
+        else if (verdict === 'present' && restoreEdge && going) st.endOutage();
+      },
+    });
+    return () => gridSense.setHooks(null);
+  }, []);
 
   // Deep link for the tour: ?tour=1 (README, demo video). GD-11.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once, on load

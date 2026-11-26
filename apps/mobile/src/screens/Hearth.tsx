@@ -5,6 +5,8 @@ import { useFormulary } from '../data/formulary';
 import { type DemoPhase, runScenario } from '../demo/scenario';
 import { senseText } from '../demo/senseWords';
 import { formatClockTime, formatTimer } from '../format';
+import { GridSenseCard } from '../gridsense/GridSenseCard';
+import { useGridSense } from '../gridsense/useGridSense';
 import {
   LABEL_SOURCE,
   MODEL_SOURCE,
@@ -44,6 +46,7 @@ export function Hearth({
   onStartTour?: (() => void) | undefined;
 }): ReactNode {
   const { store, state, demo } = useHousehold();
+  const gs = useGridSense();
   const { view } = state;
   const [settingUpHome, setSettingUpHome] = useState(false);
 
@@ -91,7 +94,11 @@ export function Hearth({
       : `You reported the power out at ${formatClockTime(
           view.outageStartedAtMs as number,
         )}. Not enough neighbour reports to compare yet: a cell needs at least 5 devices.`
-    : 'No outage reported. On a phone, Grid Sense listens for it. On the web you can tell the app.';
+    : !demo && gs.result.verdict === 'present'
+      ? `No outage. ${senseText(gs.result, 0).why}`
+      : !demo && gs.result.verdict === 'absent'
+        ? `Grid Sense says the power is out here: ${senseText(gs.result, gs.crowdAbsent).why} Tap "Power just went out" to start the clocks.`
+        : 'No outage reported. On a phone, Grid Sense listens for it. On the web you can tell the app.';
 
   const homeText = hoursOfSafetyText(hours);
   const homeKnown = hours.kind !== 'unknown';
@@ -130,6 +137,8 @@ export function Hearth({
           </div>
         ) : null}
       </div>
+
+      {demo ? null : <GridSenseCard />}
 
       <Section title={outage ? 'What the dark is doing' : 'If the power fails'}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>

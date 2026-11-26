@@ -16,6 +16,7 @@ import {
 import { Candle } from '../night-shell/costume';
 import { GraveyardChart } from '../night-shell/graveyard';
 import { token } from '../night-shell/theme';
+import { ForecastAndDestinations } from '../places/ForecastAndDestinations';
 import { nightText } from '../plan/graveyard';
 import {
   CLASS_LABEL,
@@ -129,7 +130,7 @@ function NumberField({
  * default is labelled, and anything it cannot cover is said plainly.
  */
 export function Plan({ nowMs }: { nowMs: number }): ReactNode {
-  const { store, state } = useHousehold();
+  const { store, state, demo } = useHousehold();
   const { view } = state;
 
   // ---- hours of safety
@@ -285,6 +286,9 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
           </div>
         </Section>
       ) : null}
+
+      {/* The demo is a simulated household with no real area; forecast and places are real-only. */}
+      {demo ? null : <ForecastAndDestinations home={view.home} store={store} nowMs={nowMs} />}
 
       <Section title="Candles">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
