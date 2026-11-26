@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { handlePublic, warmPlacesNow } from './handler.js';
-import { type Vapid, message, sendToCell } from './push.js';
+import { type Vapid, confirmSubscription, message, sendPage } from './push.js';
 import { dynamoCrowdStore } from './store.js';
 
 /**
@@ -14,6 +14,10 @@ const lambda = new LambdaClient({});
 const self = process.env.AWS_LAMBDA_FUNCTION_NAME ?? '';
 const deps = {
   store: null as unknown as ReturnType<typeof dynamoCrowdStore>,
+  confirmPush: async (sub: import('./push.js').PushSubscriptionJson) => {
+    const vapid = await loadVapid();
+    return vapid ? confirmSubscription(sub, vapid) : ('error' as const);
+  },
   /** Invoke this same function asynchronously to send a cell's notifications. */
   notifyCell: async (cell: string, kind: 'outage' | 'restoration', deviceCount: number) => {
     await lambda.send(
@@ -44,6 +48,9 @@ interface HttpEvent {
   readonly notifyCell?: string;
   readonly kind?: 'outage' | 'restoration';
   readonly deviceCount?: number;
+  /** Where the next page of followers starts, for large cells; and how many runs so far. */
+  readonly cursor?: string | null;
+  readonly hop?: number;
   readonly routeKey?: string;
   readonly body?: string | null;
   readonly isBase64Encoded?: boolean;
@@ -105,16 +112,46 @@ export async function handler(event: HttpEvent) {
       console.log(JSON.stringify({ route: 'notify', error: 'no VAPID key' }));
       return { ok: false };
     }
-    const r = await sendToCell(
+    const hop = Math.max(0, Math.floor(event.hop ?? 0));
+    const deviceCount = Math.max(0, Math.floor(event.deviceCount ?? 0));
+    const r = await sendPage(
       store,
       event.notifyCell,
-      message(event.kind, Math.max(0, Math.floor(event.deviceCount ?? 0))),
+      message(event.kind, deviceCount),
       vapid,
       Math.floor(Date.now() / 1000),
+      typeof event.cursor === 'string' ? event.cursor : null,
     );
+    // The next page in a fresh run (bounded, in case of a loop: 200 pages is 100 000 followers).
+    if (r.next && hop < 200) {
+      await lambda.send(
+        new InvokeCommand({
+          FunctionName: self,
+          InvocationType: 'Event',
+          Payload: new TextEncoder().encode(
+            JSON.stringify({
+              notifyCell: event.notifyCell,
+              kind: event.kind,
+              deviceCount,
+              cursor: r.next,
+              hop: hop + 1,
+            }),
+          ),
+        }),
+      );
+    }
     // Counts only: never the cell or an endpoint.
     console.log(
-      JSON.stringify({ route: 'notify', kind: event.kind, ...r, ms: Date.now() - started }),
+      JSON.stringify({
+        route: 'notify',
+        kind: event.kind,
+        sent: r.sent,
+        gone: r.gone,
+        failed: r.failed,
+        more: r.next !== null,
+        hop,
+        ms: Date.now() - started,
+      }),
     );
     return { ok: true };
   }

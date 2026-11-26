@@ -1,7 +1,7 @@
 import { cells, restoration, sensing } from '@afterglow/core';
 import { DEFAULT_CONFIG, type Neighbourhood, buildNeighbourhood } from '@afterglow/simulator';
 import { type PlacesResult, type WeatherResult, fetchPlaces, fetchWeather } from './publicData.js';
-import { parseSubscription, transition } from './push.js';
+import { type PushSubscriptionJson, parseSubscription, transition } from './push.js';
 import type { CrowdStore } from './store.js';
 
 /**
@@ -41,6 +41,8 @@ export interface PublicDeps {
   readonly warmPlaces?: (g: string) => Promise<void>;
   readonly weather?: (g: string) => Promise<WeatherResult | null>;
   /** Notify a cell's followers in the background (an asynchronous self-invocation). */
+  /** Send the confirmation push for a new subscription. */
+  readonly confirmPush?: (sub: PushSubscriptionJson) => Promise<'ok' | 'rejected' | 'error'>;
   readonly notifyCell?: (
     g: string,
     kind: 'outage' | 'restoration',
@@ -98,9 +100,6 @@ function leadingZeroBits(bytes: Uint8Array): number {
 /** The text a registration's proof of work is over: the key and the UTC day. */
 export const powText = (day: string, x: string, y: string, nonce: string): string =>
   `afterglow-device:v1:${day}:${x}.${y}:${nonce}`;
-
-/** At most this many subscriptions follow one cell: what one notify run can send. */
-const MAX_SUBS_PER_CELL = 5000;
 
 /** The same proof of work, over any subject (a push endpoint). */
 async function powOver(
@@ -424,17 +423,22 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
         }
         // Each subscription costs the same proof of work as a day key (CR-08), over its
         // endpoint, so a flood of fake ones costs a phone-second each.
-        if (!(await powOver(`afterglow-push:v1`, sub.endpoint, body?.nonce, nowMs))) {
+        if (!(await powOver('afterglow-push:v1', sub.endpoint, body?.nonce, nowMs))) {
           return err(400, `nonce must be a proof of work of ${POW_BITS} bits for today`);
         }
         if (!(await takeSlot(deps, `subreq:${req.requester ?? 'none'}`, 10, nowS))) {
           return err(429, 'too many subscriptions from here; try again in a minute');
         }
         const id = await subscriptionId(sub.endpoint);
+        // Renewing an existing subscription needs no confirmation; a new one does.
+        let known = true;
         for (const c of new Set(follow as string[])) {
-          if ((await deps.store.countSubs(c, MAX_SUBS_PER_CELL)) >= MAX_SUBS_PER_CELL) {
-            return err(429, 'this area has as many followers as one notification run can reach');
-          }
+          if (!(await deps.store.hasSub(c, id, nowS))) known = false;
+        }
+        if (!known && deps.confirmPush) {
+          const r = await deps.confirmPush(sub);
+          if (r === 'rejected') return err(400, 'the push service refused this subscription');
+          if (r === 'error') return err(503, 'could not reach the push service; try again');
         }
         for (const c of new Set(follow as string[])) {
           await deps.store.putSub(c, id, JSON.stringify(sub), nowS + 30 * DAY_S);

@@ -1,6 +1,5 @@
 import type { cells } from '@afterglow/core';
 import {
-  type AttributeValue,
   ConditionalCheckFailedException,
   DeleteItemCommand,
   DynamoDBClient,
@@ -34,9 +33,15 @@ export interface CrowdStore {
   /** Push subscriptions, stored under each followed cell. */
   putSub(cell: string, id: string, sub: string, expiresAtS: number): Promise<void>;
   deleteSub(cell: string, id: string): Promise<void>;
-  subsFor(cell: string, nowS: number): Promise<{ id: string; sub: string }[]>;
-  /** How many subscriptions follow a cell, counting up to `cap` + 1 at most. */
-  countSubs(cell: string, cap: number): Promise<number>;
+  /** One page of a cell's live subscriptions, and where the next page starts. */
+  subsPage(
+    cell: string,
+    nowS: number,
+    cursor: string | null,
+    limit: number,
+  ): Promise<{ subs: { id: string; sub: string }[]; next: string | null }>;
+  /** True when this subscription already follows this cell (and has not expired). */
+  hasSub(cell: string, id: string, nowS: number): Promise<boolean>;
 }
 
 const pad = (n: number): string => String(n).padStart(10, '0');
@@ -154,45 +159,33 @@ export function dynamoCrowdStore(
       );
     },
 
-    async subsFor(cell, nowS) {
-      const out: { id: string; sub: string }[] = [];
-      let start: Record<string, AttributeValue> | undefined;
-      do {
-        const page = await client.send(
-          new QueryCommand({
-            TableName: tables.push,
-            KeyConditionExpression: 'geohash6 = :g',
-            ExpressionAttributeValues: { ':g': { S: cell } },
-            ExclusiveStartKey: start,
-          }),
-        );
-        for (const it of page.Items ?? []) {
-          if (Number(it.expiresAt?.N ?? 0) <= nowS) continue;
-          if (it.sk?.S && it.sub?.S) out.push({ id: it.sk.S, sub: it.sub.S });
-        }
-        start = page.LastEvaluatedKey;
-      } while (start);
-      return out;
+    async subsPage(cell, nowS, cursor, limit) {
+      const page = await client.send(
+        new QueryCommand({
+          TableName: tables.push,
+          KeyConditionExpression: 'geohash6 = :g',
+          ExpressionAttributeValues: { ':g': { S: cell } },
+          Limit: limit,
+          ExclusiveStartKey: cursor ? { geohash6: { S: cell }, sk: { S: cursor } } : undefined,
+        }),
+      );
+      const subs: { id: string; sub: string }[] = [];
+      for (const it of page.Items ?? []) {
+        if (Number(it.expiresAt?.N ?? 0) <= nowS) continue;
+        if (it.sk?.S && it.sub?.S) subs.push({ id: it.sk.S, sub: it.sub.S });
+      }
+      return { subs, next: page.LastEvaluatedKey?.sk?.S ?? null };
     },
 
-    async countSubs(cell, cap) {
-      let n = 0;
-      let start: Record<string, AttributeValue> | undefined;
-      do {
-        const page = await client.send(
-          new QueryCommand({
-            TableName: tables.push,
-            KeyConditionExpression: 'geohash6 = :g',
-            ExpressionAttributeValues: { ':g': { S: cell } },
-            Select: 'COUNT',
-            Limit: cap + 1 - n,
-            ExclusiveStartKey: start,
-          }),
-        );
-        n += page.Count ?? 0;
-        start = page.LastEvaluatedKey;
-      } while (start && n <= cap);
-      return n;
+    async hasSub(cell, id, nowS) {
+      const out = await client.send(
+        new QueryCommand({
+          TableName: tables.push,
+          KeyConditionExpression: 'geohash6 = :g AND sk = :id',
+          ExpressionAttributeValues: { ':g': { S: cell }, ':id': { S: id } },
+        }),
+      );
+      return (out.Items ?? []).some((it) => Number(it.expiresAt?.N ?? 0) > nowS);
     },
 
     async claim(key, value, expiresAtS, nowS) {

@@ -85,49 +85,85 @@ export interface Vapid {
   readonly subject: string;
 }
 
-/** Send one notification to every follower of a cell; forget subscriptions the browser dropped. */
-export async function sendToCell(
+type Outcome = 'sent' | 'gone' | 'retry';
+
+async function sendOne(
+  sub: PushSubscriptionJson,
+  body: string,
+  topic: string,
+  vapid: Vapid,
+): Promise<Outcome> {
+  const webpush = (await import('web-push')).default;
+  try {
+    await webpush.sendNotification(sub, body, {
+      vapidDetails: vapid,
+      TTL: 3600,
+      urgency: 'high',
+      topic,
+      timeout: 10_000,
+    });
+    return 'sent';
+  } catch (e) {
+    const status = (e as { statusCode?: number }).statusCode;
+    // Any permanent refusal from the push service (bad, unknown, expired or not ours);
+    // only timeouts, 429 and 5xx are worth another try.
+    return status !== undefined && status >= 400 && status < 500 && status !== 429
+      ? 'gone'
+      : 'retry';
+  }
+}
+
+/**
+ * A new subscription is confirmed with a real notification before it is stored, so
+ * an address that cannot receive pushes (made up, expired, someone else's) is
+ * refused by its own push service and never takes a place.
+ */
+export async function confirmSubscription(
+  sub: PushSubscriptionJson,
+  vapid: Vapid,
+): Promise<'ok' | 'rejected' | 'error'> {
+  const body = JSON.stringify({
+    kind: 'info',
+    title: 'Afterglow will tell you',
+    body: 'You will get one notification when your area goes dark, and one when power comes back.',
+    tag: 'follow-confirmed',
+    path: '#/lantern',
+  });
+  const r = await sendOne(sub, body, 'follow-confirmed', vapid);
+  return r === 'sent' ? 'ok' : r === 'gone' ? 'rejected' : 'error';
+}
+
+export const PAGE_SIZE = 500;
+
+/**
+ * Send to one page of a cell's followers. Large cells are covered by chained runs,
+ * each with the next cursor, so no follower is ever cut off by a cap.
+ */
+export async function sendPage(
   store: import('./store.js').CrowdStore,
   cell: string,
   payload: ReturnType<typeof message>,
   vapid: Vapid,
   nowS: number,
-  deadlineMs = Date.now() + 80_000,
-): Promise<{ sent: number; gone: number; failed: number; unsent: number }> {
-  const webpush = (await import('web-push')).default;
-  const subs = await store.subsFor(cell, nowS);
+  cursor: string | null,
+): Promise<{ sent: number; gone: number; failed: number; next: string | null }> {
+  const { subs, next } = await store.subsPage(cell, nowS, cursor, PAGE_SIZE);
   let sent = 0;
   let gone = 0;
   let failed = 0;
   const body = JSON.stringify(payload);
   // A few at a time: the push services rate-limit bursts from one sender.
   for (let i = 0; i < subs.length; i += 20) {
-    if (Date.now() > deadlineMs) {
-      // Out of time: say how many were not reached, never cut the list quietly.
-      return { sent, gone, failed, unsent: subs.length - i };
-    }
     await Promise.all(
       subs.slice(i, i + 20).map(async ({ id, sub }) => {
-        try {
-          await webpush.sendNotification(JSON.parse(sub) as PushSubscriptionJson, body, {
-            vapidDetails: vapid,
-            TTL: 3600,
-            urgency: 'high',
-            topic: payload.tag,
-            timeout: 10_000,
-          });
-          sent++;
-        } catch (e) {
-          const status = (e as { statusCode?: number }).statusCode;
-          // Any permanent refusal from the push service (bad, unknown, expired or not ours)
-          // removes the subscription; only timeouts and 429/5xx keep it for next time.
-          if (status !== undefined && status >= 400 && status < 500 && status !== 429) {
-            await store.deleteSub(cell, id);
-            gone++;
-          } else failed++;
-        }
+        const r = await sendOne(JSON.parse(sub) as PushSubscriptionJson, body, payload.tag, vapid);
+        if (r === 'sent') sent++;
+        else if (r === 'gone') {
+          await store.deleteSub(cell, id);
+          gone++;
+        } else failed++;
       }),
     );
   }
-  return { sent, gone, failed, unsent: 0 };
+  return { sent, gone, failed, next };
 }
