@@ -1,7 +1,10 @@
 import type { LuminanceMode } from '@afterglow/design-system';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { alertText } from './alerts/present';
 import { useAlerts } from './alerts/useAlerts';
 import { foodIndex } from './data/foodkeeper';
+import { setCommandHandler } from './eyesfree/EyesFreeUI';
+import { announce, currentStatus } from './eyesfree/eyesfree';
 import { gridSense } from './gridsense/engine';
 import { Wisp, WispFinish } from './guide/Wisp';
 import { readFacts } from './guide/facts';
@@ -19,6 +22,7 @@ import {
 } from './guide/tour';
 import { browserStorage } from './household/store';
 import { useHousehold, useNow } from './household/useHousehold';
+import { LightMode, openLight, useLightOpen } from './light/LightMode';
 import { ModeSwitch } from './night-shell/components';
 import {
   AlertsButton,
@@ -80,6 +84,34 @@ export function App(): ReactNode {
   const outage = state.view.outageStartedAtMs !== null;
   const alertList = useAlerts(nowMs);
 
+  const light = useLightOpen();
+
+  // Eyes-free (7.2): the haptic grammar and speech for the outage starting and ending,
+  // and for each new alert, once. The first render only records what is already there.
+  const seenOutage = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (seenOutage.current === null) {
+      seenOutage.current = outage;
+      return;
+    }
+    if (outage === seenOutage.current) return;
+    seenOutage.current = outage;
+    if (outage) announce('outage', 'The power is out. The clocks have started.');
+    else announce('restoration', 'The power is back.');
+  }, [outage]);
+  const seenAlerts = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const keys = new Set(alertList.map((a) => a.key));
+    if (seenAlerts.current === null) {
+      seenAlerts.current = keys;
+      return;
+    }
+    for (const a of alertList) {
+      if (seenAlerts.current.has(a.key) || a.kind === 'outage') continue;
+      announce(a.kind === 'help' ? 'help' : null, alertText(a).title);
+    }
+    seenAlerts.current = keys;
+  }, [alertList]);
   const [tab, setTab] = useState<TabId>(tabFromHash);
   const [coldSelected, setColdSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<LuminanceMode>(outage ? 'night' : 'ember');
@@ -235,6 +267,54 @@ export function App(): ReactNode {
     setTab(id);
   };
 
+  // Voice commands: what each does, and what to say back.
+  const goRef = useRef(go);
+  goRef.current = go;
+  useEffect(() => {
+    setCommandHandler((c) => {
+      const st = getSpaceController().getState().store;
+      const isOut = st.getState().view.outageStartedAtMs !== null;
+      switch (c) {
+        case 'powerOut':
+          if (isOut) return 'The outage clocks are already running.';
+          st.startOutage(Date.now());
+          return 'Started. The clocks are running.';
+        case 'powerBack':
+          if (!isOut) return 'No outage is running.';
+          st.endOutage();
+          return 'Marked the power as back.';
+        case 'status':
+          goRef.current('hearth');
+          return currentStatus() ?? (isOut ? 'The power is out.' : 'No outage reported.');
+        case 'lightOn':
+          openLight(true);
+          return 'Light on. Say "light off" or tap Close to stop.';
+        case 'lightOff':
+          openLight(false);
+          return 'Light off.';
+        case 'alerts':
+          goRef.current('alerts');
+          return 'Alerts.';
+        case 'lantern':
+          goRef.current('lantern');
+          return 'Lantern.';
+        case 'seance':
+          goRef.current('seance');
+          return 'Séance.';
+        case 'cold':
+          goRef.current('cold');
+          return 'Cold.';
+        case 'plan':
+          goRef.current('plan');
+          return 'Plan.';
+        case 'listen':
+          void gridSense.listen();
+          return 'Listening to the room for the mains hum.';
+      }
+    });
+    return () => setCommandHandler(null);
+  }, []);
+
   const cycleMode = (): void => {
     const i = MODE_CYCLE.indexOf(mode);
     setMode(MODE_CYCLE[(i + 1) % MODE_CYCLE.length] as LuminanceMode);
@@ -247,6 +327,7 @@ export function App(): ReactNode {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', background: token('bg') }}>
+      {light ? <LightMode onClose={() => openLight(false)} /> : null}
       <header
         style={{
           display: 'flex',

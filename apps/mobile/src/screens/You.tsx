@@ -1,5 +1,6 @@
 import { checkPassphrase } from '@afterglow/adapters';
 import { type ReactNode, useState } from 'react';
+import { EyesFreeSettings } from '../eyesfree/EyesFreeUI';
 import { useNow } from '../household/useHousehold';
 import { Button, ChoiceChip, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
@@ -178,7 +179,7 @@ export function You({
     </header>
   );
 
-  const frame = (children: ReactNode): ReactNode => (
+  const frame = (children: ReactNode, settings = false): ReactNode => (
     <main
       style={{
         maxWidth: 520,
@@ -191,6 +192,7 @@ export function You({
     >
       {header}
       {children}
+      {settings ? <EyesFreeSettings /> : null}
     </main>
   );
 
@@ -218,6 +220,7 @@ export function You({
         </Button>
         {onStartTour ? <Button onClick={onStartTour}>Replay the tour with Wisp</Button> : null}
       </Section>,
+      true,
     );
   }
 
@@ -419,6 +422,7 @@ export function You({
           </Button>
         </Section>
       </>,
+      true,
     );
   }
 
@@ -831,5 +835,6 @@ export function You({
         </Button>
       </Section>
     </>,
+    true,
   );
 }

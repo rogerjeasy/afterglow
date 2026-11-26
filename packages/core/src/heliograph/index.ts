@@ -46,3 +46,4 @@ export {
   type ProfileName,
 } from './profiles.js';
 export { MAX_CELLS, trackSeries, type GridFrame } from './track.js';
+export { SILENCE_RMS, TONE_PAIRS, type TonePair, toneLevel } from './acoustic.js';

@@ -16,6 +16,7 @@ import {
 import { GhostGlyph } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
 import { Lamp } from '../seance/Lamp';
+import { type ToneListening, listenErrorText, listenTones, sendTones } from '../seance/acoustic';
 import { getMySlot, nextSequence, setMySlot } from '../seance/prefs';
 import {
   EMERGENCY_NOTE,
@@ -81,13 +82,18 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
   const [fastOk, setFastOk] = useState(false);
   const [more, setMore] = useState(false);
   const [lamp, setLamp] = useState<{ plan: heliograph.TransmitPlan; label: string } | null>(null);
+  // The acoustic channel (7.9): the same frames as tones, room to room and through walls.
+  const [channel, setChannel] = useState<'light' | 'sound'>('light');
+  const [tones, setTones] = useState<heliograph.TonePair['name']>('audible');
+  const [playing, setPlaying] = useState<{ stop: () => void } | null>(null);
   const [sentNote, setSentNote] = useState<string | null>(null);
 
   const profile = fast ? heliograph.PROFILES.fast : heliograph.PROFILES.standard;
   const previewPlan = pending
     ? heliograph.planTransmission({ code: pending, slot: mySlot, sequence: 0 }, 3, profile)
     : null;
-  const canStart = previewPlan !== null && (!fast || fastOk);
+  // Fast light flashes need the person's confirmation; fast tones do not flash.
+  const canStart = previewPlan !== null && (!fast || fastOk || channel === 'sound') && !playing;
 
   const startSending = (): void => {
     if (!pending || !canStart) return;
@@ -97,8 +103,17 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
       profile,
     );
     if (!plan) return;
-    setLamp({ plan, label: MESSAGE_LABEL[pending] });
     setSentNote(null);
+    if (channel === 'sound') {
+      const sending = sendTones(plan, heliograph.TONE_PAIRS[tones]);
+      setPlaying(sending);
+      void sending.done.then((outcome) => {
+        setPlaying(null);
+        lampDone(outcome);
+      });
+      return;
+    }
+    setLamp({ plan, label: MESSAGE_LABEL[pending] });
   };
   const lampDone = useCallback((outcome: 'done' | 'cancelled') => {
     setLamp(null);
@@ -119,6 +134,20 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
   const sessionRef = useRef<{ stop: () => void } | null>(null);
   const timerRef = useRef<number | null>(null);
   const readerRef = useRef(createReader());
+  const heardBy = useRef<'light' | 'sound'>('light');
+  const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const [toneLevel, setToneLevel] = useState(0);
+  const listenRef = useRef<ToneListening | null>(null);
+  const listenTimer = useRef<number | null>(null);
+  const stopListening = useCallback(() => {
+    if (listenTimer.current !== null) window.clearInterval(listenTimer.current);
+    listenTimer.current = null;
+    listenRef.current?.stop();
+    listenRef.current = null;
+    setListening(false);
+  }, []);
+  useEffect(() => stopListening, [stopListening]);
 
   const stopWatching = useCallback(() => {
     if (timerRef.current !== null) window.clearInterval(timerRef.current);
@@ -139,12 +168,50 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
       }
       const a = household.attributeMessage(store.getState().view, r.message);
       setAttribution(a);
-      if (a.kind === 'known') store.recordHeard(a.member.id, a.code, 'light');
+      if (a.kind === 'known') store.recordHeard(a.member.id, a.code, heardBy.current);
     },
     [store],
   );
 
+  const startListening = async (): Promise<void> => {
+    stopWatching();
+    setMicError(null);
+    setResult(null);
+    setAttribution(null);
+    const opened = await listenTones(heliograph.TONE_PAIRS[tones]);
+    if (opened.kind === 'error') {
+      setMicError(listenErrorText(opened.error));
+      return;
+    }
+    heardBy.current = 'sound';
+    listenRef.current = opened.session;
+    setListening(true);
+    const began = performance.now();
+    listenTimer.current = window.setInterval(() => {
+      const session = listenRef.current;
+      if (!session) return;
+      setToneLevel(session.level());
+      const r = session.read();
+      if (r.kind === 'message') {
+        accept(r);
+        stopListening();
+      } else {
+        setResult(r);
+        if (performance.now() - began > WATCH_LIMIT_MS) {
+          stopListening();
+          setResult({
+            kind: 'repeatRequested',
+            reason:
+              'I listened for 90 seconds and heard nothing I could read. Ask them to send again.',
+          });
+        }
+      }
+    }, 1000);
+  };
+
   const startWatching = async (): Promise<void> => {
+    stopListening();
+    heardBy.current = 'light';
     setCamError(null);
     setResult(null);
     setAttribution(null);
@@ -403,7 +470,42 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
               <div style={{ fontSize: 'var(--type-body)', color: token('text.primary') }}>
                 Ready to send “{MESSAGE_LABEL[pending]}” as No. {mySlot}.
               </div>
-              <Notice>{FLASH_WARNING}</Notice>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <ChoiceChip
+                  label="By light"
+                  selected={channel === 'light'}
+                  onClick={() => setChannel('light')}
+                />
+                <ChoiceChip
+                  label="By sound"
+                  selected={channel === 'sound'}
+                  onClick={() => setChannel('sound')}
+                />
+              </div>
+              {channel === 'light' ? (
+                <Notice>{FLASH_WARNING}</Notice>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <ChoiceChip
+                      label="Audible tones"
+                      selected={tones === 'audible'}
+                      onClick={() => setTones('audible')}
+                    />
+                    <ChoiceChip
+                      label="Near-silent"
+                      selected={tones === 'quiet'}
+                      onClick={() => setTones('quiet')}
+                    />
+                  </div>
+                  <Notice>
+                    {tones === 'audible'
+                      ? 'Two tones, loud enough to carry through a door or a thin wall. Turn the volume up.'
+                      : 'High tones most adults barely hear. Shorter range; best in a quiet room, phone to phone.'}{' '}
+                    They must listen with the same setting.
+                  </Notice>
+                </>
+              )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <ChoiceChip
                   label="Standard"
@@ -418,7 +520,7 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
                   {previewPlan ? durationText(previewPlan.totalMs) : ''}
                 </span>
               </div>
-              {fast ? (
+              {fast && channel === 'light' ? (
                 <>
                   <Notice>
                     {FAST_CONFIRM} Their camera must run at 40 frames a second or more.
@@ -431,9 +533,15 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
                 </>
               ) : null}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Button variant="primary" disabled={!canStart} onClick={startSending}>
-                  Start sending
-                </Button>
+                {playing ? (
+                  <Button variant="primary" onClick={() => playing.stop()}>
+                    Stop the tones
+                  </Button>
+                ) : (
+                  <Button variant="primary" disabled={!canStart} onClick={startSending}>
+                    Start sending
+                  </Button>
+                )}
                 <Button variant="ghost" onClick={() => setPending(null)}>
                   Cancel
                 </Button>
@@ -442,8 +550,8 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
           ) : null}
           {sentNote ? <Notice>{sentNote}</Notice> : null}
           <Notice>
-            Hold the lit screen toward their window. Other ways to send (sound, text, Bluetooth) are
-            not in this build yet.
+            By light, hold the lit screen toward their window. By sound, hold the speaker toward
+            their door or wall. Both carry the same code, error correction and repeats.
           </Notice>
         </div>
       </Section>
@@ -455,6 +563,22 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
             picture, and nothing leaves your phone.
           </Notice>
           {camError ? <Notice>{cameraErrorText(camError)}</Notice> : null}
+          {micError ? <Notice>{micError}</Notice> : null}
+          {listening ? (
+            <>
+              <Button variant="primary" onClick={stopListening}>
+                Stop listening
+              </Button>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <SourceChip
+                  label={`microphone · ${tones === 'audible' ? 'audible tones' : 'near-silent tones'}`}
+                />
+                <SourceChip label={`tone ${Math.round(toneLevel * 100)}%`} />
+              </div>
+            </>
+          ) : watching ? null : (
+            <Button onClick={() => void startListening()}>Listen for tones instead</Button>
+          )}
           {watching ? (
             <Button variant="primary" onClick={stopWatching}>
               Stop watching

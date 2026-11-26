@@ -1,9 +1,11 @@
 import { household, thermal } from '@afterglow/core';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { foodIndex } from '../data/foodkeeper';
 import { useFormulary } from '../data/formulary';
 import { type DemoPhase, runScenario } from '../demo/scenario';
 import { senseText } from '../demo/senseWords';
+import { ReadAloudButton, VoiceButton } from '../eyesfree/EyesFreeUI';
+import { provideStatus } from '../eyesfree/eyesfree';
 import { formatClockTime, formatTimer } from '../format';
 import { GridSenseCard } from '../gridsense/GridSenseCard';
 import { useGridSense } from '../gridsense/useGridSense';
@@ -18,6 +20,7 @@ import {
 import { useHousehold } from '../household/useHousehold';
 import { buildLanternModel, estimateAt, toMinute, viewAt } from '../lantern/model';
 import { hearthLine } from '../lantern/present';
+import { openLight } from '../light/LightMode';
 import { SourceChip, Sources, StatusLine, Tile } from '../night-shell/components';
 import { Button, Notice, Section } from '../night-shell/controls';
 import { GhostGlyph, Tombstone, WardCard } from '../night-shell/costume';
@@ -101,6 +104,12 @@ export function Hearth({
         : 'No outage reported. On a phone, Grid Sense listens for it. On the web you can tell the app.';
 
   const homeText = hoursOfSafetyText(hours);
+  // What "Read it to me" and the voice command "read it to me" say.
+  const spoken = `${outage ? `Grid down for ${formatTimer(nowMs - (view.outageStartedAtMs as number)).replace(/:/g, ' ')}.` : ''} ${line} Your home: ${homeText.value}. ${homeText.note}`;
+  useEffect(() => {
+    provideStatus(() => spoken);
+    return () => provideStatus(null);
+  }, [spoken]);
   const homeKnown = hours.kind !== 'unknown';
 
   return (
@@ -116,6 +125,7 @@ export function Hearth({
     >
       <div>
         <StatusLine timer={timer} line={line} live={outage} tourId="status" />
+        <ReadAloudButton />
         {sim ? <SourceChip label="simulated neighbourhood (demo)" /> : null}
         {demo ? (
           <div style={{ marginTop: 14 }}>
@@ -278,7 +288,11 @@ export function Hearth({
         </Notice>
       ) : null}
 
-      <div style={{ marginTop: 'auto' }}>
+      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <VoiceButton />
+        <Button style={{ width: '100%' }} onClick={() => openLight()}>
+          Use this phone as a light
+        </Button>
         {outage ? (
           <Button
             variant="primary"
