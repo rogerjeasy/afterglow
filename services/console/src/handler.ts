@@ -72,8 +72,8 @@ export interface ConsoleStore {
   putSite(owner: string, site: Site): Promise<void>;
   deleteSite(owner: string, siteId: string): Promise<void>;
   /** The public status record in the site's cell (24 h, renewed on update), or its removal. */
-  publishSite(site: Site, expiresAtS: number): Promise<void>;
-  unpublishSite(geohash6: string, siteId: string): Promise<void>;
+  publishSite(owner: string, site: Site, expiresAtS: number): Promise<void>;
+  unpublishSite(owner: string, geohash6: string, siteId: string): Promise<void>;
   appendLog(owner: string, siteId: string, entry: LogEntry, expiresAtS: number): Promise<void>;
   logSince(owner: string, siteId: string, fromMs: number): Promise<LogEntry[]>;
   putAdvisory(
@@ -204,9 +204,9 @@ export async function handleConsole(
       await deps.store.putSite(c.sub, site);
       // A move takes the public status with it.
       if (prior?.status && prior.geohash6 !== site.geohash6) {
-        await deps.store.unpublishSite(prior.geohash6, siteId);
+        await deps.store.unpublishSite(c.sub, prior.geohash6, siteId);
       }
-      if (site.status) await deps.store.publishSite(site, nowS + DAY_S);
+      if (site.status) await deps.store.publishSite(c.sub, site, nowS + DAY_S);
       return json(200, { site });
     }
 
@@ -214,7 +214,7 @@ export async function handleConsole(
       if (siteId === null) return err(400, 'bad site id');
       const prior = await deps.store.getSite(c.sub, siteId);
       if (!prior) return err(404, 'no such site');
-      await deps.store.unpublishSite(prior.geohash6, siteId);
+      await deps.store.unpublishSite(c.sub, prior.geohash6, siteId);
       await deps.store.deleteSite(c.sub, siteId);
       return json(200, { deleted: true });
     }
@@ -239,7 +239,7 @@ export async function handleConsole(
         status: { open: b.open, power: power as (typeof POWER)[number], note, updatedAtMs: nowMs },
       };
       await deps.store.putSite(c.sub, next);
-      await deps.store.publishSite(next, nowS + DAY_S);
+      await deps.store.publishSite(c.sub, next, nowS + DAY_S);
       return json(200, { site: next });
     }
 

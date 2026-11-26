@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   type AttributeValue,
   DeleteItemCommand,
@@ -7,6 +8,15 @@ import {
   QueryCommand,
 } from '@aws-sdk/client-dynamodb';
 import type { ConsoleStore, LogEntry, Site } from './handler.js';
+
+/**
+ * The public status record's key is owner-scoped (security review 2026-11-26): site
+ * ids are chosen by the client, so two accounts may use the same id in one cell. The
+ * sort key carries a hash of the owner's sub, and every write and delete is
+ * conditional on the stored owner hash, so no account can touch another's record.
+ */
+const ownerTag = (sub: string): string =>
+  createHash('sha256').update(`afterglow-site-owner:${sub}`).digest('base64url').slice(0, 16);
 
 /**
  * Console storage. The business table is keyed by the owner's Cognito `sub`:
@@ -62,8 +72,9 @@ export function dynamoConsoleStore(
         }),
       );
     },
-    async publishSite(site, expiresAtS) {
+    async publishSite(owner, site, expiresAtS) {
       if (!site.status) return;
+      const tag = ownerTag(owner);
       const status = {
         siteId: site.siteId,
         name: site.name,
@@ -80,20 +91,32 @@ export function dynamoConsoleStore(
           TableName: t.sites,
           Item: {
             geohash6: { S: site.geohash6 },
-            siteId: { S: site.siteId },
+            siteId: { S: `${tag}#${site.siteId}` },
+            owner: { S: tag },
             status: { S: JSON.stringify(status) },
             expiresAt: { N: String(expiresAtS) },
           },
+          ConditionExpression: 'attribute_not_exists(siteId) OR #o = :o',
+          ExpressionAttributeNames: { '#o': 'owner' },
+          ExpressionAttributeValues: { ':o': { S: tag } },
         }),
       );
     },
-    async unpublishSite(geohash6, siteId) {
-      await client.send(
-        new DeleteItemCommand({
-          TableName: t.sites,
-          Key: { geohash6: { S: geohash6 }, siteId: { S: siteId } },
-        }),
-      );
+    async unpublishSite(owner, geohash6, siteId) {
+      const tag = ownerTag(owner);
+      try {
+        await client.send(
+          new DeleteItemCommand({
+            TableName: t.sites,
+            Key: { geohash6: { S: geohash6 }, siteId: { S: `${tag}#${siteId}` } },
+            ConditionExpression: 'attribute_not_exists(siteId) OR #o = :o',
+            ExpressionAttributeNames: { '#o': 'owner' },
+            ExpressionAttributeValues: { ':o': { S: tag } },
+          }),
+        );
+      } catch (e) {
+        if ((e as { name?: string }).name !== 'ConditionalCheckFailedException') throw e;
+      }
     },
     async appendLog(owner, siteId, entry, expiresAtS) {
       await client.send(
