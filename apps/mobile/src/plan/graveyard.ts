@@ -10,7 +10,7 @@ type Night = Extract<household.GraveyardShift, { kind: 'night' }>;
 
 const MS = 60_000;
 /** A clock time, with the weekday when it falls on another day than now, so a 48 h axis is not ambiguous. */
-const clock = (nowMs: number, minutes: number): string => {
+export const clock = (nowMs: number, minutes: number): string => {
   const at = nowMs + minutes * MS;
   const time = formatClockTime(at);
   return new Date(at).toDateString() === new Date(nowMs).toDateString()
