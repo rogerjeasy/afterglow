@@ -192,6 +192,10 @@ Set `table_max_write_units` and `table_max_read_units` as a brake against runawa
   dropped (the app keeps tokens in memory only; revocation stays on). 64 of 72 resources had been
   created; a re-plan created the remaining 8 and changed nothing else.
 
+- **Second apply (same day)**: the revoke route, the vault function's atomic revocation check and
+  `dynamodb:ConditionCheckItem` for it, approved as its own plan (2 added, 3 changed, 1 replaced:
+  the Lambda invoke permission). No data resources changed.
+
 ## The vault API
 
 `modules/vault-api` puts API Gateway with a Cognito JWT authorizer in front of one function that
