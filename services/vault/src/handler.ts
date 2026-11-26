@@ -18,19 +18,51 @@ export interface StoredVault {
   readonly updatedAt: number;
 }
 
-export type PutResult =
-  | { readonly ok: true; readonly version: number }
-  | { readonly ok: false; readonly current: number | null };
+/** Who is asking: the token's issue time (seconds) and the Cognito session it belongs to. */
+export interface Caller {
+  readonly iat: number;
+  /** `origin_jti`: stays the same across refreshes of one sign-in; empty when absent. */
+  readonly origin: string;
+}
 
-/** Storage keyed by account id. Implementations must make `put` atomic on the version (CA-04). */
+/**
+ * An account's revocation (CA-13): tokens issued before `notBefore` are refused; in the
+ * boundary second itself only the session that revoked (`exceptOrigin`) is let through.
+ */
+export interface Revocation {
+  readonly notBefore: number;
+  readonly exceptOrigin: string;
+}
+
+export function allowed(rev: Revocation | null, c: Caller): boolean {
+  if (rev === null || c.iat > rev.notBefore) return true;
+  return c.iat === rev.notBefore && rev.exceptOrigin !== '' && c.origin === rev.exceptOrigin;
+}
+
+export type PutResult =
+  | { readonly kind: 'stored'; readonly version: number }
+  | { readonly kind: 'conflict'; readonly current: number | null }
+  | { readonly kind: 'revoked' };
+
+/**
+ * Storage keyed by account id. Every write checks the caller against the account's
+ * revocation in the same atomic step (CA-13), so a revocation can never land between a
+ * check and a write; `put` is also atomic on the version (CA-04).
+ */
 export interface VaultStore {
   get(accountId: string): Promise<StoredVault | null>;
-  put(accountId: string, record: string, expected: number | null, now: number): Promise<PutResult>;
-  delete(accountId: string): Promise<void>;
-  /** Tokens issued (iat, seconds) before this are refused for the account (CA-13). Null when none. */
-  getNotBefore(accountId: string): Promise<number | null>;
-  /** Raise the account's not-before time; it never moves backwards. */
-  raiseNotBefore(accountId: string, iat: number): Promise<void>;
+  getRevocation(accountId: string): Promise<Revocation | null>;
+  put(
+    accountId: string,
+    record: string,
+    expected: number | null,
+    now: number,
+    caller: Caller,
+  ): Promise<PutResult>;
+  /** Refuse every existing token, then delete the vault, atomically, if the caller is allowed. */
+  delete(accountId: string, caller: Caller, nowSeconds: number): Promise<'deleted' | 'revoked'>;
+  /** Refuse tokens older than the caller's session, atomically, if the caller is allowed. */
+  revoke(accountId: string, caller: Caller): Promise<'done' | 'revoked'>;
 }
 
 /** Claims from API Gateway's JWT authorizer. Values arrive as strings. */
@@ -95,14 +127,15 @@ export async function handle(
 ): Promise<VaultResponse> {
   const accountId = accountIdFrom(claims, config.clientId);
   if (accountId === null) return error(401, 'Sign in again.');
-  // CA-13: API Gateway checks signature and expiry, not revocation. A token issued before
-  // the account's not-before time (a passphrase change, a deletion) is refused here.
+  // CA-13: API Gateway checks signature and expiry, not revocation. The caller's issue
+  // time and session are checked here, and again atomically inside every write.
   const iat = Number(claims?.iat);
   if (!Number.isInteger(iat) || iat <= 0) return error(401, 'Sign in again.');
+  const origin = typeof claims?.origin_jti === 'string' ? claims.origin_jti : '';
+  const caller: Caller = { iat, origin };
 
   try {
-    const notBefore = await store.getNotBefore(accountId);
-    if (notBefore !== null && iat < notBefore) return error(401, 'Sign in again.');
+    if (!allowed(await store.getRevocation(accountId), caller)) return error(401, 'Sign in again.');
     switch (req.routeKey) {
       case 'GET /v1/vault': {
         const v = await store.get(accountId);
@@ -112,19 +145,22 @@ export async function handle(
       case 'PUT /v1/vault': {
         const put = parsePut(req.body);
         if (put === null) return error(400, 'That is not a vault record.');
-        const r = await store.put(accountId, put.record, put.expected, config.now());
-        return r.ok ? json(200, { version: r.version }) : json(409, { version: r.current });
+        const r = await store.put(accountId, put.record, put.expected, config.now(), caller);
+        if (r.kind === 'revoked') return error(401, 'Sign in again.');
+        return r.kind === 'stored'
+          ? json(200, { version: r.version })
+          : json(409, { version: r.current });
       }
       case 'DELETE /v1/vault': {
-        // Refuse every token that exists now, first, so none can recreate the vault after.
-        await store.raiseNotBefore(accountId, Math.floor(config.now() / 1000) + 1);
-        await store.delete(accountId);
-        return { status: 204, body: null };
+        // Every token that exists now is refused, in the same step as the delete, so none
+        // can recreate the vault after it.
+        const r = await store.delete(accountId, caller, Math.floor(config.now() / 1000));
+        return r === 'revoked' ? error(401, 'Sign in again.') : { status: 204, body: null };
       }
       case 'POST /v1/vault/revoke': {
-        // After a passphrase change: only tokens issued at or after this caller's own survive.
-        await store.raiseNotBefore(accountId, iat);
-        return { status: 204, body: null };
+        // After a passphrase change: tokens older than this caller's session are refused.
+        const r = await store.revoke(accountId, caller);
+        return r === 'revoked' ? error(401, 'Sign in again.') : { status: 204, body: null };
       }
       default:
         return error(404, 'Not found.');
@@ -141,27 +177,32 @@ export async function handle(
 /** An in-memory store with the same contract as the DynamoDB one; used in tests. */
 export function memoryStore(): VaultStore & { dump(): ReadonlyMap<string, StoredVault> } {
   const m = new Map<string, StoredVault>();
-  const nb = new Map<string, number>();
+  const rev = new Map<string, Revocation>();
   return {
-    async getNotBefore(id) {
-      return nb.get(id) ?? null;
-    },
-    async raiseNotBefore(id, iat) {
-      nb.set(id, Math.max(nb.get(id) ?? 0, iat));
-    },
     async get(id) {
       return m.get(id) ?? null;
     },
-    async put(id, record, expected, now) {
-      const cur = m.get(id) ?? null;
-      const curVersion = cur?.version ?? null;
-      if (curVersion !== expected) return { ok: false, current: curVersion };
+    async getRevocation(id) {
+      return rev.get(id) ?? null;
+    },
+    async put(id, record, expected, now, caller) {
+      if (!allowed(rev.get(id) ?? null, caller)) return { kind: 'revoked' };
+      const curVersion = m.get(id)?.version ?? null;
+      if (curVersion !== expected) return { kind: 'conflict', current: curVersion };
       const version = (curVersion ?? 0) + 1;
       m.set(id, { record, version, updatedAt: now });
-      return { ok: true, version };
+      return { kind: 'stored', version };
     },
-    async delete(id) {
+    async delete(id, caller, nowSeconds) {
+      if (!allowed(rev.get(id) ?? null, caller)) return 'revoked';
+      rev.set(id, { notBefore: nowSeconds + 1, exceptOrigin: '' });
       m.delete(id);
+      return 'deleted';
+    },
+    async revoke(id, caller) {
+      if (!allowed(rev.get(id) ?? null, caller)) return 'revoked';
+      rev.set(id, { notBefore: caller.iat, exceptOrigin: caller.origin });
+      return 'done';
     },
     dump: () => m,
   };

@@ -113,9 +113,11 @@ A person signs in with an email address and one passphrase, on any device, and f
 - WHEN a passphrase change ends other sessions THE SYSTEM SHALL set the not-before time to the issue time of the caller's new token. API Gateway checks signature and expiry only; this closes the window in which a revoked token stays valid.
 - WHEN an account's vault is deleted THE SYSTEM SHALL first set the not-before time, so no token that existed can recreate it.
 - THE SYSTEM SHALL only ever raise the not-before time.
+- THE SYSTEM SHALL check the caller against the revocation in the same atomic step as every write (a DynamoDB transaction), so a revocation can never land between a check and a write.
+- WHILE in the boundary second itself THE SYSTEM SHALL admit only the session that revoked (its `origin_jti`), never another session whose token was issued in the same second.
 - WHEN a device meets a server copy whose key wrapping differs from its own THE SYSTEM SHALL NOT push, and SHALL lock and ask for the new passphrase, so an old passphrase can never be written back.
 
-*Properties:* `CA-13 a token issued before the account’s revocation is refused on every route and touches nothing`, `CA-13 after a delete, no token that existed can recreate the vault`; controller tests `CA-13 after a passphrase change elsewhere, an old session is refused and this phone locks`, `CA-13 even if revocation failed, a phone with the old key wrapping never pushes over the new one`. *Source:* automated security review of the first deployment, 2026-11-26.
+*Properties:* `CA-13 a token issued before the account’s revocation is refused on every route and touches nothing`, `CA-13 after a delete, no token that existed can recreate the vault`, `CA-13 in the boundary second only the revoking session gets through, not another one`, `CA-13 a revocation that lands between the check and the write still stops the write`; controller tests `CA-13 after a passphrase change elsewhere, an old session is refused and this phone locks`, `CA-13 even if revocation failed, a phone with the old key wrapping never pushes over the new one`. *Source:* automated security review of the first deployment, 2026-11-26.
 
 ## Analysis
 

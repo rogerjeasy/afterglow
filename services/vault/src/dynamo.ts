@@ -1,28 +1,49 @@
 import {
   ConditionalCheckFailedException,
-  DeleteItemCommand,
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
+  TransactWriteItemsCommand,
+  TransactionCanceledException,
 } from '@aws-sdk/client-dynamodb';
-import type { PutResult, StoredVault, VaultStore } from './handler.js';
+import type { Caller, PutResult, Revocation, StoredVault, VaultStore } from './handler.js';
 
 /**
  * The vault table (infra `regional`, table `vault`): hash key `accountId` (the
- * Cognito sub), range key `record` (always "vault" here). Writes are conditional
- * on the version, so two devices can never overwrite each other blindly (CA-04).
+ * Cognito sub), range key `record`: "vault" for the encrypted record, "revocation"
+ * for the account's not-before time (CA-13; a sub and two values, nothing else,
+ * kept after deletion). Every write is a transaction that checks the caller against
+ * the revocation in the same step (CA-13) and is conditional on the version (CA-04).
  */
 
 const RECORD = 'vault';
-/** The account's not-before time (CA-13): a sub and a number, nothing else. Kept after deletion. */
 const REVOCATION = 'revocation';
 
+/** The caller may act: no revocation, a later token, or the revoking session in the boundary second. */
+const ALLOWED =
+  'attribute_not_exists(notBefore) OR notBefore < :iat OR (notBefore = :iat AND exceptOrigin = :origin AND exceptOrigin <> :empty)';
+const allowedValues = (c: Caller) => ({
+  ':iat': { N: String(c.iat) },
+  ':origin': { S: c.origin },
+  ':empty': { S: '' },
+});
+
+const reasonAt = (e: TransactionCanceledException, i: number) => e.CancellationReasons?.[i];
+
 export function dynamoStore(tableName: string, client = new DynamoDBClient({})): VaultStore {
-  const key = (accountId: string) => ({ accountId: { S: accountId }, record: { S: RECORD } });
+  const key = (accountId: string, record: string) => ({
+    accountId: { S: accountId },
+    record: { S: record },
+  });
+
   return {
     async get(accountId): Promise<StoredVault | null> {
       const out = await client.send(
-        new GetItemCommand({ TableName: tableName, Key: key(accountId), ConsistentRead: true }),
+        new GetItemCommand({
+          TableName: tableName,
+          Key: key(accountId, RECORD),
+          ConsistentRead: true,
+        }),
       );
       const item = out.Item;
       if (!item?.body?.S || !item.version?.N || !item.updatedAt?.N) return null;
@@ -33,71 +54,122 @@ export function dynamoStore(tableName: string, client = new DynamoDBClient({})):
       };
     },
 
-    async put(accountId, record, expected, now): Promise<PutResult> {
+    async getRevocation(accountId): Promise<Revocation | null> {
+      const out = await client.send(
+        new GetItemCommand({
+          TableName: tableName,
+          Key: key(accountId, REVOCATION),
+          ConsistentRead: true,
+        }),
+      );
+      const n = out.Item?.notBefore?.N;
+      if (n === undefined) return null;
+      return { notBefore: Number(n), exceptOrigin: out.Item?.exceptOrigin?.S ?? '' };
+    },
+
+    async put(accountId, record, expected, now, caller): Promise<PutResult> {
       const version = (expected ?? 0) + 1;
       try {
         await client.send(
-          new PutItemCommand({
-            TableName: tableName,
-            Item: {
-              ...key(accountId),
-              body: { S: record },
-              version: { N: String(version) },
-              updatedAt: { N: String(now) },
-            },
-            ...(expected === null
-              ? { ConditionExpression: 'attribute_not_exists(accountId)' }
-              : {
-                  ConditionExpression: 'version = :expected',
-                  ExpressionAttributeValues: { ':expected': { N: String(expected) } },
-                }),
-            ReturnValuesOnConditionCheckFailure: 'ALL_OLD',
+          new TransactWriteItemsCommand({
+            TransactItems: [
+              {
+                ConditionCheck: {
+                  TableName: tableName,
+                  Key: key(accountId, REVOCATION),
+                  ConditionExpression: ALLOWED,
+                  ExpressionAttributeValues: allowedValues(caller),
+                },
+              },
+              {
+                Put: {
+                  TableName: tableName,
+                  Item: {
+                    ...key(accountId, RECORD),
+                    body: { S: record },
+                    version: { N: String(version) },
+                    updatedAt: { N: String(now) },
+                  },
+                  ...(expected === null
+                    ? { ConditionExpression: 'attribute_not_exists(accountId)' }
+                    : {
+                        ConditionExpression: 'version = :expected',
+                        ExpressionAttributeValues: { ':expected': { N: String(expected) } },
+                      }),
+                  ReturnValuesOnConditionCheckFailure: 'ALL_OLD',
+                },
+              },
+            ],
           }),
         );
-        return { ok: true, version };
+        return { kind: 'stored', version };
       } catch (e) {
-        if (e instanceof ConditionalCheckFailedException) {
-          const n = e.Item?.version?.N;
-          return { ok: false, current: n === undefined ? null : Number(n) };
+        if (e instanceof TransactionCanceledException) {
+          if (reasonAt(e, 0)?.Code === 'ConditionalCheckFailed') return { kind: 'revoked' };
+          const second = reasonAt(e, 1);
+          if (second?.Code === 'ConditionalCheckFailed') {
+            const n = second.Item?.version?.N;
+            return { kind: 'conflict', current: n === undefined ? null : Number(n) };
+          }
         }
         throw e;
       }
     },
 
-    async getNotBefore(accountId): Promise<number | null> {
-      const out = await client.send(
-        new GetItemCommand({
-          TableName: tableName,
-          Key: { accountId: { S: accountId }, record: { S: REVOCATION } },
-          ConsistentRead: true,
-        }),
-      );
-      const n = out.Item?.notBefore?.N;
-      return n === undefined ? null : Number(n);
+    async delete(accountId, caller, nowSeconds): Promise<'deleted' | 'revoked'> {
+      try {
+        await client.send(
+          new TransactWriteItemsCommand({
+            TransactItems: [
+              {
+                // Raise the not-before past every existing token, only if this caller may.
+                Put: {
+                  TableName: tableName,
+                  Item: {
+                    ...key(accountId, REVOCATION),
+                    notBefore: { N: String(nowSeconds + 1) },
+                    exceptOrigin: { S: '' },
+                  },
+                  ConditionExpression: ALLOWED,
+                  ExpressionAttributeValues: allowedValues(caller),
+                },
+              },
+              { Delete: { TableName: tableName, Key: key(accountId, RECORD) } },
+            ],
+          }),
+        );
+        return 'deleted';
+      } catch (e) {
+        if (
+          e instanceof TransactionCanceledException &&
+          reasonAt(e, 0)?.Code === 'ConditionalCheckFailed'
+        ) {
+          return 'revoked';
+        }
+        throw e;
+      }
     },
 
-    async raiseNotBefore(accountId, iat): Promise<void> {
+    async revoke(accountId, caller): Promise<'done' | 'revoked'> {
       try {
         await client.send(
           new PutItemCommand({
             TableName: tableName,
             Item: {
-              accountId: { S: accountId },
-              record: { S: REVOCATION },
-              notBefore: { N: String(iat) },
+              ...key(accountId, REVOCATION),
+              notBefore: { N: String(caller.iat) },
+              exceptOrigin: { S: caller.origin },
             },
-            // Only ever raised: a lower value is ignored.
-            ConditionExpression: 'attribute_not_exists(notBefore) OR notBefore < :t',
-            ExpressionAttributeValues: { ':t': { N: String(iat) } },
+            // Allowed implies notBefore <= iat, so the time never moves backwards.
+            ConditionExpression: ALLOWED,
+            ExpressionAttributeValues: allowedValues(caller),
           }),
         );
+        return 'done';
       } catch (e) {
-        if (!(e instanceof ConditionalCheckFailedException)) throw e;
+        if (e instanceof ConditionalCheckFailedException) return 'revoked';
+        throw e;
       }
-    },
-
-    async delete(accountId): Promise<void> {
-      await client.send(new DeleteItemCommand({ TableName: tableName, Key: key(accountId) }));
     },
   };
 }

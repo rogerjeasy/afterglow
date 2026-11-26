@@ -37,11 +37,12 @@ const recordArb: fc.Arbitrary<string> = fc
 
 const subArb = fc.uuid().map((u) => u.toLowerCase());
 const IAT = 1_700_000_000;
-const claimsFor = (sub: string, iat = IAT): Claims => ({
+const claimsFor = (sub: string, iat = IAT, origin = `session-${sub.slice(0, 8)}`): Claims => ({
   sub,
   token_use: 'access',
   client_id: CLIENT,
   iat: String(iat),
+  origin_jti: origin,
 });
 
 const get = (store: VaultStore, c: Claims) =>
@@ -300,8 +301,8 @@ describe('Vault service', () => {
       delete: async () => {
         throw new Error('boom');
       },
-      getNotBefore: async () => null,
-      raiseNotBefore: async () => {
+      getRevocation: async () => null,
+      revoke: async () => {
         throw new Error('boom');
       },
     };
@@ -416,5 +417,47 @@ describe('Vault service', () => {
       };
       expect((await get(store, c)).status).toBe(401);
     }
+  });
+
+  it('CA-13 in the boundary second only the revoking session gets through, not another one', async () => {
+    const store = memoryStore();
+    const ana = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const [rec] = fc.sample(recordArb, 1) as [string];
+    expect((await put(store, claimsFor(ana, IAT, 'old-phone'), rec, null)).status).toBe(200);
+    const t = IAT + 100;
+    const mine = claimsFor(ana, t, 'new-session');
+    expect(
+      (await handle({ routeKey: 'POST /v1/vault/revoke', body: null }, mine, store, config)).status,
+    ).toBe(204);
+    // Another session whose token was issued in the very same second is still refused.
+    const sameSecond = claimsFor(ana, t, 'old-phone-refreshed');
+    expect((await get(store, sameSecond)).status).toBe(401);
+    expect((await put(store, sameSecond, rec, 1)).status).toBe(401);
+    // The revoking session continues; anything issued later is fine.
+    expect((await get(store, mine)).status).toBe(200);
+    expect((await get(store, claimsFor(ana, t + 1, 'any'))).status).toBe(200);
+  });
+
+  it('CA-13 a revocation that lands between the check and the write still stops the write', async () => {
+    const inner = memoryStore();
+    const ana = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const [rec] = fc.sample(recordArb, 1) as [string];
+    expect((await put(inner, claimsFor(ana, IAT, 'old'), rec, null)).status).toBe(200);
+    // A store that lets another device revoke in the gap after the handler's own check.
+    const racing: VaultStore = {
+      ...inner,
+      put: async (id, r, expected, now, caller) => {
+        await inner.revoke(id, { iat: IAT + 50, origin: 'new' });
+        return inner.put(id, r, expected, now, caller);
+      },
+      delete: async (id, caller, nowS) => {
+        await inner.revoke(id, { iat: IAT + 50, origin: 'new' });
+        return inner.delete(id, caller, nowS);
+      },
+    };
+    const stale = claimsFor(ana, IAT + 1, 'old');
+    expect((await put(racing, stale, rec, 1)).status).toBe(401);
+    expect((await del(racing, stale)).status).toBe(401);
+    expect(inner.dump().get(ana)?.version).toBe(1);
   });
 });

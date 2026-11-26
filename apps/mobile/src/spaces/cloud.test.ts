@@ -41,6 +41,8 @@ function fakeCloud(
   const authFor = (): CloudAuth & { current(): string | null } => {
     let current: string | null = null;
     let iat = 0;
+    // Each sign-in is its own Cognito session (origin_jti).
+    let origin = '';
     return {
       async signUp(email, secret) {
         net(`signUp ${email} ${secret}`);
@@ -71,10 +73,11 @@ function fakeCloud(
         current = u.sub;
         clock += 1;
         iat = clock;
+        origin = `session-${clock}`;
       },
       async accessToken() {
         if (!current) throw new CloudError('signed-out', 'out');
-        return `token:${current}:${iat}`;
+        return `token:${current}:${iat}:${origin}`;
       },
       signOut() {
         current = null;
@@ -103,11 +106,16 @@ function fakeCloud(
 
   const call = async (token: string, routeKey: string, body: string | null) => {
     net(`${routeKey} ${token} ${body ?? ''}`);
-    const [, sub, iat] = token.split(':');
-    return handle({ routeKey, body }, { sub, token_use: 'access', client_id: CLIENT, iat }, store, {
-      clientId: CLIENT,
-      now: () => 1,
-    });
+    const [, sub, iat, origin_jti] = token.split(':');
+    return handle(
+      { routeKey, body },
+      { sub, token_use: 'access', client_id: CLIENT, iat, origin_jti },
+      store,
+      {
+        clientId: CLIENT,
+        now: () => 1,
+      },
+    );
   };
   const api: VaultApi = {
     async get(token) {

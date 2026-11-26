@@ -122,7 +122,7 @@ run "the_function_may_touch_only_vault_items" {
   assert {
     condition = toset(flatten([
       for s in data.aws_iam_policy_document.fn.statement : s.actions if s.sid == "VaultItemsOnly"
-    ])) == toset(["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"])
+    ])) == toset(["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:ConditionCheckItem"])
     error_message = "CA-08: item reads, writes and deletes only; no Scan, Query or table actions."
   }
 

@@ -50,8 +50,10 @@ data "aws_iam_policy_document" "fn" {
   }
 
   statement {
-    sid       = "VaultItemsOnly"
-    actions   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
+    sid = "VaultItemsOnly"
+    # ConditionCheckItem: writes are transactions that check the account's revocation
+    # in the same step (CA-13). Still items only: no Scan, Query or table actions.
+    actions   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:ConditionCheckItem"]
     resources = [var.table_arn]
   }
 
