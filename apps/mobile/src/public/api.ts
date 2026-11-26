@@ -133,3 +133,72 @@ export async function postJson(
     return { status: 0, json: null };
   }
 }
+
+// ---------------------------------------------------------------- history and more
+
+export interface CellHistory {
+  readonly geohash6: string;
+  readonly row: number;
+  readonly col: number;
+  readonly darkMinutes: number;
+  readonly knownMinutes: number;
+  readonly outages: number;
+  readonly longestDarkMinutes: number;
+  readonly lastDarkMinute: number | null;
+  readonly daily: readonly { readonly day: string; readonly darkMinutes: number }[];
+}
+export interface HistoryAnswer {
+  readonly center: string;
+  readonly span: number;
+  readonly days: number;
+  readonly cells: readonly CellHistory[];
+}
+
+/** Outage history of a cell and the cells around it (consoles HC-01..HC-04). */
+export async function fetchHistory(
+  cell: string,
+  span = 3,
+  days = 7,
+): Promise<HistoryAnswer | null> {
+  const r = await getJson<HistoryAnswer>(`/v1/history?cell=${cell}&span=${span}&days=${days}`);
+  return r.status === 200 ? r.body : null;
+}
+
+export interface Advisory {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  readonly from: string;
+  readonly atMs: number;
+}
+export async function fetchAdvisories(cell: string): Promise<readonly Advisory[] | null> {
+  const r = await getJson<{ advisories: Advisory[] }>(`/v1/advisories?cell=${cell}`);
+  return r.status === 200 && r.body ? r.body.advisories : null;
+}
+
+export interface SiteStatus {
+  readonly siteId: string;
+  readonly name: string;
+  readonly kind: string;
+  readonly open: boolean;
+  readonly power: 'mains' | 'backup' | 'none';
+  readonly note: string;
+  readonly lat: number;
+  readonly lng: number;
+  readonly updatedAtMs: number;
+}
+/** Businesses near a cell that published whether they are open and powered (BC-03). */
+export async function fetchSites(cell: string): Promise<readonly SiteStatus[] | null> {
+  const r = await getJson<{ sites: SiteStatus[] }>(`/v1/sites?cell=${cell}`);
+  return r.status === 200 && r.body ? r.body.sites : null;
+}
+
+/** The server's Ask: the same library answer, maybe phrased by Claude (GL-07). */
+export async function askOnline(question: string): Promise<{ phrased: string | null } | null> {
+  const r = await postJson('/v1/ask', { question });
+  if (r.status !== 200) return null;
+  const j = r.json as { kind?: string; phrased?: unknown } | null;
+  return j?.kind === 'answer'
+    ? { phrased: typeof j.phrased === 'string' ? j.phrased : null }
+    : null;
+}

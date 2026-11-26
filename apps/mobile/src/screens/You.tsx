@@ -1,9 +1,11 @@
 import { checkPassphrase } from '@afterglow/adapters';
 import { type ReactNode, useState } from 'react';
+import { ConsolesSection } from '../console/ConsolesSection';
 import { EyesFreeSettings } from '../eyesfree/EyesFreeUI';
 import { HistorySection } from '../history/HistorySection';
 import { TrustCentre } from '../history/TrustCentre';
 import { useNow } from '../household/useHousehold';
+import { LanguagePicker } from '../i18n/LanguagePicker';
 import { Button, ChoiceChip, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
 import { NotifySettings } from '../notify/NotifySettings';
@@ -195,8 +197,12 @@ export function You({
     >
       {header}
       {children}
+      {settings && space.kind === 'account' ? (
+        <ConsolesSection signedIn={space.cloud !== null} />
+      ) : null}
       {settings ? <HistorySection /> : null}
       {settings ? <NotifySettings /> : null}
+      {settings ? <LanguagePicker /> : null}
       {settings ? <EyesFreeSettings /> : null}
       {settings ? <TrustCentre /> : null}
     </main>

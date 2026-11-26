@@ -32,6 +32,7 @@ import {
   validUntil,
   whText,
 } from '../plan/present';
+import { ScheduleSection } from '../schedule/ScheduleSection';
 import { HomeSetup } from './HomeSetup';
 
 const STORE_KINDS = Object.keys(KIND_LABEL) as energy.StoreKind[];
@@ -293,6 +294,8 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
 
       {/* The demo is a simulated household with no real area; forecast and places are real-only. */}
       {demo ? null : <ForecastAndDestinations home={view.home} store={store} nowMs={nowMs} />}
+
+      {demo ? null : <ScheduleSection nowMs={nowMs} />}
 
       <LibrarySection />
 

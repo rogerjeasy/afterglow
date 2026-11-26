@@ -18,6 +18,7 @@ import {
   worstMedicine,
 } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
+import { useT } from '../i18n/i18n';
 import { buildLanternModel, estimateAt, toMinute, viewAt } from '../lantern/model';
 import { hearthLine } from '../lantern/present';
 import { openLight } from '../light/LightMode';
@@ -50,6 +51,7 @@ export function Hearth({
 }): ReactNode {
   const { store, state, demo } = useHousehold();
   const gs = useGridSense();
+  const tr = useT();
   const { view } = state;
   const [settingUpHome, setSettingUpHome] = useState(false);
 
@@ -84,12 +86,12 @@ export function Hearth({
   }, [outage, demo, view.outageStartedAtMs, nowMs]);
 
   const timer = outage
-    ? `GRID DOWN ${formatTimer(nowMs - (view.outageStartedAtMs as number))}`
+    ? `${tr('hearth.gridDown')} ${formatTimer(nowMs - (view.outageStartedAtMs as number))}`
     : demo
       ? scenario.verdict === 'present'
-        ? 'POWER ON'
-        : 'LISTENING…'
-      : 'POWER ON';
+        ? tr('hearth.powerOn')
+        : tr('hearth.listening')
+      : tr('hearth.powerOn');
 
   const line = outage
     ? sim
@@ -291,7 +293,7 @@ export function Hearth({
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <VoiceButton />
         <Button style={{ width: '100%' }} onClick={() => openLight()}>
-          Use this phone as a light
+          {tr('hearth.light')}
         </Button>
         {outage ? (
           <Button
@@ -299,7 +301,7 @@ export function Hearth({
             style={{ width: '100%', minHeight: 72 }}
             onClick={() => store.endOutage()}
           >
-            Power is back
+            {tr('hearth.powerBack')}
           </Button>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -313,7 +315,7 @@ export function Hearth({
               style={{ width: '100%', minHeight: 72 }}
               onClick={() => store.startOutage(Date.now())}
             >
-              Power just went out
+              {tr('hearth.powerOut')}
             </Button>
             {onStartTour ? (
               <Button variant="ghost" style={{ width: '100%' }} onClick={onStartTour}>

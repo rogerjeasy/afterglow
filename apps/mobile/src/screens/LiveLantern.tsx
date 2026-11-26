@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react';
+import { formatClockTime } from '../format';
 import { gridSense } from '../gridsense/engine';
 import { useGridSense } from '../gridsense/useGridSense';
 import { STATE_WORD } from '../lantern/present';
@@ -7,9 +8,11 @@ import { Button, Notice, Section } from '../night-shell/controls';
 import { LanternMap, type MapCell, MapLegend } from '../night-shell/lantern';
 import { token } from '../night-shell/theme';
 import { unfollowArea } from '../notify/notify';
+import { AdvisoriesNotice, Comparisons, OpenBusinesses } from '../places/AreaExtras';
 import { PlacesSection } from '../places/PlacesSection';
 import { SignalSection } from '../places/SignalSection';
 import { useCells, usePlaces } from '../public/hooks';
+import { scheduleNow, useManualSchedule } from '../schedule/manual';
 
 /**
  * The live Lantern (crowd-reports CR-04, CR-07): the real crowd map around the
@@ -43,6 +46,7 @@ function cellNote(state: string, count: number): string {
 
 export function LiveLantern({ cell }: { cell: string }): ReactNode {
   const cellsState = useCells(cell, 5, 5);
+  const sched = scheduleNow(useManualSchedule(), Date.now());
   const places = usePlaces(cell);
   const answer =
     cellsState.kind === 'ready'
@@ -66,6 +70,7 @@ export function LiveLantern({ cell }: { cell: string }): ReactNode {
 
   return (
     <>
+      <AdvisoriesNotice cell={cell} />
       <Section title="Lantern">
         <StatusLine
           timer={mine ? (STATE_LINE[mine.state] ?? 'UNKNOWN') : 'CHECKING…'}
@@ -124,12 +129,16 @@ export function LiveLantern({ cell }: { cell: string }): ReactNode {
 
       <Section title="When will power return?">
         <Notice>
-          No schedule provider is connected for your area yet, so I show no promised time and no
-          estimate. When neighbours' phones start charging again, this map says "coming back" before
-          any schedule does.
+          {sched.current
+            ? `Your utility announced power back at ${formatClockTime(sched.current.endMinute * 60_000)}. Announcements slip: this map says "coming back" when neighbours' phones start charging, whatever the schedule says.`
+            : sched.next
+              ? `No announced outage now. The next one announced starts at ${formatClockTime(sched.next.startMinute * 60_000)}.`
+              : 'No schedule is announced for your area, so I show no promised time and no estimate. When neighbours\' phones start charging again, this map says "coming back" before anyone announces it. You can add announced times on the Plan tab.'}
         </Notice>
       </Section>
 
+      <Comparisons cell={cell} />
+      <OpenBusinesses cell={cell} />
       <PlacesSection cell={cell} places={places} cellsAnswer={answer} />
       <SignalSection cell={cell} places={places} />
 

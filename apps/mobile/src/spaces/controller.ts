@@ -81,6 +81,11 @@ export interface CreateAccountArgs {
 
 export interface SpaceController {
   getState(): SpaceState;
+  /**
+   * A fresh Cognito access token for the consoles (.kiro/specs/consoles CO-01), only
+   * while a cloud account is unlocked and signed in; null otherwise. Memory only.
+   */
+  consoleToken(): Promise<string | null>;
   subscribe(listener: () => void): () => void;
   enterDemo(): void;
   exitDemo(): void;
@@ -440,6 +445,14 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
   }
 
   return {
+    async consoleToken() {
+      if (!cloud || !active?.cloud?.signedIn) return null;
+      try {
+        return await cloud.auth.accessToken();
+      } catch {
+        return null;
+      }
+    },
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);

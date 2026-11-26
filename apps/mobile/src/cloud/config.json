@@ -4,5 +4,6 @@
   "clientId": "3815v5r59ch2p6urp4sccqa7vu",
   "apiUrl": "https://xfq5jnmpdf.execute-api.eu-central-1.amazonaws.com",
   "publicApiUrl": "https://z52uri28c1.execute-api.eu-central-1.amazonaws.com",
-  "vapidPublicKey": "BIWwIu9mhQIk-bceGO_kxeVv2Zp4250qYBXF7aJwYp4A_2iRF08Gm-6Q0tnZ4sSQMlsOPVXCQzgd1m2TutFG6yg"
+  "vapidPublicKey": "BIWwIu9mhQIk-bceGO_kxeVv2Zp4250qYBXF7aJwYp4A_2iRF08Gm-6Q0tnZ4sSQMlsOPVXCQzgd1m2TutFG6yg",
+  "consoleApiUrl": "https://84zh35s8kh.execute-api.eu-central-1.amazonaws.com"
 }

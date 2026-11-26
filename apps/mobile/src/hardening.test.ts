@@ -47,6 +47,8 @@ describe('Page hardening (ACC-17)', () => {
     }
     // The anonymous public API (crowd reports, cells, places, weather): crowd-reports CR-06.
     if (typeof rawCloud.publicApiUrl === 'string') expected.push(rawCloud.publicApiUrl);
+    // The consoles' API (Business and Beacon): consoles CO-01.
+    if (typeof rawCloud.consoleApiUrl === 'string') expected.push(rawCloud.consoleApiUrl);
     expect(csp['connect-src']).toEqual(expected);
     for (const [name, values] of Object.entries(csp)) {
       if (name === 'connect-src') continue;

@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useT } from '../i18n/i18n';
 import { Button, ChoiceChip, Notice } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
 
@@ -40,7 +41,7 @@ const SOS: readonly [boolean, number][] = [
   [false, 7],
 ];
 const LEVELS = [0.35, 0.65, 1] as const;
-const LEVEL_WORD = ['Dim', 'Medium', 'Bright'] as const;
+const LEVEL_KEY = ['light.dim', 'light.medium', 'light.bright'] as const;
 /** The one place the app paints white: the escape hatch, after a confirmation. */
 const WHITE = 'rgb(255, 255, 255)';
 
@@ -84,6 +85,7 @@ function minutesLeft(ms: number): string {
 
 export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
   useWakeLock();
+  const tr = useT();
   const [kind, setKind] = useState<Kind>('red');
   const [level, setLevel] = useState(1);
   const [confirm, setConfirm] = useState<'white' | 'sos' | null>(null);
@@ -150,7 +152,7 @@ export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
         ? 'SOS: flashing in Morse'
         : kind === 'beacon'
           ? 'Beacon: steady light'
-          : `Red light, ${LEVEL_WORD[level]}`;
+          : `Red light, ${tr(LEVEL_KEY[level] ?? 'light.bright')}`;
 
   return (
     <dialog
@@ -189,7 +191,7 @@ export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
           {label}
         </span>
         <Button size="sm" variant="primary" onClick={onClose}>
-          Close
+          {tr('light.close')}
         </Button>
       </div>
       <div
@@ -256,10 +258,10 @@ export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
         ) : (
           <>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {LEVEL_WORD.map((w, i) => (
+              {LEVEL_KEY.map((w, i) => (
                 <ChoiceChip
                   key={w}
-                  label={w}
+                  label={tr(w)}
                   selected={kind === 'red' && level === i}
                   onClick={() => {
                     setKind('red');
@@ -268,17 +270,17 @@ export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
                 />
               ))}
               <ChoiceChip
-                label="Beacon"
+                label={tr('light.beacon')}
                 selected={kind === 'beacon'}
                 onClick={() => setKind('beacon')}
               />
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Button size="sm" onClick={() => setConfirm('sos')} disabled={kind === 'sos'}>
-                SOS
+                {tr('light.sos')}
               </Button>
               <Button size="sm" onClick={() => setConfirm('white')} disabled={kind === 'white'}>
-                White light
+                {tr('light.white')}
               </Button>
             </div>
             {readapt > 0 ? (

@@ -2,6 +2,8 @@ import type { LuminanceMode } from '@afterglow/design-system';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { alertText } from './alerts/present';
 import { useAlerts } from './alerts/useAlerts';
+import { BeaconConsole } from './console/BeaconConsole';
+import { BusinessConsole } from './console/BusinessConsole';
 import { foodIndex } from './data/foodkeeper';
 import { setCommandHandler } from './eyesfree/EyesFreeUI';
 import { announce, currentStatus } from './eyesfree/eyesfree';
@@ -56,6 +58,8 @@ function tabFromHash(): TabId {
   if (h.startsWith('#/plan')) return 'plan';
   if (h.startsWith('#/you')) return 'you';
   if (h.startsWith('#/alerts')) return 'alerts';
+  if (h.startsWith('#/business')) return 'business';
+  if (h.startsWith('#/beacon')) return 'beacon';
   return 'hearth';
 }
 const HASH: Record<TabId, string> = {
@@ -66,6 +70,8 @@ const HASH: Record<TabId, string> = {
   plan: '#/plan',
   you: '#/you',
   alerts: '#/alerts',
+  business: '#/business',
+  beacon: '#/beacon',
 };
 
 /**
@@ -428,6 +434,20 @@ export function App(): ReactNode {
         <Cold nowMs={nowMs} selectedId={coldSelected} onSelect={setColdSelected} />
       ) : tab === 'alerts' ? (
         <Alerts list={alertList} outage={outage} />
+      ) : tab === 'business' || tab === 'beacon' ? (
+        // The consoles are wider pages for a desk as much as a phone (7.14, 7.16).
+        <main
+          style={{
+            maxWidth: 960,
+            margin: '0 auto',
+            padding: '8px 20px 120px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 28,
+          }}
+        >
+          {tab === 'business' ? <BusinessConsole /> : <BeaconConsole />}
+        </main>
       ) : (
         <You onStartTour={space.kind === 'account' ? undefined : startTour} />
       )}

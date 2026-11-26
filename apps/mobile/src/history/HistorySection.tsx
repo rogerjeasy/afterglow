@@ -7,6 +7,7 @@ import { Sources } from '../night-shell/components';
 import { Button, Fold, Notice, Section } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
 import { MESSAGE_LABEL } from '../seance/present';
+import { download, printReport } from './export';
 
 /**
  * History, reports and evidence (product description 7.19): every outage this
@@ -87,33 +88,6 @@ export function reportText(r: household.OutageReport): string {
     'From this household’s own record in Afterglow. Times are this phone’s clock. Not medical or insurance advice.',
   );
   return lines.join('\n');
-}
-
-function download(name: string, type: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function printReport(text: string): void {
-  // A printable page of its own: black text on white for paper, not the Night Shell.
-  const holder = document.createElement('pre');
-  holder.className = 'print-only';
-  holder.textContent = text;
-  document.body.append(holder);
-  document.body.classList.add('printing-report');
-  const done = (): void => {
-    holder.remove();
-    document.body.classList.remove('printing-report');
-    window.removeEventListener('afterprint', done);
-  };
-  window.addEventListener('afterprint', done);
-  window.print();
 }
 
 function ReportView({ r }: { r: household.OutageReport }): ReactNode {

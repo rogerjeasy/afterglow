@@ -1,4 +1,6 @@
 import { type CSSProperties, type ReactNode, useState } from 'react';
+import type { Key } from '../i18n/catalogue';
+import { useT } from '../i18n/i18n';
 import { token } from './theme';
 
 /**
@@ -322,7 +324,16 @@ export function Notice({ children }: { children: ReactNode }): ReactNode {
   );
 }
 
-export type TabId = 'hearth' | 'lantern' | 'seance' | 'cold' | 'plan' | 'you' | 'alerts';
+export type TabId =
+  | 'hearth'
+  | 'lantern'
+  | 'seance'
+  | 'cold'
+  | 'plan'
+  | 'you'
+  | 'alerts'
+  | 'business'
+  | 'beacon';
 
 function Glyph({ children }: { children: ReactNode }): ReactNode {
   return (
@@ -393,12 +404,12 @@ function PlanGlyph(): ReactNode {
     </Glyph>
   );
 }
-const TABS: readonly { id: TabId; label: string; glyph: () => ReactNode }[] = [
-  { id: 'hearth', label: 'Hearth', glyph: HearthGlyph },
-  { id: 'lantern', label: 'Lantern', glyph: LanternGlyph },
-  { id: 'seance', label: 'Séance', glyph: SeanceGlyph },
-  { id: 'cold', label: 'Cold', glyph: TombstoneGlyph },
-  { id: 'plan', label: 'Plan', glyph: PlanGlyph },
+const TABS: readonly { id: TabId; key: Key; glyph: () => ReactNode }[] = [
+  { id: 'hearth', key: 'tab.hearth', glyph: HearthGlyph },
+  { id: 'lantern', key: 'tab.lantern', glyph: LanternGlyph },
+  { id: 'seance', key: 'tab.seance', glyph: SeanceGlyph },
+  { id: 'cold', key: 'tab.cold', glyph: TombstoneGlyph },
+  { id: 'plan', key: 'tab.plan', glyph: PlanGlyph },
 ];
 
 /**
@@ -524,6 +535,7 @@ export function TabBar({
   active: TabId;
   onSelect: (id: TabId) => void;
 }): ReactNode {
+  const tr = useT();
   return (
     <nav
       aria-label="Main"
@@ -565,7 +577,7 @@ export function TabBar({
               }}
             >
               {t.glyph()}
-              <span>{t.label}</span>
+              <span>{tr(t.key)}</span>
             </button>
           );
         })}
