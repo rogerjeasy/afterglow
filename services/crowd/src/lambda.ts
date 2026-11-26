@@ -45,9 +45,6 @@ export async function handler(event: HttpEvent) {
   if (typeof event.warmPlaces === 'string') {
     const ok = await warmPlacesNow(event.warmPlaces, deps);
     console.log(JSON.stringify({ route: 'warm places', ok, ms: Date.now() - started }));
-    // Throwing makes Lambda retry this asynchronous run (twice, with backoff): the public
-    // OpenStreetMap servers are often busy for a few minutes at a time.
-    if (!ok) throw new Error('every Overpass mirror failed; Lambda will retry');
     return { ok };
   }
   const routeKey = event.routeKey ?? '';

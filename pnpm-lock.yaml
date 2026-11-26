@@ -57,6 +57,9 @@ importers:
       '@afterglow/simulator':
         specifier: workspace:*
         version: link:../../tools/simulator
+      '@noble/hashes':
+        specifier: 1.8.0
+        version: 1.8.0
       amazon-cognito-identity-js:
         specifier: 6.3.22
         version: 6.3.22
@@ -782,6 +785,10 @@ packages:
   '@mswjs/interceptors@0.41.9':
     resolution: {integrity: sha512-VVPPgHyQ6ShqnrmDWuxjmUIsO9gWyOZFmuOfLd9LfBGQJwZfy0gvv9pbHSJuoFNIYC7ZDX9aoFwowjcdSC4E8w==}
     engines: {node: '>=18'}
+
+  '@noble/hashes@1.8.0':
+    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
+    engines: {node: ^14.21.3 || >=16}
 
   '@open-draft/deferred-promise@2.2.0':
     resolution: {integrity: sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA==}
@@ -2217,6 +2224,8 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
+  '@noble/hashes@1.8.0': {}
+
   '@open-draft/deferred-promise@2.2.0': {}
 
   '@open-draft/deferred-promise@3.0.0': {}
@@ -2439,6 +2448,28 @@ snapshots:
       - utf-8-validate
       - vite
 
+  '@vitest/browser@2.1.8(@types/node@22.20.5)(playwright@1.65.1)(typescript@5.7.2)(vite@6.0.5(@types/node@22.20.5))(vitest@2.1.8)':
+    dependencies:
+      '@testing-library/dom': 10.4.2
+      '@testing-library/user-event': 14.6.13(@testing-library/dom@10.4.2)
+      '@vitest/mocker': 2.1.8(msw@2.15.0(@types/node@22.20.5)(typescript@5.7.2))(vite@6.0.5(@types/node@22.20.5))
+      '@vitest/utils': 2.1.8
+      magic-string: 0.30.21
+      msw: 2.15.0(@types/node@22.20.5)(typescript@5.7.2)
+      sirv: 3.0.2
+      tinyrainbow: 1.2.0
+      vitest: 2.1.8(@types/node@22.20.5)(@vitest/browser@2.1.8)(msw@2.15.0(@types/node@22.20.5)(typescript@5.7.2))
+      ws: 8.23.0
+    optionalDependencies:
+      playwright: 1.65.1
+    transitivePeerDependencies:
+      - '@types/node'
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - vite
+    optional: true
+
   '@vitest/expect@2.1.8':
     dependencies:
       '@vitest/spy': 2.1.8
@@ -2454,6 +2485,16 @@ snapshots:
     optionalDependencies:
       msw: 2.15.0(@types/node@22.20.5)(typescript@5.7.2)
       vite: 5.4.21(@types/node@22.20.5)
+
+  '@vitest/mocker@2.1.8(msw@2.15.0(@types/node@22.20.5)(typescript@5.7.2))(vite@6.0.5(@types/node@22.20.5))':
+    dependencies:
+      '@vitest/spy': 2.1.8
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      msw: 2.15.0(@types/node@22.20.5)(typescript@5.7.2)
+      vite: 6.0.5(@types/node@22.20.5)
+    optional: true
 
   '@vitest/pretty-format@2.1.8':
     dependencies:
@@ -2999,7 +3040,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.20.5
-      '@vitest/browser': 2.1.8(@types/node@22.20.5)(playwright@1.65.1)(typescript@5.7.2)(vite@5.4.21(@types/node@22.20.5))(vitest@2.1.8)
+      '@vitest/browser': 2.1.8(@types/node@22.20.5)(playwright@1.65.1)(typescript@5.7.2)(vite@6.0.5(@types/node@22.20.5))(vitest@2.1.8)
     transitivePeerDependencies:
       - less
       - lightningcss

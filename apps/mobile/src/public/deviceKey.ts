@@ -1,4 +1,33 @@
+import { sha256 } from '@noble/hashes/sha2';
 import { postJson } from './api';
+
+/** Must match services/crowd POW_BITS: the cost of one day key (about a second on a phone). */
+const POW_BITS = 20;
+
+function zeroBits(b: Uint8Array): number {
+  let n = 0;
+  for (const x of b) {
+    if (x === 0) {
+      n += 8;
+      continue;
+    }
+    return n + Math.clz32(x) - 24;
+  }
+  return n;
+}
+
+/**
+ * The proof of work for registering a key: a nonce whose hash with the key and the
+ * UTC day starts with POW_BITS zero bits. Done in slices so the screen stays live.
+ */
+async function proofOfWork(day: string, x: string, y: string): Promise<string> {
+  const enc = new TextEncoder();
+  const prefix = `afterglow-device:v1:${day}:${x}.${y}:`;
+  for (let nonce = 0; ; nonce++) {
+    if (zeroBits(sha256(enc.encode(prefix + nonce))) >= POW_BITS) return String(nonce);
+    if (nonce % 20_000 === 19_999) await new Promise((r) => setTimeout(r, 0));
+  }
+}
 
 /**
  * Today's device key (crowd-reports CR-02). An ECDSA P-256 key pair made on the
@@ -67,8 +96,11 @@ export function todaysKey(): Promise<DayKey | null> {
       'verify',
     ]);
     const jwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
+    if (!jwk.x || !jwk.y) return null;
+    const nonce = await proofOfWork(today(), jwk.x, jwk.y);
     const r = await postJson('/v1/devices', {
       publicKey: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y },
+      nonce,
     });
     const id = (r.json as { deviceId?: unknown } | null)?.deviceId;
     if (r.status !== 201 || typeof id !== 'string') return null;

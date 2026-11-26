@@ -40,3 +40,10 @@ Until now the crowd map was a seeded simulation. This makes it real: a phone tha
 - **`reports`**: a cell (~1.2 × 0.6 km), a minute, a verdict, a confidence, sense names, a restore flag and a device id valid for one day. No coordinates, no account, no IP address (API Gateway logs no source IP). Deleted after 2 hours; no point-in-time recovery, so no backup outlives that. The day key makes a device unlinkable across days. Re-identification risk: a single device's cell over one day; mitigated by k ≥ 5 on everything published and by the short retention.
 - **`public_cache`**: OpenStreetMap places and Open-Meteo forecasts keyed by cell or area. Public data only; nothing about a person or a device.
 - **Known limit:** without app attestation (not available on the web), one person can register many day keys and report many times. Throttling and the one-per-minute rule slow this; the native app adds Play Integrity and App Attest (architecture ADR-006). Until then the map says the crowd can be wrong, and provider data and satellite corroboration are separate sources.
+
+## Hardening from the security review (2026-11-26)
+
+- **CR-08** WHEN a device registers a day key THE SYSTEM SHALL require a proof of work of 20 bits over the key and the UTC day (today or yesterday), so each fake device costs about a second of a phone's work, every day.
+- **CR-09** WHEN a day key reports from a cell THE SYSTEM SHALL allow at most 2 distinct cells per key per day and refuse others with 429, so turning one cell takes at least k = 5 keys made for it.
+- **CR-10** WHEN the places for a cell are not cached THE SYSTEM SHALL start at most one background fetch per cell at a time (an atomic claim) and at most 6 per minute in total, and SHALL NOT retry a failed fetch on its own; the next request for that cell starts it again.
+- **CR-11** THE SYSTEM SHALL NOT change an outage state from crowd reports alone: on a phone, the crowd only corroborates a sense of the phone's own (fusion in the core). Device attestation (Play Integrity, App Attest) comes with the native app.

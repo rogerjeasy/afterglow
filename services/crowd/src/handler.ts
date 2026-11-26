@@ -50,6 +50,83 @@ const B64URL = /^[A-Za-z0-9_-]+$/;
 const DAY_S = 86_400;
 const MAX_REPORT_BYTES = 2048;
 
+/**
+ * Sybil costs (security review 2026-11-26). Nothing on the open web proves one phone
+ * is one person, so each fake device is made to cost something and to reach little:
+ * - registering a day key needs a proof of work (about a second on a phone, and it
+ *   must be redone for every key, every day);
+ * - one key may report into at most DEVICE_CELLS_PER_DAY cells, so flipping a cell
+ *   needs at least k = 5 such keys made for that cell;
+ * - the crowd never acts alone: on a phone, the crowd only corroborates a sense of
+ *   the phone's own (fusion in the core), and nothing switches without that.
+ * Attestation of the device (Play Integrity, App Attest) comes with the native app.
+ */
+export const POW_BITS = 20;
+const DEVICE_CELLS_PER_DAY = 2;
+/** At most this many background places fetches start per minute, across all cells. */
+const WARMS_PER_MINUTE = 6;
+/** How long one cell's fetch blocks another for the same cell. */
+const WARM_HOLD_S = 150;
+
+function leadingZeroBits(bytes: Uint8Array): number {
+  let n = 0;
+  for (const b of bytes) {
+    if (b === 0) {
+      n += 8;
+      continue;
+    }
+    return n + Math.clz32(b) - 24;
+  }
+  return n;
+}
+
+/** The text a registration's proof of work is over: the key and the UTC day. */
+export const powText = (day: string, x: string, y: string, nonce: string): string =>
+  `afterglow-device:v1:${day}:${x}.${y}:${nonce}`;
+
+async function powOk(x: string, y: string, nonce: unknown, nowMs: number): Promise<boolean> {
+  if (typeof nonce !== 'string' || !/^[0-9]{1,16}$/.test(nonce)) return false;
+  // Today or yesterday (UTC), for phones registering around midnight.
+  for (const d of [0, 1]) {
+    const day = new Date(nowMs - d * DAY_S * 1000).toISOString().slice(0, 10);
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(powText(day, x, y, nonce)),
+    );
+    if (leadingZeroBits(new Uint8Array(digest)) >= POW_BITS) return true;
+  }
+  return false;
+}
+
+/** May this device report into this cell today? It keeps the first cells it used. */
+async function deviceMayReport(
+  deps: PublicDeps,
+  deviceId: string,
+  cell: string,
+  nowS: number,
+): Promise<boolean> {
+  const until = nowS + 2 * DAY_S;
+  for (let i = 0; i < DEVICE_CELLS_PER_DAY; i++) {
+    const key = `devcell:${deviceId}:${i}`;
+    const held = await deps.store.getCache(key, nowS);
+    if (held === cell) return true;
+    if (held === null && (await deps.store.claim(key, cell, until, nowS))) return true;
+    // Lost a race for this slot: see whether the winner was this same cell.
+    if (held === null && (await deps.store.getCache(key, nowS)) === cell) return true;
+  }
+  return false;
+}
+
+/** A global budget of background fetches: one slot per fetch, per minute. */
+async function takeWarmSlot(deps: PublicDeps, nowS: number): Promise<boolean> {
+  const minute = Math.floor(nowS / 60);
+  if (await deps.store.getCache(`warmslot:${minute}:${WARMS_PER_MINUTE - 1}`, nowS)) return false;
+  for (let i = 0; i < WARMS_PER_MINUTE; i++) {
+    if (await deps.store.claim(`warmslot:${minute}:${i}`, '1', nowS + 120, nowS)) return true;
+  }
+  return false;
+}
+
 const b64urlToBytes = (s: string): Uint8Array => new Uint8Array(Buffer.from(s, 'base64url'));
 
 async function deviceIdOf(x: string, y: string): Promise<string> {
@@ -206,6 +283,9 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
         const body = parseBody(req.body);
         const jwk = parseJwk(body?.publicKey);
         if (!jwk) return err(400, 'publicKey must be a P-256 public JWK');
+        if (!(await powOk(jwk.x, jwk.y, body?.nonce, nowMs))) {
+          return err(400, `nonce must be a proof of work of ${POW_BITS} bits for today`);
+        }
         const deviceId = await deviceIdOf(jwk.x, jwk.y);
         const stored = JSON.stringify({ kty: 'EC', crv: 'P-256', x: jwk.x, y: jwk.y });
         await deps.store.putDevice(deviceId, stored, nowS + 2 * DAY_S);
@@ -249,6 +329,9 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
         }
         const checked = sensing.validateCrowdReport(parsed, deviceId, toMinute(nowMs));
         if (typeof checked === 'string') return err(400, checked);
+        if (!(await deviceMayReport(deps, deviceId, checked.geohash6, nowS))) {
+          return err(429, 'this device key has reported from enough cells today');
+        }
         const fresh = await deps.store.putReport(checked, nowS + 2 * 3600);
         // 202 either way: a duplicate is not an error for a client that retried.
         return json(202, { accepted: true, duplicate: !fresh });
@@ -264,11 +347,16 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
         if (hit) return { status: 200, body: hit, maxAge: 3600 };
         // OpenStreetMap's public server can take a minute: fetch in the background and
         // let the app ask again, instead of holding a request past API Gateway's limit.
-        const warming = await deps.store.getCache(`warming:${g}`, nowS);
-        if (!warming && deps.warmPlaces) {
-          // Long enough to cover Lambda's own retries of the background run.
-          await deps.store.putCache(`warming:${g}`, '1', nowS + 600);
-          await deps.warmPlaces(g);
+        // One background fetch per cell at a time (an atomic claim, so concurrent
+        // requests cannot start two), and a small global budget per minute so asking
+        // for many cells cannot fan out into many fetches. A failed fetch is not
+        // retried by the server: the next request for the same cell, if any, starts it.
+        if (
+          deps.warmPlaces &&
+          (await deps.store.claim(`warming:${g}`, '1', nowS + WARM_HOLD_S, nowS))
+        ) {
+          if (await takeWarmSlot(deps, nowS)) await deps.warmPlaces(g);
+          else await deps.store.putCache(`warming:${g}`, '1', nowS + 30);
         }
         if (!deps.warmPlaces) {
           const fresh = await (deps.places ?? fetchPlaces)(g);

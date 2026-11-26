@@ -23,6 +23,11 @@ export interface CrowdStore {
   reportsSince(geohash6: string, fromMinute: number, nowS: number): Promise<cells.CellReport[]>;
   getCache(key: string, nowS: number): Promise<string | null>;
   putCache(key: string, value: string, expiresAtS: number): Promise<void>;
+  /**
+   * Create the key only if it is absent or expired; false when someone holds it. The
+   * building block for the rate limits and slots below (one conditional PutItem).
+   */
+  claim(key: string, value: string, expiresAtS: number, nowS: number): Promise<boolean>;
 }
 
 const pad = (n: number): string => String(n).padStart(10, '0');
@@ -115,6 +120,24 @@ export function dynamoCrowdStore(
           Item: { key: { S: key }, value: { S: value }, expiresAt: { N: String(expiresAtS) } },
         }),
       );
+    },
+
+    async claim(key, value, expiresAtS, nowS) {
+      try {
+        await client.send(
+          new PutItemCommand({
+            TableName: tables.cache,
+            Item: { key: { S: key }, value: { S: value }, expiresAt: { N: String(expiresAtS) } },
+            ConditionExpression: 'attribute_not_exists(#k) OR expiresAt <= :now',
+            ExpressionAttributeNames: { '#k': 'key' },
+            ExpressionAttributeValues: { ':now': { N: String(nowS) } },
+          }),
+        );
+        return true;
+      } catch (e) {
+        if (e instanceof ConditionalCheckFailedException) return false;
+        throw e;
+      }
     },
   };
 }
