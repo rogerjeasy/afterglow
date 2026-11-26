@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { formatTemp } from '../format';
 import { hoursOfSafetyText } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
+import { LibrarySection } from '../library/LibrarySection';
 import { Sources } from '../night-shell/components';
 import {
   Button,
@@ -292,6 +293,8 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
 
       {/* The demo is a simulated household with no real area; forecast and places are real-only. */}
       {demo ? null : <ForecastAndDestinations home={view.home} store={store} nowMs={nowMs} />}
+
+      <LibrarySection />
 
       <Section title="Candles">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
