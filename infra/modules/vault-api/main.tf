@@ -8,7 +8,8 @@
 data "aws_region" "current" {}
 
 locals {
-  routes = ["GET /v1/vault", "PUT /v1/vault", "DELETE /v1/vault"]
+  # POST /v1/vault/revoke: after a passphrase change, refuse every older token (CA-13).
+  routes = ["GET /v1/vault", "PUT /v1/vault", "DELETE /v1/vault", "POST /v1/vault/revoke"]
 }
 
 data "archive_file" "bundle" {
@@ -110,7 +111,7 @@ resource "aws_apigatewayv2_api" "this" {
 
   cors_configuration {
     allow_origins = var.web_origins
-    allow_methods = ["GET", "PUT", "DELETE"]
+    allow_methods = ["GET", "PUT", "DELETE", "POST"]
     allow_headers = ["authorization", "content-type"]
     max_age       = 600
   }
@@ -181,5 +182,5 @@ resource "aws_lambda_permission" "api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.vault.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/*/*/v1/vault"
+  source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/*/*/v1/vault*"
 }

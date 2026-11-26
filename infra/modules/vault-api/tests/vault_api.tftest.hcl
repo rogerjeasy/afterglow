@@ -47,8 +47,8 @@ run "every_route_requires_a_cognito_token" {
   command = plan
 
   assert {
-    condition     = length(aws_apigatewayv2_route.vault) == 3
-    error_message = "Exactly the three vault routes exist."
+    condition     = length(aws_apigatewayv2_route.vault) == 4
+    error_message = "Exactly the four vault routes exist."
   }
 
   assert {
@@ -57,8 +57,8 @@ run "every_route_requires_a_cognito_token" {
   }
 
   assert {
-    condition     = toset([for r in aws_apigatewayv2_route.vault : r.route_key]) == toset(["GET /v1/vault", "PUT /v1/vault", "DELETE /v1/vault"])
-    error_message = "Routes must be exactly GET, PUT and DELETE /v1/vault: none takes an account id."
+    condition     = toset([for r in aws_apigatewayv2_route.vault : r.route_key]) == toset(["GET /v1/vault", "PUT /v1/vault", "DELETE /v1/vault", "POST /v1/vault/revoke"])
+    error_message = "Routes must be exactly GET, PUT and DELETE /v1/vault and POST /v1/vault/revoke: none takes an account id."
   }
 
   assert {
