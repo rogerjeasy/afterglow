@@ -1,0 +1,8 @@
+# Reviewed false positives (2026-11-26): fake keys in the redaction tests, localStorage key names,
+# and a key generated inside a test. Real secrets never enter git; see .gitignore.
+dc44dad4883eeaae773061ce335504fb2a6a9624:afterglow-crew/backend/tests/test_runner_properties.py:aws-access-token:157
+dc44dad4883eeaae773061ce335504fb2a6a9624:afterglow-crew/backend/tests/test_runner_properties.py:aws-access-token:169
+dc44dad4883eeaae773061ce335504fb2a6a9624:afterglow-crew/backend/tests/test_runner_properties.py:generic-api-key:163
+a58a644cbe5acb28448407a1f6da17b5572fb1ff:apps/mobile/src/seance/prefs.ts:generic-api-key:7
+a58a644cbe5acb28448407a1f6da17b5572fb1ff:apps/mobile/src/seance/prefs.ts:generic-api-key:8
+a72266eec4aaa0fab7bf39a697ab6167d57e315c:afterglow-formulary/src/pipeline.property.test.ts:generic-api-key:527
