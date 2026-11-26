@@ -19,7 +19,14 @@ const ITER = 100_000; // the server refuses weaker vault records
 /** Everything that went over the "network", to prove the passphrase never did (CA-09). */
 type Wire = string[];
 
-function fakeCloud(wire: Wire, opts: { offline?: () => boolean } = {}) {
+function fakeCloud(
+  wire: Wire,
+  opts: {
+    offline?: () => boolean;
+    refuseChange?: () => boolean;
+    failRevocation?: () => boolean;
+  } = {},
+) {
   const users = new Map<string, { secret: string; confirmed: boolean; sub: string }>();
   const store: VaultStore & { dump(): ReadonlyMap<string, unknown> } = memoryStore();
   let n = 0;
@@ -71,13 +78,19 @@ function fakeCloud(wire: Wire, opts: { offline?: () => boolean } = {}) {
         for (const [e, u] of users) if (u.sub === current) users.delete(e);
         current = null;
       },
-      async changePassword(email, oldSecret, newSecret) {
-        net(`changePassword ${email}`);
-        const u = users.get(email);
-        if (!u || u.sub !== current || u.secret !== oldSecret) {
+      async changePassword(oldSecret, newSecret) {
+        net('changePassword');
+        if (opts.refuseChange?.()) throw new CloudError('unknown', 'refused');
+        const u = [...users.values()].find((x) => x.sub === current);
+        if (!u || u.secret !== oldSecret) {
           throw new CloudError('auth-failed', 'That email and passphrase did not open an account.');
         }
         u.secret = newSecret;
+      },
+      async signOutEverywhere() {
+        net('signOutEverywhere');
+        if (opts.failRevocation?.()) throw new CloudError('network', 'offline');
+        current = null;
       },
       current: () => current,
     };
@@ -352,5 +365,38 @@ describe('Cloud accounts through the controller and the real server handler', ()
     const other = device(cloud);
     expect(await other.controller.cloudSignIn('ana@example.com', PASS_A)).toBe(false);
     expect(other.controller.getState().accounts).toEqual([]);
+  }, 60_000);
+
+  it('CA-09 if the account refuses the new secret, the device change is rolled back', async () => {
+    let refuse = false;
+    const cloud = fakeCloud([], { refuseChange: () => refuse });
+    const one = device(cloud);
+    await signUp(one, 'ana@example.com', PASS_A);
+    await settle(one.controller);
+    refuse = true;
+    expect(await one.controller.changePassphrase(PASS_A, PASS_B)).toBe(false);
+    // Both still open with the OLD passphrase: here, and on a new phone.
+    await one.controller.lock();
+    expect(await one.controller.cloudSignIn('ana@example.com', PASS_A)).toBe(true);
+    const fresh = device(cloud);
+    expect(await fresh.controller.cloudSignIn('ana@example.com', PASS_A)).toBe(true);
+  }, 60_000);
+
+  it('CA-09 if other sessions cannot be ended yet, the change still holds and the person is told', async () => {
+    let fail = true;
+    const cloud = fakeCloud([], { failRevocation: () => fail });
+    const one = device(cloud);
+    await signUp(one, 'ana@example.com', PASS_A);
+    await settle(one.controller);
+    expect(await one.controller.changePassphrase(PASS_A, PASS_B)).toBe(true);
+    expect(one.controller.getState().notice).toMatch(/could not be signed out yet/);
+    // The new passphrase is the one that works, everywhere.
+    const fresh = device(cloud);
+    expect(await fresh.controller.cloudSignIn('ana@example.com', PASS_B)).toBe(true);
+    // And the revocation is retried until it succeeds.
+    fail = false;
+    await one.controller.cloudRetry();
+    await settle(one.controller);
+    expect(one.controller.getState().cloud?.sync).toBe('synced');
   }, 60_000);
 });

@@ -43,11 +43,13 @@ export interface CloudAuth {
   accessToken(): Promise<string>;
   signOut(): void;
   deleteUser(): Promise<void>;
+  /** Replace the login secret (after a passphrase change). One step; nothing else changes. */
+  changePassword(oldSecret: string, newSecret: string): Promise<void>;
   /**
-   * Replace the login secret after a passphrase change, then end every other session
-   * (other devices must sign in with the new passphrase) and sign in again here.
+   * End every session of this user, other devices included, and this one. A separate
+   * step so a failure here never leaves the secret half-changed; the caller retries it.
    */
-  changePassword(email: string, oldSecret: string, newSecret: string): Promise<void>;
+  signOutEverywhere(): Promise<void>;
 }
 
 /** Plain words for Cognito's errors. Never says which part of a credential was wrong. */
@@ -176,23 +178,28 @@ export function cognitoAuth(config: CloudConfig): CloudAuth {
       current = null;
       storage.clear();
     },
-    async changePassword(email, oldSecret, newSecret) {
+    changePassword(oldSecret, newSecret) {
       const user = current;
-      if (!user) throw new CloudError('signed-out', 'Signed out.');
-      await new Promise<void>((resolve, reject) => {
+      if (!user) return Promise.reject(new CloudError('signed-out', 'Signed out.'));
+      return new Promise<void>((resolve, reject) => {
         user.changePassword(oldSecret, newSecret, (err) =>
           err ? reject(toCloudError(err)) : resolve(),
         );
       });
-      await new Promise<void>((resolve, reject) => {
+    },
+    signOutEverywhere() {
+      const user = current;
+      if (!user) return Promise.reject(new CloudError('signed-out', 'Signed out.'));
+      return new Promise<void>((resolve, reject) => {
         user.globalSignOut({
-          onSuccess: () => resolve(),
+          onSuccess: () => {
+            current = null;
+            storage.clear();
+            resolve();
+          },
           onFailure: (err) => reject(toCloudError(err)),
         });
       });
-      current = null;
-      storage.clear();
-      await this.signIn(email, newSecret);
     },
     deleteUser() {
       const user = current;

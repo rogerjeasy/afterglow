@@ -137,9 +137,11 @@ export interface SpaceDeps {
 interface CloudActive {
   readonly email: string;
   /** In memory only while unlocked, to reconnect after an offline sign-in (CA-11 drops it). */
-  readonly secret: string;
+  secret: string;
   link: CloudLink;
   signedIn: boolean;
+  /** Other sessions still need ending after a passphrase change; retried until it succeeds. */
+  pendingRevocation: boolean;
 }
 
 interface Active {
@@ -328,6 +330,7 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
         secret: cloudEntry.secret,
         link,
         signedIn: cloudEntry.signedIn,
+        pendingRevocation: false,
       };
       const links = readLinks();
       links[session.accountId] = cloudEntry.email;
@@ -344,6 +347,27 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
       ...extra,
     });
     if (a.cloud?.signedIn) void a.cloud.link.push();
+  }
+
+  /**
+   * End every session of a cloud account, then sign this device back in with the current
+   * secret. True when the other sessions are gone; false leaves the flag set for a retry.
+   */
+  async function revokeOtherSessions(c: CloudActive): Promise<boolean> {
+    if (!cloud) return false;
+    try {
+      await cloud.auth.signOutEverywhere();
+      c.pendingRevocation = false;
+    } catch {
+      return false;
+    }
+    try {
+      await cloud.auth.signIn(c.email, c.secret);
+      c.signedIn = true;
+    } catch {
+      c.signedIn = false; // offline now: the next retry signs in with the new secret
+    }
+    return true;
   }
 
   /** Lock: swap the UI to guest FIRST so nothing can hold an unlocked store, then flush and drop the key. */
@@ -439,25 +463,42 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
         async () => {
           const a = active;
           if (!a) return false;
-          if (a.cloud && cloud) {
-            // The login secret comes from the passphrase, so both change together, online only.
-            if (!a.cloud.signedIn) {
+          const c = a.cloud;
+          if (c && cloud) {
+            // The login secret comes from the passphrase, so both change together, online
+            // only, as one transaction: the device and the account never disagree.
+            if (!c.signedIn) {
               throw new CloudError(
                 'network',
                 'Changing the passphrase of a cloud account needs a connection.',
               );
             }
             await service.verifyPassphrase(a.session, current);
-            const policy = checkPassphrase(next, a.cloud.email);
-            if (!policy.ok) throw new AccountError('policy', policy.reason);
-            const newSecret = await deriveLoginSecret(a.cloud.email, next, cloud.loginIterations);
-            await cloud.auth.changePassword(a.cloud.email, a.cloud.secret, newSecret);
+            // The same checks the local step makes, so it cannot fail after the remote one.
+            for (const label of [a.session.name, c.email]) {
+              const policy = checkPassphrase(next, label);
+              if (!policy.ok) throw new AccountError('policy', policy.reason);
+            }
+            const newSecret = await deriveLoginSecret(c.email, next, cloud.loginIterations);
+            // 1. The device first: reversible, and nothing reaches the server yet.
             await service.changePassphrase(a.session, current, next);
-            a.cloud = { ...a.cloud, secret: newSecret };
-            await a.cloud.link.push();
+            // 2. The account. If it refuses, undo step 1 so the old passphrase still opens both.
+            try {
+              await cloud.auth.changePassword(c.secret, newSecret);
+            } catch (e) {
+              await service.changePassphrase(a.session, next, current);
+              throw e;
+            }
+            // 3. Accepted: from now on only the new secret signs in.
+            c.secret = newSecret;
+            // 4. End other sessions. Separate and retried: a failure here changes nothing above.
+            c.pendingRevocation = true;
+            const revoked = await revokeOtherSessions(c);
+            await c.link.push();
             set({
-              notice:
-                'Passphrase changed here and on your account. Other phones must sign in again with the new one.',
+              notice: revoked
+                ? 'Passphrase changed here and on your account. Other phones must sign in again with the new one.'
+                : 'Passphrase changed here and on your account. Other phones could not be signed out yet and may stay signed in until they are; Afterglow keeps trying.',
             });
             return true;
           }
@@ -703,6 +744,7 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     async cloudRetry() {
       const a = active;
       if (!a?.cloud || !cloud) return;
+      if (a.cloud.pendingRevocation && a.cloud.signedIn) await revokeOtherSessions(a.cloud);
       if (!a.cloud.signedIn) {
         try {
           await cloud.auth.signIn(a.cloud.email, a.cloud.secret);
