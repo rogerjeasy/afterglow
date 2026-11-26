@@ -19,6 +19,8 @@ export interface VaultStorage extends RawStorage {
   discard(): void;
   /** Replace the contents (used to bring guest data into a new account). */
   seed(entries: Readonly<Record<string, string>>): Promise<void>;
+  /** A copy of what is in memory now, saved or not (for merging without losing unsaved edits). */
+  snapshot(): Record<string, string>;
   /** The most recent flush failure, if any, so the UI can say data is not yet saved. */
   readonly lastError: Error | null;
 }
@@ -27,6 +29,8 @@ export async function openVaultStorage(
   service: AccountService,
   session: Session,
   debounceMs = 150,
+  /** Called after each successful encrypted save, for example to push the record to the server. */
+  onSaved?: () => void,
 ): Promise<VaultStorage> {
   let map = new Map<string, string>(Object.entries((await service.loadData(session)) ?? {}));
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -45,6 +49,7 @@ export async function openVaultStorage(
       try {
         await service.saveData(session, snapshot);
         lastError = null;
+        onSaved?.();
       } catch (e) {
         lastError = e instanceof Error ? e : new Error('save failed');
       }
@@ -71,6 +76,10 @@ export async function openVaultStorage(
       schedule();
     },
     flush,
+    snapshot() {
+      assertOpen();
+      return Object.fromEntries(map);
+    },
     async seed(entries) {
       assertOpen();
       map = new Map(Object.entries(entries));

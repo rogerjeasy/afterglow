@@ -184,6 +184,22 @@ export interface AccountService {
   loadData(session: Session): Promise<Record<string, string> | null>;
   saveData(session: Session, data: Readonly<Record<string, string>>): Promise<void>;
   exportData(session: Session): Promise<string>;
+  /**
+   * The account's vault record exactly as stored: the only thing a server may hold
+   * (ACC-18, cloud-accounts CA-03). Null when there is none.
+   */
+  exportRecord(accountId: string): string | null;
+  /**
+   * Install a vault record received from the server as this device's copy, under the
+   * given display name. Returns the account id, or null when the record is malformed.
+   * It does not unlock anything: sign-in still needs the passphrase.
+   */
+  importRecord(raw: string, name: string): string | null;
+  /**
+   * Decrypt the data of another copy of this same account's record (from another
+   * device) with the open session's key, without touching the stored copy (CA-10).
+   */
+  openRecordData(session: Session, raw: string): Promise<Record<string, string> | null>;
   /** Milliseconds until another attempt is allowed, or 0. */
   retryAfterMs(accountId: string): number;
 }
@@ -458,6 +474,48 @@ export function createAccountService(opts: AccountServiceOptions): AccountServic
         );
         writeVault({ ...record, data: { ...sealed, rev } });
       });
+    },
+
+    exportRecord(accountId) {
+      const raw = storage.getItem(KEYS.vault(accountId));
+      return parseVault(raw, accountId) ? raw : null;
+    },
+
+    importRecord(raw, name) {
+      let id: unknown;
+      try {
+        id = (JSON.parse(raw) as { accountId?: unknown }).accountId;
+      } catch {
+        return null;
+      }
+      if (typeof id !== 'string' || !isWellFormedAccountId(id)) return null;
+      const record = parseVault(raw, id);
+      const clean = name.trim();
+      if (!record || clean === '' || clean.length > MAX_NAME_LENGTH) return null;
+      writeVault(record);
+      const others = readDirectory().filter((a) => a.id !== id);
+      writeDirectory([...others, { id, name: clean }]);
+      return id;
+    },
+
+    async openRecordData(session, raw) {
+      session.useKey();
+      const record = parseVault(raw, session.accountId);
+      if (!record) throw authFailed();
+      if (!record.data) return null;
+      const text = await openText(
+        session.useKey(),
+        record.data,
+        aad.data(session.accountId, record.data.rev),
+      );
+      const x: unknown = JSON.parse(text);
+      if (!isRecord(x)) throw authFailed();
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(x)) {
+        if (typeof v !== 'string') throw authFailed();
+        out[k] = v;
+      }
+      return out;
     },
 
     async exportData(session) {
