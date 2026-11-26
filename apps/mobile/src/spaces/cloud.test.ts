@@ -71,6 +71,14 @@ function fakeCloud(wire: Wire, opts: { offline?: () => boolean } = {}) {
         for (const [e, u] of users) if (u.sub === current) users.delete(e);
         current = null;
       },
+      async changePassword(email, oldSecret, newSecret) {
+        net(`changePassword ${email}`);
+        const u = users.get(email);
+        if (!u || u.sub !== current || u.secret !== oldSecret) {
+          throw new CloudError('auth-failed', 'That email and passphrase did not open an account.');
+        }
+        u.secret = newSecret;
+      },
       current: () => current,
     };
   };
@@ -304,4 +312,45 @@ describe('Cloud accounts through the controller and the real server handler', ()
     ).toBe(false);
     expect(d.controller.getState().cloudPending).toBeNull();
   });
+
+  it('CA-05 / ACC-14 a wrong passphrase deletes nothing, here or on the server', async () => {
+    const cloud = fakeCloud([]);
+    const d = device(cloud);
+    await signUp(d, 'ana@example.com', PASS_A);
+    await settle(d.controller);
+    expect(await d.controller.deleteAccount('somebody else typed this')).toBe(false);
+    expect(cloud.store.dump().size).toBe(1);
+    expect(cloud.users.size).toBe(1);
+    expect(d.controller.getState().kind).toBe('account');
+  }, 60_000);
+
+  it('CA-09 a passphrase change moves the login with it: only the new one opens the account elsewhere', async () => {
+    const cloud = fakeCloud([]);
+    const one = device(cloud);
+    await signUp(one, 'ana@example.com', PASS_A);
+    one.controller.getState().store.addPerson('Mom', 3);
+    await settle(one.controller);
+    expect(await one.controller.changePassphrase(PASS_A, PASS_B)).toBe(true);
+    await settle(one.controller);
+
+    const old = device(cloud);
+    expect(await old.controller.cloudSignIn('ana@example.com', PASS_A)).toBe(false);
+    const fresh = device(cloud);
+    expect(await fresh.controller.cloudSignIn('ana@example.com', PASS_B)).toBe(true);
+    await settle(fresh.controller);
+    expect(names(fresh.controller)).toEqual(['Mom']);
+  }, 60_000);
+
+  it('CA-10 a failed sign-in on a new device leaves nothing installed', async () => {
+    const cloud = fakeCloud([]);
+    const one = device(cloud);
+    await signUp(one, 'ana@example.com', PASS_A);
+    await settle(one.controller);
+    // Right login secret is impossible without the passphrase, so simulate a server copy that
+    // does not open with what was typed: change it on one device, then try the old one elsewhere.
+    await one.controller.changePassphrase(PASS_A, PASS_B);
+    const other = device(cloud);
+    expect(await other.controller.cloudSignIn('ana@example.com', PASS_A)).toBe(false);
+    expect(other.controller.getState().accounts).toEqual([]);
+  }, 60_000);
 });

@@ -36,7 +36,7 @@ describe('Account service server seam', () => {
     expect(a.exportRecord('AAAAAAAAAAAAAAAA')).toBeNull();
   });
 
-  it('CA-10 a record installed on a second device opens with the same passphrase, and only with it', async () => {
+  it('CA-10 a record adopted on a second device opens with the same passphrase, and only with it', async () => {
     const one = service(memory());
     const { session } = await one.createAccount({
       name: 'Ana',
@@ -46,30 +46,51 @@ describe('Account service server seam', () => {
     await one.saveData(session, { 'afterglow.household.events.v1': '[1]' });
     const raw = one.exportRecord(session.accountId) as string;
 
+    // Wrong passphrase: refused, and nothing is left on the device.
     const twoStorage = memory();
     const two = service(twoStorage);
-    const id = two.importRecord(raw, 'ana@example.com');
-    expect(id).toBe(session.accountId);
-    expect(two.listAccounts()).toEqual([{ id, name: 'ana@example.com' }]);
-    const s2 = await two.signIn(id as string, PASS);
+    await expect(
+      two.adoptRecord(raw, 'ana@example.com', 'not the passphrase at all'),
+    ).rejects.toThrow();
+    expect(two.listAccounts()).toEqual([]);
+    expect(two.exportRecord(session.accountId)).toBeNull();
+
+    const s2 = await two.adoptRecord(raw, 'ana@example.com', PASS);
+    expect(s2.accountId).toBe(session.accountId);
+    expect(two.listAccounts()).toEqual([{ id: session.accountId, name: 'ana@example.com' }]);
     expect(await two.loadData(s2)).toEqual({ 'afterglow.household.events.v1': '[1]' });
-    await expect(two.signIn(id as string, 'not the passphrase at all')).rejects.toThrow();
   });
 
-  it('CA-10 importRecord refuses malformed records and bad names', async () => {
-    const a = service(memory());
-    for (const raw of ['', '{', '{}', JSON.stringify({ v: 1, accountId: 'x' }), 'null']) {
-      expect(a.importRecord(raw, 'Ana')).toBeNull();
-    }
+  it('CA-10 adoptRecord never replaces an account already on the device, and refuses junk', async () => {
     const one = service(memory());
     const { session } = await one.createAccount({
       name: 'Ana',
       passphrase: PASS,
       confirmedAdult: true,
     });
+    await one.saveData(session, { local: 'precious' });
     const raw = one.exportRecord(session.accountId) as string;
-    expect(a.importRecord(raw, '   ')).toBeNull();
+    // The same id arriving from "the server" must not overwrite the local copy.
+    await expect(one.adoptRecord(raw, 'Ana', PASS)).rejects.toThrow(/already on this device/);
+    expect(await one.loadData(session)).toEqual({ local: 'precious' });
+
+    const a = service(memory());
+    for (const junk of ['', '{', '{}', JSON.stringify({ v: 1, accountId: 'x' }), 'null']) {
+      await expect(a.adoptRecord(junk, 'Ana', PASS)).rejects.toThrow();
+    }
+    await expect(a.adoptRecord(raw, '   ', PASS)).rejects.toThrow();
     expect(a.listAccounts()).toEqual([]);
+  });
+
+  it('verifyPassphrase proves the passphrase for an open session, generically', async () => {
+    const a = service(memory());
+    const { session } = await a.createAccount({
+      name: 'Ana',
+      passphrase: PASS,
+      confirmedAdult: true,
+    });
+    await expect(a.verifyPassphrase(session, PASS)).resolves.toBeUndefined();
+    await expect(a.verifyPassphrase(session, 'wrong wrong wrong wrong')).rejects.toThrow();
   });
 
   it('CA-10 openRecordData reads another device’s copy of the same account, never another account', async () => {
@@ -81,8 +102,7 @@ describe('Account service server seam', () => {
     });
     await one.saveData(session, { a: '1' });
     const two = service(memory());
-    two.importRecord(one.exportRecord(session.accountId) as string, 'Ana');
-    const s2 = await two.signIn(session.accountId, PASS);
+    const s2 = await two.adoptRecord(one.exportRecord(session.accountId) as string, 'Ana', PASS);
     // Device two writes; device one reads that copy with its own session.
     await two.saveData(s2, { a: '1', b: '2' });
     const theirs = two.exportRecord(session.accountId) as string;

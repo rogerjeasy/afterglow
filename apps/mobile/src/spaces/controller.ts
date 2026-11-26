@@ -417,6 +417,13 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
       return run(
         async () => {
           if (state.kind !== 'guest') return false;
+          if (accountId in readLinks()) {
+            // The account's login secret would not follow a passphrase reset done here.
+            throw new CloudError(
+              'unknown',
+              'This account signs in with an email. Resetting its passphrase with the recovery code is not available in this build yet.',
+            );
+          }
           const { session, recoveryCode } = await service.recover(accountId, code, newPassphrase);
           await enter(session, { recoveryCode });
           return true;
@@ -430,8 +437,31 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     changePassphrase(current, next) {
       return run(
         async () => {
-          if (!active) return false;
-          await service.changePassphrase(active.session, current, next);
+          const a = active;
+          if (!a) return false;
+          if (a.cloud && cloud) {
+            // The login secret comes from the passphrase, so both change together, online only.
+            if (!a.cloud.signedIn) {
+              throw new CloudError(
+                'network',
+                'Changing the passphrase of a cloud account needs a connection.',
+              );
+            }
+            await service.verifyPassphrase(a.session, current);
+            const policy = checkPassphrase(next, a.cloud.email);
+            if (!policy.ok) throw new AccountError('policy', policy.reason);
+            const newSecret = await deriveLoginSecret(a.cloud.email, next, cloud.loginIterations);
+            await cloud.auth.changePassword(a.cloud.email, a.cloud.secret, newSecret);
+            await service.changePassphrase(a.session, current, next);
+            a.cloud = { ...a.cloud, secret: newSecret };
+            await a.cloud.link.push();
+            set({
+              notice:
+                'Passphrase changed here and on your account. Other phones must sign in again with the new one.',
+            });
+            return true;
+          }
+          await service.changePassphrase(a.session, current, next);
           set({ notice: 'Passphrase changed. Your recovery code still works.' });
           return true;
         },
@@ -444,6 +474,8 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
         async () => {
           if (!active) return false;
           const recoveryCode = await service.regenerateRecoveryCode(active.session, passphrase);
+          // The record changed (new recovery wrap): the server copy must follow.
+          if (active.cloud?.signedIn) await active.cloud.link.push();
           set({ recoveryCode });
           return true;
         },
@@ -457,7 +489,10 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
           const a = active;
           if (!a) return false;
           if (a.cloud && cloud) {
-            // CA-05: the server copy and the Cognito user go first, so nothing is left behind
+            // Prove the passphrase BEFORE anything irreversible: an unlocked phone in someone
+            // else's hand must not be enough to wipe the account (ACC-14).
+            await service.verifyPassphrase(a.session, passphrase);
+            // CA-05: the server copy and the Cognito user go next, so nothing is left behind
             // if the device step then fails. This needs a connection; offline, nothing changes.
             if (!a.cloud.signedIn) {
               throw new CloudError('network', 'Deleting a cloud account needs a connection.');
@@ -635,9 +670,12 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
             return true;
           }
           if (remote) {
-            const id = service.importRecord(remote.record, displayName(email));
-            if (!id) throw new CloudError('unknown', 'The account’s data could not be read.');
-            const session = await service.signIn(id, passphrase);
+            // Installed only once the passphrase has opened it, never over a local account.
+            const session = await service.adoptRecord(
+              remote.record,
+              displayName(email),
+              passphrase,
+            );
             await enter(
               session,
               {},

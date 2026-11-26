@@ -191,10 +191,13 @@ export interface AccountService {
   exportRecord(accountId: string): string | null;
   /**
    * Install a vault record received from the server as this device's copy, under the
-   * given display name. Returns the account id, or null when the record is malformed.
-   * It does not unlock anything: sign-in still needs the passphrase.
+   * given display name, and open it. The record is written only after the passphrase
+   * has unwrapped its key, and never over an account already on this device, so an
+   * untrusted record can neither replace local data nor linger after a failed sign-in.
    */
-  importRecord(raw: string, name: string): string | null;
+  adoptRecord(raw: string, name: string, passphrase: string): Promise<Session>;
+  /** Prove the passphrase for an open session (throttled, generic on failure). */
+  verifyPassphrase(session: Session, passphrase: string): Promise<void>;
   /**
    * Decrypt the data of another copy of this same account's record (from another
    * device) with the open session's key, without touching the stored copy (CA-10).
@@ -481,21 +484,38 @@ export function createAccountService(opts: AccountServiceOptions): AccountServic
       return parseVault(raw, accountId) ? raw : null;
     },
 
-    importRecord(raw, name) {
+    async adoptRecord(raw, name, passphrase) {
       let id: unknown;
       try {
         id = (JSON.parse(raw) as { accountId?: unknown }).accountId;
       } catch {
-        return null;
+        throw authFailed();
       }
-      if (typeof id !== 'string' || !isWellFormedAccountId(id)) return null;
+      if (typeof id !== 'string' || !isWellFormedAccountId(id)) throw authFailed();
       const record = parseVault(raw, id);
       const clean = name.trim();
-      if (!record || clean === '' || clean.length > MAX_NAME_LENGTH) return null;
+      if (!record || clean === '' || clean.length > MAX_NAME_LENGTH || /\p{Cc}/u.test(clean)) {
+        throw authFailed();
+      }
+      if (loadVault(id) !== null || readDirectory().some((a) => a.id === id)) {
+        throw new AccountError('exists', 'This account is already on this device. Sign in to it.');
+      }
+      let dek: CryptoKey;
+      try {
+        const kek = await deriveKek(passphrase, record.kdf);
+        dek = await unwrapDek(record.wrappedDek, kek, aad.passphraseWrap(id), false);
+      } catch {
+        throw authFailed();
+      }
+      // Proven: now, and only now, it becomes this device's copy.
       writeVault(record);
-      const others = readDirectory().filter((a) => a.id !== id);
-      writeDirectory([...others, { id, name: clean }]);
-      return id;
+      writeDirectory([...readDirectory(), { id, name: clean }]);
+      return new Session(id, clean, dek);
+    },
+
+    async verifyPassphrase(session, passphrase) {
+      requireOwn(session);
+      await unlockWithPassphrase(session.accountId, passphrase, false);
     },
 
     async openRecordData(session, raw) {

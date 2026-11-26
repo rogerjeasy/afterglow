@@ -43,6 +43,11 @@ export interface CloudAuth {
   accessToken(): Promise<string>;
   signOut(): void;
   deleteUser(): Promise<void>;
+  /**
+   * Replace the login secret after a passphrase change, then end every other session
+   * (other devices must sign in with the new passphrase) and sign in again here.
+   */
+  changePassword(email: string, oldSecret: string, newSecret: string): Promise<void>;
 }
 
 /** Plain words for Cognito's errors. Never says which part of a credential was wrong. */
@@ -170,6 +175,24 @@ export function cognitoAuth(config: CloudConfig): CloudAuth {
       current?.signOut();
       current = null;
       storage.clear();
+    },
+    async changePassword(email, oldSecret, newSecret) {
+      const user = current;
+      if (!user) throw new CloudError('signed-out', 'Signed out.');
+      await new Promise<void>((resolve, reject) => {
+        user.changePassword(oldSecret, newSecret, (err) =>
+          err ? reject(toCloudError(err)) : resolve(),
+        );
+      });
+      await new Promise<void>((resolve, reject) => {
+        user.globalSignOut({
+          onSuccess: () => resolve(),
+          onFailure: (err) => reject(toCloudError(err)),
+        });
+      });
+      current = null;
+      storage.clear();
+      await this.signIn(email, newSecret);
     },
     deleteUser() {
       const user = current;
