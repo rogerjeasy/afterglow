@@ -11,3 +11,4 @@ export * as energy from './energy/index.js';
 export * as coguard from './coguard/index.js';
 export * as restoration from './restoration/index.js';
 export * as alerts from './alerts/index.js';
+export * as sensing from './sensing/index.js';
