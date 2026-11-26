@@ -42,6 +42,8 @@ crash.*.log
 *.backend.hcl
 !backend.hcl.example
 override.tf
+# Saved Terraform plans can contain sensitive values.
+*.plan
 override.tf.json
 *_override.tf
 *_override.tf.json
