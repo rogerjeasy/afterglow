@@ -123,10 +123,11 @@ resource "aws_cognito_user_pool_client" "app" {
     refresh_token = "days"
   }
 
-  refresh_token_rotation {
-    feature                    = "ENABLED"
-    retry_grace_period_seconds = 10
-  }
+  # No refresh-token rotation. Cognito refuses rotation together with
+  # ALLOW_REFRESH_TOKEN_AUTH (found on first apply), and the app's SRP client refreshes
+  # through that flow. Rotation mainly protects refresh tokens kept at rest; the app keeps
+  # tokens in memory only and never stores them, and revocation stays on, so a global
+  # sign-out after a passphrase change still ends every session.
 
   # No hosted UI and no OAuth redirects: the app talks to Cognito directly.
   allowed_oauth_flows_user_pool_client = false

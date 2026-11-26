@@ -115,8 +115,13 @@ run "tokens_are_short_lived_and_revocable_and_rotate" {
   }
 
   assert {
-    condition     = one(aws_cognito_user_pool_client.app.refresh_token_rotation).feature == "ENABLED"
-    error_message = "Refresh tokens must rotate on use."
+    condition     = contains(aws_cognito_user_pool_client.app.explicit_auth_flows, "ALLOW_REFRESH_TOKEN_AUTH")
+    error_message = "The app refreshes its 15-minute tokens with the refresh-token flow; without it, sync stops after 15 minutes."
+  }
+
+  assert {
+    condition     = length(aws_cognito_user_pool_client.app.refresh_token_rotation) == 0
+    error_message = "Cognito refuses refresh-token rotation together with ALLOW_REFRESH_TOKEN_AUTH."
   }
 }
 
