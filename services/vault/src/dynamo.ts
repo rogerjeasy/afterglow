@@ -14,6 +14,8 @@ import type { PutResult, StoredVault, VaultStore } from './handler.js';
  */
 
 const RECORD = 'vault';
+/** The account's not-before time (CA-13): a sub and a number, nothing else. Kept after deletion. */
+const REVOCATION = 'revocation';
 
 export function dynamoStore(tableName: string, client = new DynamoDBClient({})): VaultStore {
   const key = (accountId: string) => ({ accountId: { S: accountId }, record: { S: RECORD } });
@@ -59,6 +61,38 @@ export function dynamoStore(tableName: string, client = new DynamoDBClient({})):
           return { ok: false, current: n === undefined ? null : Number(n) };
         }
         throw e;
+      }
+    },
+
+    async getNotBefore(accountId): Promise<number | null> {
+      const out = await client.send(
+        new GetItemCommand({
+          TableName: tableName,
+          Key: { accountId: { S: accountId }, record: { S: REVOCATION } },
+          ConsistentRead: true,
+        }),
+      );
+      const n = out.Item?.notBefore?.N;
+      return n === undefined ? null : Number(n);
+    },
+
+    async raiseNotBefore(accountId, iat): Promise<void> {
+      try {
+        await client.send(
+          new PutItemCommand({
+            TableName: tableName,
+            Item: {
+              accountId: { S: accountId },
+              record: { S: REVOCATION },
+              notBefore: { N: String(iat) },
+            },
+            // Only ever raised: a lower value is ignored.
+            ConditionExpression: 'attribute_not_exists(notBefore) OR notBefore < :t',
+            ExpressionAttributeValues: { ':t': { N: String(iat) } },
+          }),
+        );
+      } catch (e) {
+        if (!(e instanceof ConditionalCheckFailedException)) throw e;
       }
     },
 

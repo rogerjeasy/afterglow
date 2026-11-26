@@ -36,7 +36,13 @@ const recordArb: fc.Arbitrary<string> = fc
   .map((r) => JSON.stringify(r));
 
 const subArb = fc.uuid().map((u) => u.toLowerCase());
-const claimsFor = (sub: string): Claims => ({ sub, token_use: 'access', client_id: CLIENT });
+const IAT = 1_700_000_000;
+const claimsFor = (sub: string, iat = IAT): Claims => ({
+  sub,
+  token_use: 'access',
+  client_id: CLIENT,
+  iat: String(iat),
+});
 
 const get = (store: VaultStore, c: Claims) =>
   handle({ routeKey: 'GET /v1/vault', body: null }, c, store, config);
@@ -128,9 +134,13 @@ describe('Vault service', () => {
           const store = memoryStore();
           // The model: what each user last stored successfully, and its version.
           const model = new Map<string, { rec: string; version: number }>();
+          // Each step uses a token issued after any earlier step (a device signs in again after a
+          // delete), so the not-before rule (CA-13) never hides what CA-02 is checking.
+          let step = 0;
           for (const op of ops) {
+            step += 1;
             const sub = users[op.user % users.length] as string;
-            const c = claimsFor(sub);
+            const c = claimsFor(sub, IAT + 10 + step);
             if (op.kind === 'put') {
               const expected = model.get(sub)?.version ?? null;
               const r = await put(store, c, op.rec, expected);
@@ -150,7 +160,7 @@ describe('Vault service', () => {
             }
             // After every step, every user's view equals the model, never another's record.
             for (const u of users) {
-              const r = await get(store, claimsFor(u));
+              const r = await get(store, claimsFor(u, IAT + 10 + step));
               const mine = model.get(u);
               if (!mine) expect(r.status).toBe(404);
               else
@@ -268,7 +278,9 @@ describe('Vault service', () => {
             expect((await put(store, claimsFor(u), rec, null)).status).toBe(200);
           const [victim, ...others] = users as [string, ...string[]];
           expect((await del(store, claimsFor(victim))).status).toBe(204);
-          expect((await get(store, claimsFor(victim))).status).toBe(404);
+          // Tokens from before the delete are refused (CA-13); a later sign-in finds nothing.
+          expect((await get(store, claimsFor(victim))).status).toBe(401);
+          expect((await get(store, claimsFor(victim, IAT + 10))).status).toBe(404);
           for (const u of others) expect((await get(store, claimsFor(u))).status).toBe(200);
         },
       ),
@@ -288,6 +300,10 @@ describe('Vault service', () => {
       delete: async () => {
         throw new Error('boom');
       },
+      getNotBefore: async () => null,
+      raiseNotBefore: async () => {
+        throw new Error('boom');
+      },
     };
     const a = claimsFor('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
     const [rec] = fc.sample(recordArb, 1) as [string];
@@ -303,6 +319,102 @@ describe('Vault service', () => {
       expect((await handle({ routeKey: route, body: null }, a, memoryStore(), config)).status).toBe(
         404,
       );
+    }
+  });
+
+  it('CA-13 a token issued before the account’s revocation is refused on every route and touches nothing', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uniqueArray(subArb, { minLength: 2, maxLength: 4 }),
+        fc.integer({ min: 1, max: 5000 }),
+        recordArb,
+        async (users, gap, rec) => {
+          const store = memoryStore();
+          const [ana, ...others] = users as [string, ...string[]];
+          for (const u of users)
+            expect((await put(store, claimsFor(u), rec, null)).status).toBe(200);
+          // Ana changes her passphrase: a fresh token, issued later, revokes everything older.
+          const fresh = claimsFor(ana, IAT + gap);
+          expect(
+            (await handle({ routeKey: 'POST /v1/vault/revoke', body: null }, fresh, store, config))
+              .status,
+          ).toBe(204);
+          const stale = claimsFor(ana, IAT + gap - 1);
+          const before = JSON.stringify([...store.dump()]);
+          for (const r of [
+            await get(store, stale),
+            await put(store, stale, rec, 1),
+            await del(store, stale),
+          ]) {
+            expect(r.status).toBe(401);
+          }
+          expect(JSON.stringify([...store.dump()])).toBe(before);
+          // A stale token cannot undo the revocation either.
+          expect(
+            (
+              await handle(
+                { routeKey: 'POST /v1/vault/revoke', body: null },
+                claimsFor(ana, IAT),
+                store,
+                config,
+              )
+            ).status,
+          ).toBe(401);
+          // The fresh token, and later ones, still work; other people are untouched.
+          expect((await get(store, fresh)).status).toBe(200);
+          expect((await get(store, claimsFor(ana, IAT + gap + 7))).status).toBe(200);
+          for (const u of others) expect((await get(store, claimsFor(u))).status).toBe(200);
+        },
+      ),
+      { numRuns: 200 },
+    );
+  });
+
+  it('CA-13 after a delete, no token that existed can recreate the vault', async () => {
+    const store = memoryStore();
+    const ana = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const nowS = 1_800_000_000;
+    const cfg = { clientId: CLIENT, now: () => nowS * 1000 };
+    const [rec] = fc.sample(recordArb, 1) as [string];
+    const t = claimsFor(ana, nowS - 60);
+    expect(
+      (
+        await handle(
+          {
+            routeKey: 'PUT /v1/vault',
+            body: JSON.stringify({ record: rec, expectedVersion: null }),
+          },
+          t,
+          store,
+          cfg,
+        )
+      ).status,
+    ).toBe(200);
+    expect((await handle({ routeKey: 'DELETE /v1/vault', body: null }, t, store, cfg)).status).toBe(
+      204,
+    );
+    // Another device's token, issued just before the delete, tries to put the data back.
+    const other = claimsFor(ana, nowS);
+    const r = await handle(
+      { routeKey: 'PUT /v1/vault', body: JSON.stringify({ record: rec, expectedVersion: null }) },
+      other,
+      store,
+      cfg,
+    );
+    expect(r.status).toBe(401);
+    expect(store.dump().size).toBe(0);
+  });
+
+  it('CA-13 a token without a valid issue time is refused', async () => {
+    const store = memoryStore();
+    for (const iat of [undefined, '', 'x', '1.5', '-3', '0']) {
+      const c = {
+        sub: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        token_use: 'access',
+        client_id: CLIENT,
+        ...(iat === undefined ? {} : { iat }),
+      };
+      expect((await get(store, c)).status).toBe(401);
     }
   });
 });

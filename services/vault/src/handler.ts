@@ -27,6 +27,10 @@ export interface VaultStore {
   get(accountId: string): Promise<StoredVault | null>;
   put(accountId: string, record: string, expected: number | null, now: number): Promise<PutResult>;
   delete(accountId: string): Promise<void>;
+  /** Tokens issued (iat, seconds) before this are refused for the account (CA-13). Null when none. */
+  getNotBefore(accountId: string): Promise<number | null>;
+  /** Raise the account's not-before time; it never moves backwards. */
+  raiseNotBefore(accountId: string, iat: number): Promise<void>;
 }
 
 /** Claims from API Gateway's JWT authorizer. Values arrive as strings. */
@@ -91,8 +95,14 @@ export async function handle(
 ): Promise<VaultResponse> {
   const accountId = accountIdFrom(claims, config.clientId);
   if (accountId === null) return error(401, 'Sign in again.');
+  // CA-13: API Gateway checks signature and expiry, not revocation. A token issued before
+  // the account's not-before time (a passphrase change, a deletion) is refused here.
+  const iat = Number(claims?.iat);
+  if (!Number.isInteger(iat) || iat <= 0) return error(401, 'Sign in again.');
 
   try {
+    const notBefore = await store.getNotBefore(accountId);
+    if (notBefore !== null && iat < notBefore) return error(401, 'Sign in again.');
     switch (req.routeKey) {
       case 'GET /v1/vault': {
         const v = await store.get(accountId);
@@ -106,7 +116,14 @@ export async function handle(
         return r.ok ? json(200, { version: r.version }) : json(409, { version: r.current });
       }
       case 'DELETE /v1/vault': {
+        // Refuse every token that exists now, first, so none can recreate the vault after.
+        await store.raiseNotBefore(accountId, Math.floor(config.now() / 1000) + 1);
         await store.delete(accountId);
+        return { status: 204, body: null };
+      }
+      case 'POST /v1/vault/revoke': {
+        // After a passphrase change: only tokens issued at or after this caller's own survive.
+        await store.raiseNotBefore(accountId, iat);
         return { status: 204, body: null };
       }
       default:
@@ -124,7 +141,14 @@ export async function handle(
 /** An in-memory store with the same contract as the DynamoDB one; used in tests. */
 export function memoryStore(): VaultStore & { dump(): ReadonlyMap<string, StoredVault> } {
   const m = new Map<string, StoredVault>();
+  const nb = new Map<string, number>();
   return {
+    async getNotBefore(id) {
+      return nb.get(id) ?? null;
+    },
+    async raiseNotBefore(id, iat) {
+      nb.set(id, Math.max(nb.get(id) ?? 0, iat));
+    },
     async get(id) {
       return m.get(id) ?? null;
     },

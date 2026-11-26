@@ -105,6 +105,18 @@ A person signs in with an email address and one passphrase, on any device, and f
 - THE SYSTEM SHALL require the person to confirm they are 18 or older (ACC-16) before creating a cloud account.
 - THE SYSTEM SHALL keep the demo and guest spaces exactly as they are; a cloud account is a third way in, never required.
 
+### CA-13 — A revoked session cannot write, and an old passphrase cannot come back
+**User story:** As a person who changed their passphrase because a phone was lost, I want that phone shut out at once.
+
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL keep, per account, a not-before time, and SHALL refuse with 401 every request whose token was issued (`iat`) before it, on every route, touching nothing.
+- WHEN a passphrase change ends other sessions THE SYSTEM SHALL set the not-before time to the issue time of the caller's new token. API Gateway checks signature and expiry only; this closes the window in which a revoked token stays valid.
+- WHEN an account's vault is deleted THE SYSTEM SHALL first set the not-before time, so no token that existed can recreate it.
+- THE SYSTEM SHALL only ever raise the not-before time.
+- WHEN a device meets a server copy whose key wrapping differs from its own THE SYSTEM SHALL NOT push, and SHALL lock and ask for the new passphrase, so an old passphrase can never be written back.
+
+*Properties:* `CA-13 a token issued before the account’s revocation is refused on every route and touches nothing`, `CA-13 after a delete, no token that existed can recreate the vault`; controller tests `CA-13 after a passphrase change elsewhere, an old session is refused and this phone locks`, `CA-13 even if revocation failed, a phone with the old key wrapping never pushes over the new one`. *Source:* automated security review of the first deployment, 2026-11-26.
+
 ## Analysis
 
 - **Why one passphrase is safe here.** Two secrets come from it. The vault key uses a random salt stored in the vault record, and the login secret uses a salt built from the email. An attacker who stole Cognito's SRP verifier would have to guess passphrases at PBKDF2's 600,000 rounds per guess, the same cost as attacking the vault record directly. The two derivations share no salt, so knowing the login secret does not give the vault key.
