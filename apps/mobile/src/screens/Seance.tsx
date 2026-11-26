@@ -3,7 +3,17 @@ import { heliograph, household } from '@afterglow/core';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHousehold } from '../household/useHousehold';
 import { SourceChip } from '../night-shell/components';
-import { Button, ChoiceChip, Notice, Section, Stepper, TextField } from '../night-shell/controls';
+import {
+  Button,
+  ChoiceChip,
+  EditToggle,
+  Fold,
+  Notice,
+  Section,
+  Stepper,
+  TextField,
+} from '../night-shell/controls';
+import { GhostGlyph } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
 import { Lamp } from '../seance/Lamp';
 import { getMySlot, nextSequence, setMySlot } from '../seance/prefs';
@@ -37,24 +47,6 @@ const MORE_CODES: readonly heliograph.MessageName[] = [
 ];
 const WATCH_LIMIT_MS = 90_000;
 
-function Ghost({ solid, loud }: { solid: boolean; loud: boolean }): ReactNode {
-  // A ghost is a hollow, translucent figure; a person heard from is solid (design 7.3).
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        flex: 'none',
-        width: 20,
-        height: 20,
-        borderRadius: '10px 10px 3px 3px',
-        border: `2px ${solid ? 'solid' : 'dashed'} ${loud ? token('text.emphasis') : token('text.secondary')}`,
-        background: solid ? token('control.fill.primary') : 'transparent',
-        opacity: solid ? 1 : 0.55,
-      }}
-    />
-  );
-}
-
 /**
  * The Séance: the roster and ghost board, sending a code with the screen as a
  * lamp, and watching for a message with the camera. Every state is designed:
@@ -67,6 +59,8 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
   const outage = view.outageStartedAtMs !== null;
   const board = useMemo(() => household.assessRoster(view), [view]);
   const free = household.freeSlot(view);
+
+  const [editingList, setEditingList] = useState(false);
 
   // ---- add a person
   const [name, setName] = useState('');
@@ -231,7 +225,14 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
 
       {lamp ? <Lamp plan={lamp.plan} label={lamp.label} onDone={lampDone} /> : null}
 
-      <Section title="Your people">
+      <Section
+        title="Your people"
+        right={
+          board.length > 0 ? (
+            <EditToggle editing={editingList} onToggle={() => setEditingList((e) => !e)} />
+          ) : undefined
+        }
+      >
         {board.length === 0 ? (
           <Notice>
             No one on your list yet. Add the people you want to hear from, each with their own
@@ -253,11 +254,11 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
                     borderRadius: 'var(--radius-tile)',
                     background: token('surface.2'),
                     border: `${t.loud ? 2 : 1}px solid ${t.loud ? token('focus.ring') : token('hairline')}`,
-                    flexWrap: 'wrap',
+                    flexWrap: 'nowrap',
                   }}
                 >
-                  <Ghost solid={t.solid} loud={t.loud} />
-                  <div style={{ flex: '1 1 160px', minWidth: 0, opacity: t.solid ? 1 : 0.75 }}>
+                  <GhostGlyph opacity={t.solid ? 1 : 0.35} loud={t.loud} />
+                  <div style={{ flex: '1 1 auto', minWidth: 0 }}>
                     <div
                       style={{
                         fontSize: 'var(--type-body)',
@@ -278,22 +279,25 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
                       {t.line}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
                     {!b.safe ? (
                       <Button
                         size="sm"
                         onClick={() => store.recordHeard(b.member.id, 'SAFE', 'manual')}
+                        ariaLabel={`They told me ${b.member.name} is safe`}
                       >
-                        They told me they are safe
+                        Mark safe
                       </Button>
                     ) : null}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => store.removePerson(b.member.id)}
-                    >
-                      Remove
-                    </Button>
+                    {editingList ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => store.removePerson(b.member.id)}
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -302,7 +306,7 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
         )}
       </Section>
 
-      <Section title="Add someone">
+      <Fold label="Add someone" defaultOpen={board.length === 0}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <TextField
             label="Name"
@@ -334,7 +338,7 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
             <Notice>All 64 numbers are used. Remove someone to add another.</Notice>
           ) : null}
         </div>
-      </Section>
+      </Fold>
 
       <Section title="Send a code">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

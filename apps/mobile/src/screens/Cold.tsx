@@ -11,8 +11,17 @@ import {
   verdictText,
 } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
-import { SourceChip } from '../night-shell/components';
-import { Button, ChoiceChip, Notice, SearchField, Section, Stepper } from '../night-shell/controls';
+import { Sources } from '../night-shell/components';
+import {
+  Button,
+  ChoiceChip,
+  EditToggle,
+  Fold,
+  Notice,
+  SearchField,
+  Section,
+  Stepper,
+} from '../night-shell/controls';
 import { Tombstone } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
 import { Medicines } from './Medicines';
@@ -92,49 +101,43 @@ function VerdictCard({
       >
         {text.headline}
       </div>
-      {text.details.length > 0 ? (
-        <ul
-          style={{
-            margin: '8px 0 0',
-            paddingLeft: 20,
-            fontSize: 'var(--type-caption)',
-            color: token('text.secondary'),
-          }}
-        >
-          {text.details.map((d) => (
-            <li key={d} style={{ overflowWrap: 'anywhere' }}>
-              {d}
-            </li>
-          ))}
-        </ul>
-      ) : null}
       {cited ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-          <SourceChip label={`${USDA_SOURCE} · ${cited.citation.ruleId}`} />
-          <SourceChip
-            label={`${cited.provenance.snapshotVersion} · ${cited.provenance.thermalModelVersion}`}
-          />
-          <a
-            href={cited.citation.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              marginTop: 10,
-              minHeight: 44,
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontSize: 'var(--type-caption)',
-              color: token('text.secondary'),
-            }}
-          >
-            Read the USDA source
-          </a>
-        </div>
+        <Sources
+          labels={[
+            `${USDA_SOURCE} · ${cited.citation.ruleId}`,
+            `${cited.provenance.snapshotVersion} · ${cited.provenance.thermalModelVersion}`,
+          ]}
+          link={{ href: cited.citation.url, label: 'Read the USDA source' }}
+        >
+          {text.details.length > 0 ? <Details lines={text.details} /> : null}
+        </Sources>
+      ) : text.details.length > 0 ? (
+        <Details lines={text.details} />
       ) : null}
       {actions ? (
         <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>{actions}</div>
       ) : null}
     </div>
+  );
+}
+
+/** The rule's own qualifiers for a verdict, as a short list. */
+function Details({ lines }: { lines: readonly string[] }): ReactNode {
+  return (
+    <ul
+      style={{
+        margin: '8px 0 0',
+        paddingLeft: 20,
+        fontSize: 'var(--type-caption)',
+        color: token('text.secondary'),
+      }}
+    >
+      {lines.map((d) => (
+        <li key={d} style={{ overflowWrap: 'anywhere' }}>
+          {d}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -153,6 +156,7 @@ export function Cold({
   const [newClass, setNewClass] = useState<thermal.ApplianceClass>('fridge');
   const [newFullness, setNewFullness] = useState<thermal.Fullness>('half');
   const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState(false);
 
   const assessments = useMemo(() => household.assessAll(view, foodIndex, nowMs), [view, nowMs]);
   const elapsed = household.elapsedMinutes(view, nowMs);
@@ -295,65 +299,67 @@ export function Cold({
         <>
           <Section title={selected.model.appliance.name}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {applianceSources(selected, thermal.APPLIANCE_MODEL_VERSION).map((s) => (
-                  <SourceChip key={s} label={s} />
-                ))}
-              </div>
+              <Sources labels={applianceSources(selected, thermal.APPLIANCE_MODEL_VERSION)} />
 
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 'var(--type-label)', color: token('text.secondary') }}>
-                  How full?
-                </span>
-                <ChoiceChip
-                  label="Full"
-                  selected={selected.model.appliance.fullness === 'full'}
-                  onClick={() =>
+              <Fold
+                label={`How full, room temperature${
+                  selected.model.appliance.ambientIsDefault ? ' (a default is in use)' : ''
+                }`}
+              >
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 'var(--type-label)', color: token('text.secondary') }}>
+                    How full?
+                  </span>
+                  <ChoiceChip
+                    label="Full"
+                    selected={selected.model.appliance.fullness === 'full'}
+                    onClick={() =>
+                      store.updateAppliance(
+                        selected.model.appliance.id,
+                        toInput(selected.model.appliance, { fullness: 'full' }),
+                      )
+                    }
+                  />
+                  <ChoiceChip
+                    label="Half full"
+                    selected={selected.model.appliance.fullness === 'half'}
+                    onClick={() =>
+                      store.updateAppliance(
+                        selected.model.appliance.id,
+                        toInput(selected.model.appliance, { fullness: 'half' }),
+                      )
+                    }
+                  />
+                </div>
+
+                <Stepper
+                  label="Room temperature"
+                  valueText={formatTemp(selected.model.appliance.ambientC)}
+                  hint={
+                    selected.model.appliance.ambientIsDefault
+                      ? 'Default 22 °C. Set yours; a warmer room shortens every clock.'
+                      : 'Set by you.'
+                  }
+                  decrementDisabled={selected.model.appliance.ambientC <= MIN_ROOM_C}
+                  incrementDisabled={selected.model.appliance.ambientC >= MAX_ROOM_C}
+                  onDecrement={() =>
                     store.updateAppliance(
                       selected.model.appliance.id,
-                      toInput(selected.model.appliance, { fullness: 'full' }),
+                      toInput(selected.model.appliance, {
+                        ambientC: selected.model.appliance.ambientC - 1,
+                      }),
+                    )
+                  }
+                  onIncrement={() =>
+                    store.updateAppliance(
+                      selected.model.appliance.id,
+                      toInput(selected.model.appliance, {
+                        ambientC: selected.model.appliance.ambientC + 1,
+                      }),
                     )
                   }
                 />
-                <ChoiceChip
-                  label="Half full"
-                  selected={selected.model.appliance.fullness === 'half'}
-                  onClick={() =>
-                    store.updateAppliance(
-                      selected.model.appliance.id,
-                      toInput(selected.model.appliance, { fullness: 'half' }),
-                    )
-                  }
-                />
-              </div>
-
-              <Stepper
-                label="Room temperature"
-                valueText={formatTemp(selected.model.appliance.ambientC)}
-                hint={
-                  selected.model.appliance.ambientIsDefault
-                    ? 'Default 22 °C. Set yours; a warmer room shortens every clock.'
-                    : 'Set by you.'
-                }
-                decrementDisabled={selected.model.appliance.ambientC <= MIN_ROOM_C}
-                incrementDisabled={selected.model.appliance.ambientC >= MAX_ROOM_C}
-                onDecrement={() =>
-                  store.updateAppliance(
-                    selected.model.appliance.id,
-                    toInput(selected.model.appliance, {
-                      ambientC: selected.model.appliance.ambientC - 1,
-                    }),
-                  )
-                }
-                onIncrement={() =>
-                  store.updateAppliance(
-                    selected.model.appliance.id,
-                    toInput(selected.model.appliance, {
-                      ambientC: selected.model.appliance.ambientC + 1,
-                    }),
-                  )
-                }
-              />
+              </Fold>
 
               <div>
                 <div style={{ fontSize: 'var(--type-label)', color: token('text.secondary') }}>
@@ -384,7 +390,14 @@ export function Cold({
             </div>
           </Section>
 
-          <Section title={`In the ${selected.model.appliance.name.toLowerCase()}`}>
+          <Section
+            title={`In the ${selected.model.appliance.name.toLowerCase()}`}
+            right={
+              selected.items.length > 0 ? (
+                <EditToggle editing={editing} onToggle={() => setEditing((e) => !e)} />
+              ) : undefined
+            }
+          >
             {selected.items.length === 0 ? (
               <Notice>Nothing listed yet. Search below and add what you keep here.</Notice>
             ) : (
@@ -401,29 +414,33 @@ export function Cold({
                       verdict={verdict}
                       elapsedMinutes={t}
                       actions={
-                        <>
-                          {verdict.kind === 'lookRequired' ? (
-                            <>
+                        verdict.kind !== 'lookRequired' && !editing ? null : (
+                          <>
+                            {verdict.kind === 'lookRequired' ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => store.checkIce(item.id, 'present')}
+                                >
+                                  Ice crystals remain
+                                </Button>
+                                <Button size="sm" onClick={() => store.checkIce(item.id, 'absent')}>
+                                  None left
+                                </Button>
+                              </>
+                            ) : null}
+                            {editing ? (
                               <Button
                                 size="sm"
-                                variant="primary"
-                                onClick={() => store.checkIce(item.id, 'present')}
+                                variant="ghost"
+                                onClick={() => store.removeItem(item.id)}
                               >
-                                Ice crystals remain
+                                Remove
                               </Button>
-                              <Button size="sm" onClick={() => store.checkIce(item.id, 'absent')}>
-                                None left
-                              </Button>
-                            </>
-                          ) : null}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => store.removeItem(item.id)}
-                          >
-                            Remove
-                          </Button>
-                        </>
+                            ) : null}
+                          </>
+                        )
                       }
                     />
                   );
@@ -491,23 +508,20 @@ export function Cold({
               </div>
             )}
           </Section>
-
-          <Section title="Remove">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                store.removeAppliance(selected.model.appliance.id);
-              }}
-            >
-              Remove {selected.model.appliance.name.toLowerCase()}
-            </Button>
-          </Section>
         </>
       ) : null}
 
       <Medicines nowMs={nowMs} applianceId={selected ? selected.model.appliance.id : null} />
 
-      <Section title="Your data">
+      <Fold label="Remove a fridge or clear data">
+        {selected ? (
+          <Button
+            variant="ghost"
+            onClick={() => store.removeAppliance(selected.model.appliance.id)}
+          >
+            Remove {selected.model.appliance.name.toLowerCase()}
+          </Button>
+        ) : null}
         <Notice>
           This clears every appliance, food and clock in the space you are in now. It does not
           delete your account (use You for that).
@@ -521,15 +535,22 @@ export function Cold({
         >
           Clear all household data here
         </Button>
-      </Section>
+      </Fold>
 
       <Section title="How these numbers are made">
         <Notice>
           Food rules come from {foodIndex.rules.source.publisher}, "{foodIndex.rules.source.title}",
-          and the USDA FoodKeeper list ({foodIndex.snapshotVersion}). Temperatures come from a{' '}
-          {MODEL_SOURCE} of your appliance that moves toward the room temperature. Nothing here is a
-          guess from an AI. Never taste food to test it; when in doubt, throw it out.
+          and the USDA FoodKeeper list. Temperatures come from a {MODEL_SOURCE} of your appliance
+          that moves toward the room temperature. Nothing here is a guess from an AI. Never taste
+          food to test it; when in doubt, throw it out.
         </Notice>
+        <Sources
+          labels={[
+            `${foodIndex.rules.source.publisher}: ${foodIndex.rules.source.title}`,
+            `USDA FoodKeeper ${foodIndex.snapshotVersion}`,
+            `${MODEL_SOURCE} ${thermal.APPLIANCE_MODEL_VERSION}`,
+          ]}
+        />
       </Section>
     </main>
   );

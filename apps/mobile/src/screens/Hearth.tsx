@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { foodIndex } from '../data/foodkeeper';
 import { useFormulary } from '../data/formulary';
 import { type DemoPhase, runScenario } from '../demo/scenario';
+import { senseText } from '../demo/senseWords';
 import { formatClockTime, formatTimer } from '../format';
 import {
   LABEL_SOURCE,
@@ -15,9 +16,9 @@ import {
 import { useHousehold } from '../household/useHousehold';
 import { buildLanternModel, estimateAt, toMinute, viewAt } from '../lantern/model';
 import { hearthLine } from '../lantern/present';
-import { SourceChip, StatusLine, Tile } from '../night-shell/components';
+import { SourceChip, Sources, StatusLine, Tile } from '../night-shell/components';
 import { Button, Notice, Section } from '../night-shell/controls';
-import { WardCard } from '../night-shell/costume';
+import { GhostGlyph, Tombstone, WardCard } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
 import { HomeSetup } from './HomeSetup';
 
@@ -65,6 +66,8 @@ export function Hearth({
   // neighbourhood standing in for the crowd network that does not exist yet.
   const phase: DemoPhase = outage ? 'outage' : 'powered';
   const scenario = runScenario(phase);
+  // In words (NS-14). Two local senses agree here, so no neighbour count is claimed.
+  const sense = senseText(scenario.result, 0);
   // The neighbourhood is simulated, but its cells and estimate are computed by the real
   // core (cellTimeline, estimateRestoration), exactly as the Lantern tab shows them.
   const sim = useMemo(() => {
@@ -107,23 +110,23 @@ export function Hearth({
       <div>
         <StatusLine timer={timer} line={line} live={outage} tourId="status" />
         {sim ? <SourceChip label="simulated neighbourhood (demo)" /> : null}
-        {demo && (outage || scenario.verdict) ? (
-          <div
-            style={{
-              marginTop: 14,
-              fontSize: 'var(--type-caption)',
-              color: token('text.secondary'),
-            }}
-          >
-            Grid Sense verdict from the fusion core:{' '}
-            <span style={{ color: token('text.primary') }}>{scenario.verdict}</span>
-            <div style={{ marginTop: 6 }}>{scenario.result.reason}</div>
-            <SourceChip
-              label={`demo votes: ${
-                [...scenario.result.votedPositive, ...scenario.result.votedNegative].join(', ') ||
-                'none'
-              }`}
-            />
+        {demo ? (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 'var(--type-body)', color: token('text.primary') }}>
+              {sense.headline} <span style={{ color: token('text.secondary') }}>{sense.why}</span>
+            </div>
+            <Sources
+              labels={[
+                `Grid Sense: ${scenario.verdict}`,
+                `senses that voted: ${
+                  [...scenario.result.votedPositive, ...scenario.result.votedNegative].join(', ') ||
+                  'none'
+                }`,
+                'simulated senses (demo)',
+              ]}
+            >
+              {scenario.result.reason}
+            </Sources>
           </div>
         ) : null}
       </div>
@@ -133,15 +136,23 @@ export function Hearth({
           {assessments.map((a) => {
             const text = applianceTileText(a);
             const firstFridge = assessments.find((x) => x.model.appliance.class === 'fridge') === a;
+            // The same tombstone as on Cold: the stone darkens as its window runs out (NS-16).
+            const progress =
+              elapsed !== null && a.windowMinutes !== null && a.windowMinutes > 0
+                ? elapsed / a.windowMinutes
+                : 0;
             return (
-              <Tile
+              <Tombstone
                 key={a.model.appliance.id}
                 title={a.model.appliance.name}
-                value={text.value}
-                note={text.note}
-                sources={applianceSources(a, thermal.APPLIANCE_MODEL_VERSION)}
+                epitaph={text.value}
+                caption={text.note}
+                progress={progress}
+                cracked={a.headline.kind === 'pastWindow'}
                 live={outage}
+                selected={false}
                 onClick={() => onOpenCold(a.model.appliance.id)}
+                sources={applianceSources(a, thermal.APPLIANCE_MODEL_VERSION)}
                 tourId={firstFridge ? 'tile-fridge' : undefined}
               />
             );
@@ -184,6 +195,18 @@ export function Hearth({
               sources={['your list']}
               live={outage}
               onClick={onOpenSeance}
+              visual={
+                roster.length > 0
+                  ? roster.map((r) => (
+                      <GhostGlyph
+                        key={r.member.id}
+                        opacity={r.state === 'ghost' ? 0.35 : 1}
+                        loud={r.state === 'help'}
+                        size={24}
+                      />
+                    ))
+                  : undefined
+              }
               tourId="tile-people"
             />
           </div>

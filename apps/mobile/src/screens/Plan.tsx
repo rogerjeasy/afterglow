@@ -3,8 +3,16 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { formatTemp } from '../format';
 import { hoursOfSafetyText } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
-import { SourceChip } from '../night-shell/components';
-import { Button, ChoiceChip, Notice, Section, Stepper, TextField } from '../night-shell/controls';
+import { Sources } from '../night-shell/components';
+import {
+  Button,
+  ChoiceChip,
+  Fold,
+  Notice,
+  Section,
+  Stepper,
+  TextField,
+} from '../night-shell/controls';
 import { Candle } from '../night-shell/costume';
 import { GraveyardChart } from '../night-shell/graveyard';
 import { token } from '../night-shell/theme';
@@ -226,16 +234,14 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
               : homeText.note}
           </div>
           {hours.kind === 'band' ? <BandBar h={hours} /> : null}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {homeText.sources.map((s) => (
-              <SourceChip key={s} label={s} />
-            ))}
-            {view.home ? (
-              <SourceChip
-                label={`${formatTemp(view.home.indoorC)} in, ${formatTemp(view.home.outdoorC)} out`}
-              />
-            ) : null}
-          </div>
+          <Sources
+            labels={[
+              ...homeText.sources,
+              ...(view.home
+                ? [`${formatTemp(view.home.indoorC)} in, ${formatTemp(view.home.outdoorC)} out`]
+                : []),
+            ]}
+          />
           <Button onClick={() => setSettingUpHome(true)}>
             {view.home ? 'Change my home' : 'Tell me about my home'}
           </Button>
@@ -271,11 +277,7 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
                 ? ' No outage has started, so this is what a power cut now would do.'
                 : ''}
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {shiftText.sources.map((s) => (
-                <SourceChip key={s} label={s} />
-              ))}
-            </div>
+            <Sources labels={shiftText.sources} />
             <Notice>
               An indoor-temperature estimate from the building's heat-loss time constant. Warming
               centres and where to go are not shown yet.
@@ -462,22 +464,21 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
                   A {e.kind} was left out. {e.reason}
                 </Notice>
               ))}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <SourceChip label={`${PLAN_SOURCE} · ${plan.modelVersion}`} />
-                {plan.defaultsUsed.map((d) => (
-                  <SourceChip key={d} label={`default: ${d}`} />
-                ))}
-              </div>
-              <Notice>
+              <Sources
+                labels={[
+                  `${PLAN_SOURCE} · ${plan.modelVersion}`,
+                  ...plan.defaultsUsed.map((d) => `default: ${d}`),
+                ]}
+              >
                 An estimate that assumes each load runs without a break. Real devices cycle and lose
                 some energy in conversion.
-              </Notice>
+              </Sources>
             </div>
           ) : assessment.result.kind === 'noPlan' ? (
             <Notice>{assessment.result.reason}</Notice>
           ) : null}
 
-          <Section title="Add a battery">
+          <Fold label="Add a battery">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {STORE_KINDS.map((k) => (
@@ -537,9 +538,9 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
                 Add battery
               </Button>
             </div>
-          </Section>
+          </Fold>
 
-          <Section title="Add something to power">
+          <Fold label="Add something to power">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <NumberField label="Name" value={lName} onChange={setLName} />
               <NumberField
@@ -577,7 +578,7 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
                 Add to the plan
               </Button>
             </div>
-          </Section>
+          </Fold>
         </div>
       </Section>
 
