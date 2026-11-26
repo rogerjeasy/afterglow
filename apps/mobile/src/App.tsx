@@ -34,6 +34,7 @@ import {
 } from './night-shell/controls';
 import { decideMode } from './night-shell/modePolicy';
 import { applyMode, token } from './night-shell/theme';
+import { notifyInBackground, renewArea } from './notify/notify';
 import { readFlag, shouldOnboard, writeFlag } from './onboarding/logic';
 import { Alerts } from './screens/Alerts';
 import { Cold } from './screens/Cold';
@@ -108,7 +109,9 @@ export function App(): ReactNode {
     }
     for (const a of alertList) {
       if (seenAlerts.current.has(a.key) || a.kind === 'outage') continue;
-      announce(a.kind === 'help' ? 'help' : null, alertText(a).title);
+      const t = alertText(a);
+      announce(a.kind === 'help' ? 'help' : null, t.title);
+      void notifyInBackground(t.title, t.body ?? '', a.key);
     }
     seenAlerts.current = keys;
   }, [alertList]);
@@ -207,6 +210,7 @@ export function App(): ReactNode {
   // in the demo, which has its own simulated night.
   useEffect(() => {
     gridSense.start();
+    void renewArea();
     gridSense.setHooks({
       onVerdict(verdict, restoreEdge) {
         const c = getSpaceController();

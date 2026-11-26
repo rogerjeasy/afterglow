@@ -1,6 +1,7 @@
 import { cells, restoration, sensing } from '@afterglow/core';
 import { DEFAULT_CONFIG, type Neighbourhood, buildNeighbourhood } from '@afterglow/simulator';
 import { type PlacesResult, type WeatherResult, fetchPlaces, fetchWeather } from './publicData.js';
+import { parseSubscription, transition } from './push.js';
 import type { CrowdStore } from './store.js';
 
 /**
@@ -39,6 +40,12 @@ export interface PublicDeps {
   /** Start fetching a cell's places in the background (an asynchronous self-invocation). */
   readonly warmPlaces?: (g: string) => Promise<void>;
   readonly weather?: (g: string) => Promise<WeatherResult | null>;
+  /** Notify a cell's followers in the background (an asynchronous self-invocation). */
+  readonly notifyCell?: (
+    g: string,
+    kind: 'outage' | 'restoration',
+    deviceCount: number,
+  ) => Promise<void>;
 }
 
 const json = (status: number, value: unknown, maxAge = 0): PublicResponse => ({
@@ -138,6 +145,34 @@ async function takeSlot(
     if (await deps.store.claim(`${prefix}:${minute}:${i}`, '1', nowS + 120, nowS)) return true;
   }
   return false;
+}
+
+/** A subscription's id: not reversible to its endpoint, the same for every cell. */
+async function subscriptionId(endpoint: string): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`push:${endpoint}`));
+  return Buffer.from(d).toString('base64url').slice(0, 22);
+}
+
+/**
+ * After a report: has the cell's published state crossed into dark, or out of dark?
+ * One notification per crossing, claimed atomically so concurrent reports cannot
+ * send it twice; the published state already hides cells under k = 5.
+ */
+async function maybeNotify(deps: PublicDeps, g: string, nowS: number): Promise<void> {
+  const now = toMinute(deps.nowMs());
+  const reports = await deps.store.reportsSince(
+    g,
+    now - cells.DEVICE_COUNT_WINDOW_MINUTES - 5,
+    nowS,
+  );
+  const pub = publish(stateNow(g, reports, now));
+  const last = await deps.store.getCache(`pushstate:${g}`, nowS);
+  if (last === pub.state || pub.state === 'unknown' || pub.state === 'mixed') return;
+  await deps.store.putCache(`pushstate:${g}`, pub.state, nowS + DAY_S);
+  const kind = transition(last, pub.state);
+  if (!kind) return;
+  if (!(await deps.store.claim(`pushsent:${g}:${kind}`, '1', nowS + 15 * 60, nowS))) return;
+  await deps.notifyCell?.(g, kind, pub.deviceCount);
 }
 
 /** The requester's own share first, then the global ceiling. */
@@ -352,8 +387,43 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
           return err(429, 'this device key has reported from enough cells today');
         }
         const fresh = await deps.store.putReport(checked, nowS + 2 * 3600);
+        if (fresh && deps.notifyCell) await maybeNotify(deps, checked.geohash6, nowS);
         // 202 either way: a duplicate is not an error for a client that retried.
         return json(202, { accepted: true, duplicate: !fresh });
+      }
+
+      case 'POST /v1/push/subscribe': {
+        const body = parseBody(req.body);
+        const sub = parseSubscription(body?.subscription);
+        if (!sub) return err(400, 'subscription must be a browser push subscription');
+        const follow = Array.isArray(body?.cells) ? body.cells : [];
+        if (follow.length < 1 || follow.length > 3 || !follow.every((c) => cells.isGeohash6(c))) {
+          return err(400, 'cells must be 1 to 3 geohash-6 cells');
+        }
+        if (!(await takeSlot(deps, `subreq:${req.requester ?? 'none'}`, 10, nowS))) {
+          return err(429, 'too many subscriptions from here; try again in a minute');
+        }
+        const id = await subscriptionId(sub.endpoint);
+        for (const c of new Set(follow as string[])) {
+          await deps.store.putSub(c, id, JSON.stringify(sub), nowS + 30 * DAY_S);
+        }
+        return json(201, {
+          following: [...new Set(follow)],
+          expiresAt: (nowS + 30 * DAY_S) * 1000,
+        });
+      }
+
+      case 'POST /v1/push/unsubscribe': {
+        const body = parseBody(req.body);
+        const endpoint = body?.endpoint;
+        const follow = Array.isArray(body?.cells) ? body.cells : [];
+        if (typeof endpoint !== 'string' || endpoint.length > 1024) return err(400, 'bad endpoint');
+        if (follow.length > 3 || !follow.every((c) => cells.isGeohash6(c))) {
+          return err(400, 'cells must be up to 3 geohash-6 cells');
+        }
+        const id = await subscriptionId(endpoint);
+        for (const c of follow as string[]) await deps.store.deleteSub(c, id);
+        return json(200, { removed: follow.length });
       }
 
       case 'GET /v1/cells':

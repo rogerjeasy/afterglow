@@ -4,6 +4,7 @@ import { EyesFreeSettings } from '../eyesfree/EyesFreeUI';
 import { useNow } from '../household/useHousehold';
 import { Button, ChoiceChip, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
+import { NotifySettings } from '../notify/NotifySettings';
 import { useSpace } from '../spaces/useSpace';
 
 type Mode = 'home' | 'create' | 'signin' | 'recover' | 'cloudCreate' | 'cloudSignIn';
@@ -192,6 +193,7 @@ export function You({
     >
       {header}
       {children}
+      {settings ? <NotifySettings /> : null}
       {settings ? <EyesFreeSettings /> : null}
     </main>
   );

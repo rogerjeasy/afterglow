@@ -72,7 +72,10 @@ export function cellsAround(center: string, cols: number, rows: number): string[
   for (let r = 0; r < rows; r++) {
     const row: string[] = [];
     for (let k = 0; k < cols; k++) {
-      const lat = Math.max(-89.9, Math.min(89.9, c.lat + (top - r) * dLat));
+      // Clamp to the centres of the polar rows, never inside them: a fixed limit such as
+      // 89.9 lies inside the last row and would move a polar cell off itself.
+      const edge = 90 - dLat / 2;
+      const lat = Math.max(-edge, Math.min(edge, c.lat + (top - r) * dLat));
       let lng = c.lng + (k - left) * dLng;
       if (lng > 180) lng -= 360;
       if (lng < -180) lng += 360;

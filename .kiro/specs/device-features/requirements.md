@@ -30,3 +30,10 @@ Product description 7.2 (Lantern mode, eyes-free mode) and 7.9 (acoustic channel
 - **DF-15** WHEN a pairing link is opened or scanned THE SYSTEM SHALL ask "Add this person?" and add them only on a yes; it SHALL refuse a number already used by someone else on the list and say why.
 - **DF-16** THE SYSTEM SHALL scan codes with the browser's barcode detector where available, and otherwise say to use the camera app, which opens the link in Afterglow.
 - **DF-17** THE SYSTEM SHALL draw the code as dark squares on the mode's brightest red, so it scans without white light.
+
+## Offline and notifications
+
+- **DF-18** THE SYSTEM SHALL install a service worker that caches every file of the build at install, serves the cached app shell when offline, never caches the public API or the vault, and removes old builds' caches.
+- **DF-19** THE SYSTEM SHALL be installable (web manifest, icons that keep the ember inside the maskable zone).
+- **DF-20** WHILE alert notifications are on, WHEN an alert appears and Afterglow is in the background THE SYSTEM SHALL show it as a notification made on the phone, sending nothing.
+- **DF-21** WHEN the person turns on "when my area goes dark" THE SYSTEM SHALL subscribe this browser for its shared cell (CR-12), renew it at most daily while the app is used, and unsubscribe when turned off or when the area is forgotten.

@@ -11,6 +11,8 @@ locals {
   routes = [
     "POST /v1/devices",
     "POST /v1/reports",
+    "POST /v1/push/subscribe",
+    "POST /v1/push/unsubscribe",
     "GET /v1/cells",
     "GET /v1/places",
     "GET /v1/weather",
@@ -65,6 +67,20 @@ data "aws_iam_policy_document" "fn" {
     resources = [var.device_table_arn, var.cache_table_arn]
   }
 
+  statement {
+    sid       = "PushSubscriptions"
+    actions   = ["dynamodb:Query", "dynamodb:PutItem", "dynamodb:DeleteItem"]
+    resources = [var.push_table_arn]
+  }
+
+  # The VAPID signing key, read at run time. It is a SecureString under the AWS
+  # managed key for Parameter Store, so no KMS grant is needed here.
+  statement {
+    sid       = "ReadVapidKey"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter${var.vapid_param_name}"]
+  }
+
   # Public places can take a minute to fetch, so the function hands that work to a
   # background run of itself. It may invoke this one function and nothing else.
   statement {
@@ -114,6 +130,8 @@ resource "aws_lambda_function" "public" {
       REPORTS_TABLE = var.reports_table_name
       DEVICE_TABLE  = var.device_table_name
       CACHE_TABLE   = var.cache_table_name
+      PUSH_TABLE    = var.push_table_name
+      VAPID_PARAM   = var.vapid_param_name
     }
   }
 

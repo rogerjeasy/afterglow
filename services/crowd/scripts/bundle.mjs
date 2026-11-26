@@ -11,6 +11,14 @@ await build({
   format: 'esm',
   legalComments: 'none',
   external: ['@aws-sdk/*'],
-  banner: { js: '// Afterglow crowd service. Source: services/crowd/src.' },
+  // web-push is CommonJS and requires Node built-ins at run time; give the ES module
+  // bundle a real `require` for them.
+  banner: {
+    js: [
+      '// Afterglow crowd service. Source: services/crowd/src.',
+      "import { createRequire as __agCreateRequire } from 'node:module';",
+      'const require = __agCreateRequire(import.meta.url);',
+    ].join('\n'),
+  },
 });
 console.log('built dist/index.mjs');

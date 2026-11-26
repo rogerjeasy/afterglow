@@ -70,3 +70,22 @@ variable "throttle_burst" {
   default     = 100
   description = "Burst requests across the API."
 }
+
+variable "push_table_arn" {
+  description = "ARN of the push subscriptions table."
+  type        = string
+}
+
+variable "push_table_name" {
+  description = "Name of the push subscriptions table."
+  type        = string
+}
+
+variable "vapid_param_name" {
+  description = "Parameter Store name of the VAPID key pair (a SecureString created outside Terraform, so the private key is never in state)."
+  type        = string
+  validation {
+    condition     = can(regex("^/afterglow/[a-z0-9-]+/vapid$", var.vapid_param_name))
+    error_message = "vapid_param_name must look like /afterglow/<env>-<region>/vapid."
+  }
+}

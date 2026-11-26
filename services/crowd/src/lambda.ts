@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
+import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { handlePublic, warmPlacesNow } from './handler.js';
+import { type Vapid, message, sendToCell } from './push.js';
 import { dynamoCrowdStore } from './store.js';
 
 /**
@@ -12,6 +14,16 @@ const lambda = new LambdaClient({});
 const self = process.env.AWS_LAMBDA_FUNCTION_NAME ?? '';
 const deps = {
   store: null as unknown as ReturnType<typeof dynamoCrowdStore>,
+  /** Invoke this same function asynchronously to send a cell's notifications. */
+  notifyCell: async (cell: string, kind: 'outage' | 'restoration', deviceCount: number) => {
+    await lambda.send(
+      new InvokeCommand({
+        FunctionName: self,
+        InvocationType: 'Event',
+        Payload: new TextEncoder().encode(JSON.stringify({ notifyCell: cell, kind, deviceCount })),
+      }),
+    );
+  },
   nowMs: () => Date.now(),
   /** Invoke this same function asynchronously to fetch places off the request path. */
   warmPlaces: async (cell: string) => {
@@ -28,6 +40,10 @@ const deps = {
 interface HttpEvent {
   /** Set only on the asynchronous self-invocation that warms a cell's places. */
   readonly warmPlaces?: string;
+  /** Set only on the asynchronous self-invocation that notifies a cell's followers. */
+  readonly notifyCell?: string;
+  readonly kind?: 'outage' | 'restoration';
+  readonly deviceCount?: number;
   readonly routeKey?: string;
   readonly body?: string | null;
   readonly isBase64Encoded?: boolean;
@@ -49,11 +65,59 @@ const store = dynamoCrowdStore({
   reports: process.env.REPORTS_TABLE ?? '',
   device: process.env.DEVICE_TABLE ?? '',
   cache: process.env.CACHE_TABLE ?? '',
+  push: process.env.PUSH_TABLE ?? '',
 });
 deps.store = store;
 
+/** The VAPID key pair from Parameter Store (a SecureString), read once per container. */
+const ssm = new SSMClient({});
+let vapidCache: Vapid | null = null;
+async function loadVapid(): Promise<Vapid | null> {
+  if (vapidCache) return vapidCache;
+  const name = process.env.VAPID_PARAM;
+  if (!name) return null;
+  try {
+    const out = await ssm.send(new GetParameterCommand({ Name: name, WithDecryption: true }));
+    const v = JSON.parse(out.Parameter?.Value ?? 'null') as {
+      publicKey?: string;
+      privateKey?: string;
+    } | null;
+    if (!v?.publicKey || !v.privateKey) return null;
+    vapidCache = {
+      publicKey: v.publicKey,
+      privateKey: v.privateKey,
+      subject: process.env.VAPID_SUBJECT ?? 'https://afterglow-flax.vercel.app',
+    };
+    return vapidCache;
+  } catch {
+    return null;
+  }
+}
+
 export async function handler(event: HttpEvent) {
   const started = Date.now();
+  if (
+    typeof event.notifyCell === 'string' &&
+    (event.kind === 'outage' || event.kind === 'restoration')
+  ) {
+    const vapid = await loadVapid();
+    if (!vapid) {
+      console.log(JSON.stringify({ route: 'notify', error: 'no VAPID key' }));
+      return { ok: false };
+    }
+    const r = await sendToCell(
+      store,
+      event.notifyCell,
+      message(event.kind, Math.max(0, Math.floor(event.deviceCount ?? 0))),
+      vapid,
+      Math.floor(Date.now() / 1000),
+    );
+    // Counts only: never the cell or an endpoint.
+    console.log(
+      JSON.stringify({ route: 'notify', kind: event.kind, ...r, ms: Date.now() - started }),
+    );
+    return { ok: true };
+  }
   if (typeof event.warmPlaces === 'string') {
     const ok = await warmPlacesNow(event.warmPlaces, deps);
     console.log(JSON.stringify({ route: 'warm places', ok, ms: Date.now() - started }));

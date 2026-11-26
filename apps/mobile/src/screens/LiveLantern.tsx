@@ -5,6 +5,7 @@ import { STATE_WORD } from '../lantern/present';
 import { SourceChip, Sources, StatusLine, Tile } from '../night-shell/components';
 import { Button, Notice, Section } from '../night-shell/controls';
 import { LanternMap, type MapCell, MapLegend } from '../night-shell/lantern';
+import { unfollowArea } from '../notify/notify';
 import { PlacesSection } from '../places/PlacesSection';
 import { SignalSection } from '../places/SignalSection';
 import { useCells, usePlaces } from '../public/hooks';
@@ -135,7 +136,14 @@ export function LiveLantern({ cell }: { cell: string }): ReactNode {
         <Sources labels={['a ~1 km cell (geohash-6)', 'never your position']}>
           Only the cell is kept and sent. The map, places and forecast are asked for by cell.
         </Sources>
-        <Button size="sm" variant="ghost" onClick={() => gridSense.forgetArea()}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            gridSense.forgetArea();
+            void unfollowArea();
+          }}
+        >
           Forget my area
         </Button>
       </Section>

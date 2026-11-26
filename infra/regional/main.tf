@@ -109,6 +109,16 @@ locals {
       pitr          = false
       stream        = null
     }
+    # Push subscriptions following a cell (crowd-reports CR-12): the browser's push
+    # endpoint and its two keys, under each cell followed, 30-day TTL, renewed when the
+    # app opens. No account, no device id, no position finer than the cell.
+    push_subs = {
+      hash_key      = { name = "geohash6", type = "S" }
+      range_key     = { name = "sk", type = "S" }
+      ttl_attribute = "expiresAt"
+      pitr          = false
+      stream        = null
+    }
     # One encrypted vault record per account, keyed by the Cognito subject. The
     # server stores ciphertext and KDF parameters only (ACC-18). Backed up,
     # because a lost vault cannot be recovered by anyone; deleted-account
@@ -332,6 +342,9 @@ module "public_api" {
   device_table_arn   = module.table["device"].arn
   cache_table_name   = module.table["public_cache"].name
   cache_table_arn    = module.table["public_cache"].arn
+  push_table_name    = module.table["push_subs"].name
+  push_table_arn     = module.table["push_subs"].arn
+  vapid_param_name   = "/afterglow/${var.environment}-${var.region}/vapid"
   kms_key_arn        = module.kms.key_arn
   web_origins        = concat(var.web_origins, var.dev_origins)
   bundle_path        = "${path.root}/../../services/crowd/dist/index.mjs"

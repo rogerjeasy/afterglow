@@ -47,3 +47,11 @@ Until now the crowd map was a seeded simulation. This makes it real: a phone tha
 - **CR-09** WHEN a day key reports from a cell THE SYSTEM SHALL allow at most 2 distinct cells per key per day and refuse others with 429, so turning one cell takes at least k = 5 keys made for it.
 - **CR-10** WHEN the places for a cell are not cached THE SYSTEM SHALL start at most one background fetch per cell at a time (an atomic claim) at most 2 per minute for each requester bucket (16 bits of the source address's hash, never logged, kept 2 minutes) and at most 20 per minute in total, and SHALL NOT retry a failed fetch on its own; the next request for that cell starts it again.
 - **CR-11** THE SYSTEM SHALL NOT change an outage state from crowd reports alone: on a phone, the crowd only corroborates a sense of the phone's own (fusion in the core). Device attestation (Play Integrity, App Attest) comes with the native app.
+
+## Push notifications for a followed cell (2026-11-26)
+
+- **CR-12** WHEN a phone follows its cell THE SYSTEM SHALL accept only a push subscription at a browser push service (FCM, Mozilla, Apple, Windows), store its endpoint and two keys under at most 3 cells for 30 days, and SHALL delete it on unsubscribe or when the push service reports it gone (404, 410).
+- **CR-13** WHEN a stored report changes a cell's published state into dark, or from dark to coming back or lit, THE SYSTEM SHALL send one notification to the cell's followers, claimed atomically per cell and kind for 15 minutes; unknown and mixed never notify, and the published state already hides cells under k = 5.
+- **CR-14** THE SYSTEM SHALL sign pushes with a VAPID key kept in Parameter Store as a SecureString created outside Terraform, so the private key is in neither the repository nor the state; logs of a push run carry counts only.
+
+Privacy review, `push_subs`: the push endpoint is a pseudonymous address at the browser's push service, stored with the ~1 km cell it follows. No account, device id or finer position. 30-day TTL renewed only while the app is used; no backups.
