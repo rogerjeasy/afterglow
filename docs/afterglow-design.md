@@ -423,6 +423,12 @@ Calm, plain, short. Say what is known, what is unknown and what to do. Never ala
 - Restoration: "Power is back on your street. Fridge stayed under 4 °C for 2 h 50 m."
 Every number carries a source chip. "Safe" is never used beyond its source.
 
+**Addendum (2026-11-26): Wisp, and where the product may be funny.** The rule above stands: no jokes during an emergency, and the costume lives in the objects. There is one fenced exception. **Wisp**, a small ghost named after the will-o'-the-wisp, guides first-time visitors through one simulated night (`.kiro/specs/guide`). Wisp may joke about being a ghost, about bright screens and about the chicken, and only:
+- inside its own speech bubble, never in a status line, tile, ward or alert;
+- in the demo space, never in a real household;
+- without numbers of its own: every figure Wisp says is a fact the core computed for the screen, quoted exactly, and a line whose fact is missing falls back to words (GD-01).
+Wisp also obeys the costume rule: its body fills from 0.35 to full opacity as the tour progresses, the same encoding as a roster ghost being heard from (GD-07).
+
 ### 14.2 Localisation design
 Twenty launch languages; strings designed for 40% expansion; no text in images; RTL mirroring for Arabic and Urdu including the Graveyard Shift axis and compass; locale-aware units, times and number formats; voice phrase banks recorded by native speakers for languages without TTS; translations drafted by AI and approved by native reviewers, with the approver's name in the trust centre.
 

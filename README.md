@@ -5,7 +5,9 @@
 <h3 align="center">The only app you can read when the grid dies.</h3>
 
 <p align="center">
-  <a href="https://afterglow-flax.vercel.app/?phase=outage&elapsed=45"><b>Open the live demo (a blackout, already in progress)</b></a>
+  <a href="https://afterglow-flax.vercel.app/?tour=1"><b>Take the one-minute tour with Wisp</b></a>
+  ·
+  <a href="https://afterglow-flax.vercel.app/?phase=outage&elapsed=45">Jump into a blackout</a>
   ·
   <a href="https://afterglow-flax.vercel.app">Start from the beginning</a>
   ·
@@ -32,7 +34,11 @@ Kiroween category: **Costume Contest**. In Afterglow every spooky element is a m
 
 ## Try it in 60 seconds
 
-1. Open **[the live demo](https://afterglow-flax.vercel.app/?phase=outage&elapsed=45)**. It opens a labelled demo household 45 minutes into an outage. Nothing is saved or sent.
+The fastest way: **[take the tour](https://afterglow-flax.vercel.app/?tour=1)**. Wisp, a small ghost who is scared of bright screens, turns off the lights and walks you through one night across all five tabs. Wisp has jokes, but never numbers of its own: every figure it says is computed by the core for the screen you are looking at, and a property test holds it to that.
+
+Or explore on your own:
+
+1. Open **[a blackout in progress](https://afterglow-flax.vercel.app/?phase=outage&elapsed=45)**. It opens a labelled demo household 45 minutes into an outage. Nothing is saved or sent.
 2. **Hearth** shows the one line of truth (grid down, for how long, how many neighbours, the restoration estimate), plus the fridge and freezer clocks and the hours your home stays safe.
 3. **Lantern** shows the neighbourhood map. Drag the playback slider to watch the night end.
 4. **Séance** sends a message as light. Tap *Simulate a message* to watch the real decoder read a recorded signal, or point a second phone's camera at the screen.
@@ -64,7 +70,7 @@ Simulated, and labelled as simulated in the app:
 
 Afterglow was built spec-first in Kiro. Everything below is in the repository.
 
-**Specs: 17 modules, EARS requirements traced to property tests.** Each module in [`.kiro/specs/`](.kiro/specs) has `requirements.md` written in EARS with ids such as `GS-07` or `CE-03`, and a `tasks.md`. Every id appears in the name of the property test that proves it, so `grep CE-03` shows the requirement, the task and the test together.
+**Specs: 18 modules, EARS requirements traced to property tests.** Each module in [`.kiro/specs/`](.kiro/specs) has `requirements.md` written in EARS with ids such as `GS-07` or `CE-03`, and a `tasks.md`. Every id appears in the name of the property test that proves it, so `grep CE-03` shows the requirement, the task and the test together.
 
 **Steering: 9 files, three inclusion modes.** Four safety invariants are always included: [`fail-closed`](.kiro/steering/fail-closed.md), [`privacy-aggregation`](.kiro/steering/privacy-aggregation.md), [`night-vision`](.kiro/steering/night-vision.md) and [`label-only-medicine`](.kiro/steering/label-only-medicine.md). [`terraform-regions`](.kiro/steering/terraform-regions.md) loads only for `infra/**`. [`release-checklist`](.kiro/steering/release-checklist.md) is manual.
 
@@ -89,7 +95,7 @@ Afterglow was built spec-first in Kiro. Everything below is in the repository.
 **Skills: 4** in [`.kiro/skills/`](.kiro/skills): EARS authoring, property-test authoring, formulary review and Kiro evidence.
 
 **Evidence, not claims.**
-- [`docs/kiro/pbt-catches.md`](docs/kiro/pbt-catches.md): 10 real bugs found by property tests that example tests missed, each with its shrunk counterexample. One example: back-to-back Heliograph repeats spelled a false frame, so three messages could not be read at all.
+- [`docs/kiro/pbt-catches.md`](docs/kiro/pbt-catches.md): 12 real bugs found by property tests and the pixel scan that example tests missed, each with its shrunk counterexample. One example: back-to-back Heliograph repeats spelled a false frame, so three messages could not be read at all.
 - [`docs/kiro/experiments.md`](docs/kiro/experiments.md): what was measured about Kiro's hooks and permissions, including inconclusive results.
 - [`docs/kiro/implementation-plan.md`](docs/kiro/implementation-plan.md): the live plan, with what is done and what is not.
 
@@ -120,7 +126,7 @@ pnpm typecheck && pnpm lint
 pnpm --filter @afterglow/mobile e2e      # Playwright, including the pixel scan
 ```
 
-About 535 TypeScript unit and property tests, 52 Playwright browser tests, Python property tests for the Crew app, and 63 offline Terraform plan tests.
+About 545 TypeScript unit and property tests, 120 Playwright browser tests (including the pixel scan of every screen in three modes), Python property tests for the Crew app, and 63 offline Terraform plan tests.
 
 ## Not an emergency service
 

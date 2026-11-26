@@ -183,3 +183,43 @@ It was also a latent safety defect: had a real repeat been damaged, the false pa
 **Root cause (requirements conflict):** a 30-minute distinct-device window forgets any verdict nobody repeats. With change-only reporting, every long outage turns `unknown` after 30 minutes, which is the opposite of what a map is for.
 
 **Resolution so far:** pinned, not hidden. The kernel behaves correctly and is unchanged. A named test (`Q1`) pins that a verdict nobody repeats falls back to `unknown` at 30 minutes. The simulator assumes a re-confirmation every 20 minutes while a verdict holds (SIM-03). **Open question Q1** in `.kiro/specs/cells/requirements.md` needs a privacy review: either allow re-confirmation reports (same fields, no new data) or have the Flink job carry each device's last verdict forward with a TTL. Until then the map is simulated and labelled as such.
+
+---
+
+## 2026-11-26 · GD-01 · the test's oracle read a fact as a replacement pattern
+
+**Requirement:** GD-01 (Wisp never invents a number; a slot shows its fact exactly as given).
+
+**Property:** `GD-01 every digit in a rendered line comes from a filled slot`: a filled line must equal the template with each slot's fact in place, untouched.
+
+**Shrunk counterexample:**
+```
+step: fridge   ("Your fridge keeps food safe for {fridge} more. ...")
+facts: { fridge: "$& " }
+```
+
+**Root cause (test bug):** the oracle built the expected line with `String.prototype.replace(string, string)`, where `$&` in the replacement means "the matched text". So the oracle expected `{fridge} ` where the renderer, correctly, wrote `$& `. The renderer passes a function to `replace`, which inserts text literally. The same oracle had a second latent flaw: replacing slots one at a time would also substitute inside an earlier fact that happened to contain `{estimate}`.
+
+**Fix:** the oracle now splits the template on its slots and interleaves the facts, in one pass, with no pattern semantics.
+
+**What was wrong:** the test. Worth keeping because the opposite mistake, in the renderer, would have let a fact rewrite Wisp's sentence, which is exactly what GD-01 forbids. The property is now the guard against that regression.
+
+---
+
+## 2026-11-26 · GD-09 / NS-10 · Wisp's fade blended one step above the night-vision ceiling
+
+**Requirement:** GD-09 (the guide passes the pixel scan in Night, Dusk and Ember), resting on NS-10 (no pixel above the mode's ceiling).
+
+**Check:** the Playwright pixel scan (`e2e/tour.e2e.ts`), judged by the pure `scanRgba`. Not a property test, but the same idea: a rule checked over every pixel instead of a few hand-picked ones.
+
+**What it found, deterministically:**
+```
+tour step 9 in dusk:  1 pixel at r=184, ceiling red.800 = 183   (ghost faded with SVG group opacity 0.935)
+tour step 5 in night: 1 pixel at r=166, ceiling red.700 = 165   (after a first fix: translucent stroke over translucent fill)
+```
+
+**Root cause (implementation):** both versions blended two translucent layers drawn in the ceiling colour. Group opacity is composited in a premultiplied offscreen buffer, and a translucent stroke over a translucent fill is blended twice; either way Chrome's 8-bit rounding can land one step above the colour both layers share. Mathematically the result is at most the ceiling; in pixels it was not.
+
+**Fix:** only the body fades (`fillOpacity`, one layer). The outline is opaque, in `nontext.muted`, which is far below every ceiling, so no blend involving it can approach one.
+
+**What was wrong:** the implementation. Worth recording because the breach was one level in 255 on one pixel of a 56 px ghost, invisible to a reviewer, and a design rule written as "keep it dim" would never have caught it. A ceiling checked on every pixel did.
