@@ -139,7 +139,9 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
     persist();
     emit();
   };
-  const nextId = (prefix: string): string => `${prefix}${lamport + 1}`;
+  // Qualified by this device's epoch: with sync, two devices write into one household, and
+  // an id made from the lamport counter alone would collide (cloud-accounts CA-10).
+  const nextId = (prefix: string): string => `${prefix}${lamport + 1}.${epoch}`;
 
   const E = household.HOUSEHOLD_EVENT;
   const appliancePayload = (id: string, input: ApplianceInput) => ({
