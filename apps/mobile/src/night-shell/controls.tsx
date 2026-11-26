@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, useState } from 'react';
 import { token } from './theme';
 
 /**
@@ -493,5 +493,57 @@ export function TabBar({
         })}
       </div>
     </nav>
+  );
+}
+
+/**
+ * A form or list that stays closed until asked for (NS-15): one button names the
+ * action, and opening it shows the form with a way to close it again. Screens
+ * answer their question first; forms wait.
+ */
+export function Fold({
+  label,
+  children,
+  defaultOpen = false,
+}: {
+  /** The action, as the closed button says it: "Add a battery". */
+  label: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}): ReactNode {
+  const [open, setOpen] = useState(defaultOpen);
+  if (!open)
+    return (
+      <Button onClick={() => setOpen(true)} style={{ width: '100%' }}>
+        {label}
+      </Button>
+    );
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {children}
+      <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+        Close
+      </Button>
+    </div>
+  );
+}
+
+/** The "Edit" toggle for a section's list: management actions appear only while editing (NS-15). */
+export function EditToggle({
+  editing,
+  onToggle,
+}: {
+  editing: boolean;
+  onToggle: () => void;
+}): ReactNode {
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={onToggle}
+      ariaLabel={editing ? 'Done editing' : 'Edit list'}
+    >
+      {editing ? 'Done' : 'Edit'}
+    </Button>
   );
 }

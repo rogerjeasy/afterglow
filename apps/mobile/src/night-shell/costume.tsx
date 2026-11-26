@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Sources } from './components';
 import { token } from './theme';
 
 /**
@@ -21,6 +22,8 @@ export function Tombstone({
   live,
   selected,
   onClick,
+  sources,
+  tourId,
 }: {
   title: string;
   epitaph: string;
@@ -31,9 +34,13 @@ export function Tombstone({
   live: boolean;
   selected: boolean;
   onClick: () => void;
+  /** Where the epitaph comes from, one tap away under the stone (NS-13). */
+  sources?: readonly string[] | undefined;
+  /** The guide's anchor (`data-tour`). */
+  tourId?: string | undefined;
 }): ReactNode {
   const dark = Math.min(1, Math.max(0, progress));
-  return (
+  const stone = (
     <button
       type="button"
       className="press"
@@ -122,6 +129,18 @@ export function Tombstone({
         </svg>
       ) : null}
     </button>
+  );
+  if (!sources || sources.length === 0)
+    return (
+      <div data-tour={tourId} style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {stone}
+      </div>
+    );
+  return (
+    <div data-tour={tourId} style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      {stone}
+      <Sources labels={sources} />
+    </div>
   );
 }
 
@@ -227,5 +246,52 @@ export function Candle({
         }}
       />
     </div>
+  );
+}
+
+/**
+ * A ghost: someone not yet heard from (design 7.3). Its body is translucent until
+ * they are heard, then solid. Only the body fades, in one layer, and the outline is
+ * opaque in the muted tone: two translucent layers in the ceiling colour can blend
+ * one step above the night-vision ceiling (see pbt-catches, 2026-11-26).
+ */
+export function GhostGlyph({
+  opacity,
+  size = 28,
+  loud = false,
+}: {
+  /** 0.35 = not heard from; 1 = heard. Anything between is allowed (the guide's progress). */
+  opacity: number;
+  size?: number;
+  /** A HELP: the outline takes the emphasis tone. */
+  loud?: boolean;
+}): ReactNode {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 48 56"
+      width={size}
+      height={(size * 56) / 48}
+      style={{ display: 'block', flex: 'none', overflow: 'visible' }}
+    >
+      <path
+        d="M8 24a16 16 0 0 1 32 0v26l-5.33-4-5.34 4-5.33-4-5.33 4-5.34-4L8 50z"
+        fill={token('text.emphasis')}
+        fillOpacity={opacity}
+        stroke={loud ? token('text.emphasis') : token('nontext.muted')}
+        strokeWidth={loud ? 3 : 2}
+        strokeLinejoin="round"
+        style={{ transition: 'fill-opacity 280ms ease-out' }}
+      />
+      <ellipse cx="18" cy="25" rx="3" ry="4.2" fill={token('bg')} />
+      <ellipse cx="30" cy="25" rx="3" ry="4.2" fill={token('bg')} />
+      <path
+        d="M20 35q4 3 8 0"
+        fill="none"
+        stroke={token('bg')}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

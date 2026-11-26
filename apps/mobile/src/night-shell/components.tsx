@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, useId, useState } from 'react';
+import { sourcesSummary } from './sources';
 import { token } from './theme';
 
 /**
@@ -59,12 +60,15 @@ export function Tile({
   live,
   onClick,
   tourId,
+  visual,
 }: {
   title: string;
   value: string;
+  /** A costume row under the number that encodes the same data (NS-16); decorative to screen readers. */
+  visual?: ReactNode;
   /** One plain-language line under the number. */
   note?: string;
-  /** Where the number comes from; every number shows its source. */
+  /** Where the number comes from; every number shows its source (one tap away, NS-13). */
   sources?: readonly string[];
   live?: boolean;
   onClick?: () => void;
@@ -73,17 +77,15 @@ export function Tile({
 }): ReactNode {
   const body = (
     <>
-      <div
-        style={{
-          fontSize: 'var(--type-label)',
-          color: token('text.secondary'),
-        }}
+      <span
+        style={{ display: 'block', fontSize: 'var(--type-label)', color: token('text.secondary') }}
       >
         {title}
-      </div>
-      <div
+      </span>
+      <span
         className="clock"
         style={{
+          display: 'block',
           marginTop: 8,
           fontSize: 'var(--type-clock-lg)',
           color: token('text.primary'),
@@ -91,10 +93,19 @@ export function Tile({
         }}
       >
         {value}
-      </div>
+      </span>
+      {visual ? (
+        <span
+          aria-hidden="true"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}
+        >
+          {visual}
+        </span>
+      ) : null}
       {note ? (
-        <div
+        <span
           style={{
+            display: 'block',
             marginTop: 6,
             fontSize: 'var(--type-caption)',
             color: token('text.secondary'),
@@ -102,14 +113,7 @@ export function Tile({
           }}
         >
           {note}
-        </div>
-      ) : null}
-      {sources && sources.length > 0 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {sources.map((label) => (
-            <SourceChip key={label} label={label} />
-          ))}
-        </div>
+        </span>
       ) : null}
     </>
   );
@@ -123,32 +127,122 @@ export function Tile({
     borderColor: live ? token('glow') : 'transparent',
     minWidth: 0,
     textAlign: 'left',
-    // Top-aligned content, so tiles in a row line up even when a button centres its children.
+    // Top-aligned content, so tiles in a row line up.
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
     alignItems: 'stretch',
   };
-  if (!onClick)
-    return (
-      <div data-tour={tourId} style={frame}>
-        {body}
-      </div>
-    );
+  // The tappable area and the source control are siblings, never nested buttons.
   return (
-    <button
-      type="button"
-      className="press"
-      onClick={onClick}
-      data-tour={tourId}
-      style={{
-        ...frame,
-        color: 'inherit',
-        font: 'inherit',
-      }}
-    >
-      {body}
-    </button>
+    <div data-tour={tourId} style={frame}>
+      {onClick ? (
+        <button
+          type="button"
+          className="press"
+          onClick={onClick}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            textAlign: 'left',
+            color: 'inherit',
+            font: 'inherit',
+            minHeight: 44,
+          }}
+        >
+          {body}
+        </button>
+      ) : (
+        <div>{body}</div>
+      )}
+      {sources && sources.length > 0 ? <Sources labels={sources} /> : null}
+    </div>
+  );
+}
+
+/**
+ * The working behind a number, one tap away (NS-13; design 8.3). Closed, it says
+ * "How I know", and "uses defaults" whenever a default is in play, so a default is
+ * never hidden (fail-closed rule 6). Open, it lists every source with its version.
+ */
+export function Sources({
+  labels,
+  link,
+  children,
+}: {
+  labels: readonly string[];
+  link?: { readonly href: string; readonly label: string } | undefined;
+  /** Extra lines shown when open: the rule's details, management actions. */
+  children?: ReactNode;
+}): ReactNode {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const summary = sourcesSummary(labels);
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        type="button"
+        className="press"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          minHeight: 44,
+          padding: '0 12px',
+          borderRadius: 22,
+          borderStyle: 'solid',
+          borderWidth: 1,
+          borderColor: summary.usesDefaults ? token('focus.ring') : token('hairline'),
+          background: 'transparent',
+          color: token('text.secondary'),
+          font: 'inherit',
+          fontSize: 'var(--type-caption)',
+          cursor: 'pointer',
+        }}
+      >
+        {summary.label} {open ? '▴' : '▾'}
+      </button>
+      {open ? (
+        <div id={id} data-sources="open" style={{ marginTop: 4 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {labels.map((label) => (
+              <SourceChip key={label} label={label} />
+            ))}
+          </div>
+          {children ? (
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 'var(--type-caption)',
+                color: token('text.secondary'),
+              }}
+            >
+              {children}
+            </div>
+          ) : null}
+          {link ? (
+            <a
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                marginTop: 6,
+                minHeight: 44,
+                display: 'inline-flex',
+                alignItems: 'center',
+                fontSize: 'var(--type-caption)',
+                color: token('text.secondary'),
+              }}
+            >
+              {link.label}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

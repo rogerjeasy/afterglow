@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 import { Button } from '../night-shell/controls';
+import { GhostGlyph } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
 
 /**
@@ -16,40 +17,8 @@ const TOP_CLEARANCE = 84;
 
 /** The ghost. Its opacity is the tour's progress (GD-07): faint at first, solid at the end. */
 export function WispGhost({ opacity, size = 56 }: { opacity: number; size?: number }): ReactNode {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 48 56"
-      width={size}
-      height={(size * 56) / 48}
-      className="wisp-bob"
-      style={{ display: 'block', overflow: 'visible' }}
-    >
-      {/*
-        Only the body fades, and the outline is opaque in the muted tone, below every ceiling.
-        Two translucent layers in the ceiling colour can blend one step above it: the pixel scan
-        caught 184 against Dusk's 183 (group opacity) and 166 against Night's 165 (stroke over fill).
-      */}
-      <path
-        d="M8 24a16 16 0 0 1 32 0v26l-5.33-4-5.34 4-5.33-4-5.33 4-5.34-4L8 50z"
-        fill={token('text.emphasis')}
-        fillOpacity={opacity}
-        stroke={token('nontext.muted')}
-        strokeWidth="2"
-        strokeLinejoin="round"
-        style={{ transition: 'fill-opacity 280ms ease-out' }}
-      />
-      <ellipse cx="18" cy="25" rx="3" ry="4.2" fill={token('bg')} />
-      <ellipse cx="30" cy="25" rx="3" ry="4.2" fill={token('bg')} />
-      <path
-        d="M20 35q4 3 8 0"
-        fill="none"
-        stroke={token('bg')}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  // No ambient bob: night-vision rule 7 keeps the only loop for the Hearth candle (NS-17).
+  return <GhostGlyph opacity={opacity} size={size} />;
 }
 
 function prefersReducedMotion(): boolean {

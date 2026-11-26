@@ -248,22 +248,3 @@ html {
 html.tour-open main {
   padding-bottom: calc(var(--tour-bubble-h, 260px) + 120px) !important;
 }
-
-/* The one ambient motion the guide spends: a 4 px bob, transform only (design §8.2). */
-@keyframes wisp-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-.wisp-bob {
-  animation: wisp-bob 3s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .wisp-bob {
-    animation: none;
-  }
-}
