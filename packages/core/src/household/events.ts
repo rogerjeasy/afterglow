@@ -64,8 +64,12 @@ export interface ItemAddedPayload {
   readonly applianceId: string;
   readonly productId: number;
 }
+/** Why something left a compartment, for the outage report (optional; older logs lack it). */
+export type RemovalReason = 'discarded' | 'used';
 export interface ItemRemovedPayload {
   readonly itemId: string;
+  readonly atMs?: number;
+  readonly reason?: RemovalReason;
 }
 export interface DoorOpenedPayload {
   readonly applianceId: string;
@@ -75,6 +79,8 @@ export interface DoorOpenedPayload {
 export interface OutageSetPayload {
   /** Wall-clock ms when the power went out; null when power is back on. */
   readonly startedAtMs: number | null;
+  /** When the power came back (only with startedAtMs null; older logs lack it). */
+  readonly endedAtMs?: number;
 }
 export interface IceCheckedPayload {
   readonly itemId: string;
@@ -100,6 +106,8 @@ export interface MedicineAddedPayload {
 }
 export interface MedicineRemovedPayload {
   readonly medicineId: string;
+  readonly atMs?: number;
+  readonly reason?: RemovalReason;
 }
 export type HeardChannel = 'light' | 'sound' | 'sms' | 'ble' | 'manual';
 const HEARD_CHANNELS: ReadonlySet<string> = new Set(['light', 'sound', 'sms', 'ble', 'manual']);
@@ -161,8 +169,10 @@ export function isItemAddedPayload(x: unknown): x is ItemAddedPayload {
     Number.isInteger(x.productId)
   );
 }
+const isReason = (x: unknown): boolean => x === undefined || x === 'discarded' || x === 'used';
+const optMs = (x: unknown): boolean => x === undefined || isMs(x);
 export function isItemRemovedPayload(x: unknown): x is ItemRemovedPayload {
-  return isRecord(x) && isId(x.itemId);
+  return isRecord(x) && isId(x.itemId) && optMs(x.atMs) && isReason(x.reason);
 }
 export function isDoorOpenedPayload(x: unknown): x is DoorOpenedPayload {
   return (
@@ -176,7 +186,9 @@ export function isDoorOpenedPayload(x: unknown): x is DoorOpenedPayload {
   );
 }
 export function isOutageSetPayload(x: unknown): x is OutageSetPayload {
-  return isRecord(x) && (x.startedAtMs === null || isMs(x.startedAtMs));
+  if (!isRecord(x)) return false;
+  if (x.startedAtMs === null) return optMs(x.endedAtMs);
+  return isMs(x.startedAtMs) && x.endedAtMs === undefined;
 }
 export function isIceCheckedPayload(x: unknown): x is IceCheckedPayload {
   return (
@@ -219,7 +231,7 @@ export function isMedicineAddedPayload(x: unknown): x is MedicineAddedPayload {
   );
 }
 export function isMedicineRemovedPayload(x: unknown): x is MedicineRemovedPayload {
-  return isRecord(x) && isId(x.medicineId);
+  return isRecord(x) && isId(x.medicineId) && optMs(x.atMs) && isReason(x.reason);
 }
 // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;

@@ -1,6 +1,8 @@
 import { checkPassphrase } from '@afterglow/adapters';
 import { type ReactNode, useState } from 'react';
 import { EyesFreeSettings } from '../eyesfree/EyesFreeUI';
+import { HistorySection } from '../history/HistorySection';
+import { TrustCentre } from '../history/TrustCentre';
 import { useNow } from '../household/useHousehold';
 import { Button, ChoiceChip, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
@@ -193,8 +195,10 @@ export function You({
     >
       {header}
       {children}
+      {settings ? <HistorySection /> : null}
       {settings ? <NotifySettings /> : null}
       {settings ? <EyesFreeSettings /> : null}
+      {settings ? <TrustCentre /> : null}
     </main>
   );
 

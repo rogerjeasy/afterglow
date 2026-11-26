@@ -248,3 +248,23 @@ html {
 html.tour-open main {
   padding-bottom: calc(var(--tour-bubble-h, 260px) + 120px) !important;
 }
+
+/* A printed outage report (history): paper wants dark text on white, and only the report. */
+.print-only {
+  display: none;
+}
+@media print {
+  body.printing-report > *:not(.print-only) {
+    display: none !important;
+  }
+  body.printing-report .print-only {
+    display: block;
+    white-space: pre-wrap;
+    font: 12pt / 1.5 system-ui, sans-serif;
+    color: #000;
+    background: #fff;
+  }
+  body.printing-report {
+    background: #fff;
+  }
+}

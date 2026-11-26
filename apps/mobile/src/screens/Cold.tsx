@@ -414,8 +414,20 @@ export function Cold({
                       verdict={verdict}
                       elapsedMinutes={t}
                       actions={
-                        verdict.kind !== 'lookRequired' && !editing ? null : (
+                        verdict.kind !== 'lookRequired' &&
+                        verdict.kind !== 'discard' &&
+                        !editing ? null : (
                           <>
+                            {verdict.kind === 'discard' && !editing ? (
+                              // Recorded with the reason, for the outage report (7.19).
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => store.removeItem(item.id, 'discarded')}
+                              >
+                                I threw it out
+                              </Button>
+                            ) : null}
                             {verdict.kind === 'lookRequired' ? (
                               <>
                                 <Button

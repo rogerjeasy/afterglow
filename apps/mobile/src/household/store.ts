@@ -40,9 +40,9 @@ export interface HouseholdStore {
   updateAppliance(id: string, input: ApplianceInput): void;
   removeAppliance(id: string): void;
   addItem(applianceId: string, productId: number): string;
-  removeItem(itemId: string): void;
+  removeItem(itemId: string, reason?: household.RemovalReason): void;
   addMedicine(applianceId: string, product: string, condition: 'unopened' | 'inUse'): string;
-  removeMedicine(medicineId: string): void;
+  removeMedicine(medicineId: string, reason?: household.RemovalReason): void;
   addPerson(name: string, slot: number): string;
   removePerson(personId: string): void;
   addEnergyStore(input: Omit<energy.EnergyStore, 'id'>): string;
@@ -174,8 +174,9 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
       append(E.itemAdded, { itemId: id, applianceId, productId });
       return id;
     },
-    removeItem(itemId) {
-      append(E.itemRemoved, { itemId });
+    removeItem(itemId, reason) {
+      // When and why, for the outage report (7.19).
+      append(E.itemRemoved, reason ? { itemId, atMs: now(), reason } : { itemId, atMs: now() });
     },
     addMedicine(applianceId, product, condition) {
       const id = nextId('m');
@@ -184,8 +185,11 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
       append(E.medicineAdded, { medicineId: id, applianceId, product, condition });
       return id;
     },
-    removeMedicine(medicineId) {
-      append(E.medicineRemoved, { medicineId });
+    removeMedicine(medicineId, reason) {
+      append(
+        E.medicineRemoved,
+        reason ? { medicineId, atMs: now(), reason } : { medicineId, atMs: now() },
+      );
     },
     addEnergyStore(input) {
       const id = nextId('s');
@@ -231,7 +235,7 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
       append(E.outageSet, { startedAtMs: atMs });
     },
     endOutage() {
-      append(E.outageSet, { startedAtMs: null });
+      append(E.outageSet, { startedAtMs: null, endedAtMs: now() });
     },
     checkIce(itemId, answer) {
       append(E.iceChecked, { itemId, answer, atMs: now() });
