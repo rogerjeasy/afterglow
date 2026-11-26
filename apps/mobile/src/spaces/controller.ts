@@ -336,6 +336,17 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
           now,
           onStatus: setSync,
           flush: () => vault.flush(),
+          onSignedOut: (reason) => {
+            if (active !== a) return;
+            void lock().then(() =>
+              set({
+                notice:
+                  reason === 'passphraseChanged'
+                    ? 'Your passphrase was changed on another device. Sign in with the new one; your changes here are saved on this phone.'
+                    : 'You were signed out of your account on this phone. Sign in again; your changes here are saved on this phone.',
+              }),
+            );
+          },
           onMerged: async (data) => {
             if (active !== a) return;
             // Merge once more with what is in memory now, so an edit made while the
@@ -388,14 +399,22 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     } catch {
       return false;
     }
-    c.pendingRevocation = false;
-    markPendingRevocation(c.accountId, false);
     try {
       await cloud.auth.signIn(c.email, c.secret);
       c.signedIn = true;
     } catch {
       c.signedIn = false; // offline now: the next retry signs in with the new secret
+      return false;
     }
+    // Cognito's sign-out does not reach tokens already issued; the vault refuses them from
+    // now on (CA-13). Only when this succeeds is the revocation finished.
+    try {
+      await cloud.api.revoke(await cloud.auth.accessToken());
+    } catch {
+      return false;
+    }
+    c.pendingRevocation = false;
+    markPendingRevocation(c.accountId, false);
     return true;
   }
 

@@ -26,6 +26,11 @@ export interface CloudLinkDeps {
   readonly onMerged: (data: Record<string, string>) => Promise<void>;
   /** Save any edit still in memory, so what is sent and merged is current. */
   readonly flush: () => Promise<void>;
+  /**
+   * This device may no longer write: the session was revoked (401), or the passphrase was
+   * changed on another device (the server copy's key wrapping differs). Never push over it.
+   */
+  readonly onSignedOut: (reason: 'revoked' | 'passphraseChanged') => void;
   /** How long to wait after a save before pushing, so bursts of edits are one request. */
   readonly debounceMs?: number;
 }
@@ -40,6 +45,16 @@ export interface CloudLink {
 }
 
 const MAX_ROUNDS = 4;
+
+/** The parts of a vault record that a passphrase change rewrites. */
+function keyWrapping(raw: string): string {
+  try {
+    const x = JSON.parse(raw) as { kdf?: unknown; wrappedDek?: unknown; recovery?: unknown };
+    return JSON.stringify([x.kdf, x.wrappedDek, x.recovery]);
+  } catch {
+    return 'unreadable';
+  }
+}
 
 export function createCloudLink(deps: CloudLinkDeps, initialVersion: number | null): CloudLink {
   const { service, session, api, auth } = deps;
@@ -67,6 +82,13 @@ export function createCloudLink(deps: CloudLinkDeps, initialVersion: number | nu
       version = null; // deleted elsewhere: our copy becomes the first again
       return 'retry';
     }
+    // A different key wrapping means the passphrase changed elsewhere. Pushing our record
+    // would put the old passphrase back; stop and have the person sign in with the new one.
+    if (keyWrapping(remote.record) !== keyWrapping(raw)) {
+      closed = true;
+      deps.onSignedOut('passphraseChanged');
+      return 'done';
+    }
     const theirs = (await service.openRecordData(session, remote.record)) ?? {};
     const mine = (await service.loadData(session)) ?? {};
     version = remote.version;
@@ -88,6 +110,11 @@ export function createCloudLink(deps: CloudLinkDeps, initialVersion: number | nu
     } catch (e) {
       if (closed) return;
       const code = e instanceof CloudError ? e.code : 'unknown';
+      if (code === 'signed-out') {
+        closed = true;
+        deps.onSignedOut('revoked');
+        return;
+      }
       deps.onStatus(code === 'network' || code === 'limit' ? 'offline' : 'error', null);
     }
   };

@@ -18,6 +18,8 @@ export interface VaultApi {
   get(token: string): Promise<RemoteVault | null>;
   put(token: string, record: string, expectedVersion: number | null): Promise<PutOutcome>;
   delete(token: string): Promise<void>;
+  /** Refuse every token issued before this one, for this account (CA-13). */
+  revoke(token: string): Promise<void>;
 }
 
 async function call(url: string, init: RequestInit): Promise<Response> {
@@ -74,6 +76,10 @@ export function fetchVaultApi(baseUrl: string): VaultApi {
     async delete(token) {
       const r = await call(url, { method: 'DELETE', headers: auth(token) });
       if (r.status !== 204 && r.status !== 404) throw statusError(r.status);
+    },
+    async revoke(token) {
+      const r = await call(`${url}/revoke`, { method: 'POST', headers: auth(token) });
+      if (r.status !== 204) throw statusError(r.status);
     },
   };
 }

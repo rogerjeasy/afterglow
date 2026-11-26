@@ -30,6 +30,8 @@ function fakeCloud(
   const users = new Map<string, { secret: string; confirmed: boolean; sub: string }>();
   const store: VaultStore & { dump(): ReadonlyMap<string, unknown> } = memoryStore();
   let n = 0;
+  // Token issue times (seconds) only go forward, as Cognito's do.
+  let clock = 1_700_000_000;
   const net = (what: string): void => {
     if (opts.offline?.()) throw new CloudError('network', 'offline');
     wire.push(what);
@@ -38,6 +40,7 @@ function fakeCloud(
   /** Each device has its own signed-in user; the server is shared. */
   const authFor = (): CloudAuth & { current(): string | null } => {
     let current: string | null = null;
+    let iat = 0;
     return {
       async signUp(email, secret) {
         net(`signUp ${email} ${secret}`);
@@ -66,10 +69,12 @@ function fakeCloud(
         }
         if (!u.confirmed) throw new CloudError('unconfirmed', 'no');
         current = u.sub;
+        clock += 1;
+        iat = clock;
       },
       async accessToken() {
         if (!current) throw new CloudError('signed-out', 'out');
-        return `token:${current}`;
+        return `token:${current}:${iat}`;
       },
       signOut() {
         current = null;
@@ -98,8 +103,8 @@ function fakeCloud(
 
   const call = async (token: string, routeKey: string, body: string | null) => {
     net(`${routeKey} ${token} ${body ?? ''}`);
-    const sub = token.replace(/^token:/, '');
-    return handle({ routeKey, body }, { sub, token_use: 'access', client_id: CLIENT }, store, {
+    const [, sub, iat] = token.split(':');
+    return handle({ routeKey, body }, { sub, token_use: 'access', client_id: CLIENT, iat }, store, {
       clientId: CLIENT,
       now: () => 1,
     });
@@ -108,6 +113,7 @@ function fakeCloud(
     async get(token) {
       const r = await call(token, 'GET /v1/vault', null);
       if (r.status === 404) return null;
+      if (r.status === 401) throw new CloudError('signed-out', 'out');
       const x = JSON.parse(r.body as string);
       return { record: x.record, version: x.version };
     },
@@ -116,10 +122,15 @@ function fakeCloud(
       const v = JSON.parse(r.body as string).version ?? null;
       if (r.status === 200) return { ok: true, version: v };
       if (r.status === 409) return { ok: false, version: v };
+      if (r.status === 401) throw new CloudError('signed-out', 'out');
       throw new Error(`status ${r.status}`);
     },
     async delete(token) {
       await call(token, 'DELETE /v1/vault', null);
+    },
+    async revoke(token) {
+      const r = await call(token, 'POST /v1/vault/revoke', null);
+      if (r.status !== 204) throw new CloudError('signed-out', 'out');
     },
   };
   return { authFor, api, store, users };
@@ -146,6 +157,11 @@ const settle = async (c: ReturnType<typeof device>['controller']) => {
   for (let i = 0; i < 40 && c.getState().cloud?.sync === 'syncing'; i++) {
     await new Promise((r) => setTimeout(r, 25));
   }
+};
+/** The lock after a refused session finishes asynchronously; wait for its notice. */
+const noticeOf = async (c: ReturnType<typeof device>['controller']): Promise<string> => {
+  for (let i = 0; i < 40 && !c.getState().notice; i++) await new Promise((r) => setTimeout(r, 25));
+  return c.getState().notice ?? '';
 };
 const names = (c: ReturnType<typeof device>['controller']) =>
   c
@@ -417,5 +433,45 @@ describe('Cloud accounts through the controller and the real server handler', ()
     expect(await again.controller.cloudSignIn('ana@example.com', PASS_B)).toBe(true);
     expect(wire.filter((w) => w === 'signOutEverywhere').length).toBe(before + 1);
     expect(raw.getItem('afterglow.cloud.revoke.v1')).toBe('[]');
+  }, 60_000);
+
+  it('CA-13 after a passphrase change elsewhere, an old session is refused and this phone locks', async () => {
+    const cloud = fakeCloud([]);
+    const one = device(cloud);
+    await signUp(one, 'ana@example.com', PASS_A);
+    one.controller.getState().store.addPerson('Mom', 3);
+    await settle(one.controller);
+    const two = device(cloud);
+    await two.controller.cloudSignIn('ana@example.com', PASS_A);
+    await settle(two.controller);
+    // Phone two changes the passphrase; phone one still holds an old token.
+    expect(await two.controller.changePassphrase(PASS_A, PASS_B)).toBe(true);
+    const serverBefore = JSON.stringify([...cloud.store.dump()]);
+    one.controller.getState().store.addPerson('Paulo', 7);
+    await settle(one.controller);
+    expect(one.controller.getState().kind).toBe('guest');
+    expect(await noticeOf(one.controller)).toMatch(/signed out of your account on this phone/);
+    expect(JSON.stringify([...cloud.store.dump()])).toBe(serverBefore);
+  }, 60_000);
+
+  it('CA-13 even if revocation failed, a phone with the old key wrapping never pushes over the new one', async () => {
+    const cloud = fakeCloud([], { failRevocation: () => true });
+    const one = device(cloud);
+    await signUp(one, 'ana@example.com', PASS_A);
+    await settle(one.controller);
+    const two = device(cloud);
+    await two.controller.cloudSignIn('ana@example.com', PASS_A);
+    await settle(two.controller);
+    expect(await two.controller.changePassphrase(PASS_A, PASS_B)).toBe(true);
+    // Phone one's token is still valid (revocation failed), so it reaches a 409 and sees the change.
+    one.controller.getState().store.addPerson('Paulo', 7);
+    await settle(one.controller);
+    expect(one.controller.getState().kind).toBe('guest');
+    expect(await noticeOf(one.controller)).toMatch(/passphrase was changed on another device/);
+    // The server copy still opens with the NEW passphrase, not the old one.
+    const fresh = device(cloud);
+    expect(await fresh.controller.cloudSignIn('ana@example.com', PASS_B)).toBe(true);
+    const old = device(cloud);
+    expect(await old.controller.cloudSignIn('ana@example.com', PASS_A)).toBe(false);
   }, 60_000);
 });
