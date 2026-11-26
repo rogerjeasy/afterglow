@@ -108,7 +108,7 @@ run "no_table_stores_anything_but_what_the_spec_names" {
   command = plan
 
   assert {
-    condition     = toset(keys(local.tables)) == toset(["cell_state", "schedule", "adherence", "device", "roster_relay", "formulary", "vault"])
+    condition     = toset(keys(local.tables)) == toset(["cell_state", "schedule", "adherence", "device", "roster_relay", "formulary", "vault", "reports", "public_cache"])
     error_message = "A new table needs a spec entry and a privacy review first."
   }
 }

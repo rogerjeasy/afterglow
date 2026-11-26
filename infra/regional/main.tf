@@ -91,6 +91,24 @@ locals {
       pitr          = true
       stream        = null
     }
+    # Crowd reports (.kiro/specs/crowd-reports): the whitelisted report only, keyed by
+    # cell, deleted after 2 hours. No backup, so nothing outlives the TTL.
+    reports = {
+      hash_key      = { name = "geohash6", type = "S" }
+      range_key     = { name = "sk", type = "S" }
+      ttl_attribute = "expiresAt"
+      pitr          = false
+      stream        = null
+    }
+    # Cached public data (OpenStreetMap places, Open-Meteo forecasts) per cell or area.
+    # Public information only; no person, no device. Expires with the cache lifetime.
+    public_cache = {
+      hash_key      = { name = "key", type = "S" }
+      range_key     = null
+      ttl_attribute = "expiresAt"
+      pitr          = false
+      stream        = null
+    }
     # One encrypted vault record per account, keyed by the Cognito subject. The
     # server stores ciphertext and KDF parameters only (ACC-18). Backed up,
     # because a lost vault cannot be recovered by anyone; deleted-account
@@ -296,6 +314,27 @@ module "vault_api" {
   client_id   = module.identity.app_client_id
   web_origins = concat(var.web_origins, var.dev_origins)
   bundle_path = "${path.root}/../../services/vault/dist/index.mjs"
+}
+
+# ---------------------------------------------------------------- Public API
+
+# The anonymous public API (.kiro/specs/crowd-reports): signed crowd reports,
+# k-anonymous cells, and proxies for public places and weather that only ever send a
+# cell centre to the outside service. Build first:
+#   pnpm --filter @afterglow/crowd-service build
+module "public_api" {
+  source = "../modules/public-api"
+
+  name               = "${local.prefix}-public"
+  reports_table_name = module.table["reports"].name
+  reports_table_arn  = module.table["reports"].arn
+  device_table_name  = module.table["device"].name
+  device_table_arn   = module.table["device"].arn
+  cache_table_name   = module.table["public_cache"].name
+  cache_table_arn    = module.table["public_cache"].arn
+  kms_key_arn        = module.kms.key_arn
+  web_origins        = concat(var.web_origins, var.dev_origins)
+  bundle_path        = "${path.root}/../../services/crowd/dist/index.mjs"
 }
 
 # ------------------------------------------------------------------- Alerting

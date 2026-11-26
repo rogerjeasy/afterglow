@@ -31,4 +31,5 @@ Afterglow is the blackout companion for people with unreliable electricity: "the
 - Allowed by default: `pnpm test*`, `pnpm lint*`, `pnpm typecheck*`, read-only git.
 - **Never** run `npm publish`, `eas submit`, `terraform apply`, or anything that sends SMS, calls, or push to real users. Publishing and deploying are human steps.
 - **Scoped exception (2026-11-26, decided by the founder):** the agent may run `terraform apply` for `infra/bootstrap` and `infra/regional` in AWS account 503002144480, and only after showing the founder the plan (resources and cost) and getting a yes for that plan. Everything else above still stands.
+- **Standing rule for code-only deploys (2026-11-26, decided by the founder):** a plan whose only changes are the code (`source_code_hash`) of our own Lambda functions may be applied without asking. Any plan that adds, removes or replaces a resource, or changes IAM, tables, data or anything else, is shown to the founder and applied only on a yes.
 - No secrets in code, logs, or prompts. Files matched by `.kiroignore` (env files, keys, raw audio) are never read.

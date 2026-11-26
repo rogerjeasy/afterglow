@@ -45,6 +45,11 @@ output "accounts" {
   }
 }
 
+output "public_api_url" {
+  description = "Base URL of the anonymous public API (crowd reports, cells, places, weather). Not a secret."
+  value       = module.public_api.api_url
+}
+
 output "alerts_topic_arn" {
   description = "Encrypted SNS topic that alarms publish to."
   value       = module.alerts.topic_arn
