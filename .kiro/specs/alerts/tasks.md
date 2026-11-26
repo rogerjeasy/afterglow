@@ -8,7 +8,8 @@ Tasks map to requirement ids. Property tests are the definition of done (`tech.m
   - _Requirements: AL-01, AL-03, AL-04, AL-05, AL-06, AL-08_
 - [x] 3. Property tests AL-01 .. AL-08 (`alerts.property.test.ts`)
 - [x] 4. Alerts centre in the app: a header button with the count, the list in plain words with "How I know", and every state (none, power on, outage)
-- [x] 5. Browser test: the demo night raises the expected alerts, HELP by light appears at the top, and the centre passes the pixel scan
+- [x] 5. Browser test: late in the demo night the fridge alert matches the Hearth, the most urgent alert leads, and the centre passes the pixel scan
+  - HELP ordering is held by the AL-07 property, not a browser test: the demo's simulated message is SAFE. A browser test for HELP by light needs a HELP recording in `seance/simulate.ts`.
 
 ## Results
 
