@@ -10,13 +10,17 @@ export function StatusLine({
   timer,
   line,
   live,
+  tourId,
 }: {
   timer: string;
   line: string;
   live?: boolean;
+  /** The guide's anchor for this element (`data-tour`). */
+  tourId?: string;
 }): ReactNode {
   return (
     <div
+      data-tour={tourId}
       style={{
         padding: '20px',
         borderRadius: 'var(--radius-tile)',
@@ -54,6 +58,7 @@ export function Tile({
   sources,
   live,
   onClick,
+  tourId,
 }: {
   title: string;
   value: string;
@@ -63,6 +68,8 @@ export function Tile({
   sources?: readonly string[];
   live?: boolean;
   onClick?: () => void;
+  /** The guide's anchor for this element (`data-tour`). */
+  tourId?: string | undefined;
 }): ReactNode {
   const body = (
     <>
@@ -110,7 +117,10 @@ export function Tile({
     padding: '16px',
     borderRadius: 'var(--radius-tile)',
     background: token('surface.2'),
-    borderTop: live ? `1px solid ${token('glow')}` : '1px solid transparent',
+    // Longhands only: mixing `border` and `borderTop` makes React warn and can drop the edge on rerender.
+    borderStyle: 'solid',
+    borderWidth: '1px 0 0 0',
+    borderColor: live ? token('glow') : 'transparent',
     minWidth: 0,
     textAlign: 'left',
     // Top-aligned content, so tiles in a row line up even when a button centres its children.
@@ -119,16 +129,20 @@ export function Tile({
     justifyContent: 'flex-start',
     alignItems: 'stretch',
   };
-  if (!onClick) return <div style={frame}>{body}</div>;
+  if (!onClick)
+    return (
+      <div data-tour={tourId} style={frame}>
+        {body}
+      </div>
+    );
   return (
     <button
       type="button"
       className="press"
       onClick={onClick}
+      data-tour={tourId}
       style={{
         ...frame,
-        border: 'none',
-        borderTop: frame.borderTop,
         color: 'inherit',
         font: 'inherit',
       }}

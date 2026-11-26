@@ -49,8 +49,11 @@ export function Tombstone({
         padding: '18px 16px 16px',
         // The one asymmetric shape in the system: a 24 px arch over a square base.
         borderRadius: '24px 24px 0 0',
-        border: `1px solid ${selected ? token('focus.ring') : token('hairline')}`,
-        borderTop: live ? `1px solid ${token('glow')}` : undefined,
+        // Longhands only, so the live top edge and the selection ring never fight on rerender.
+        borderStyle: 'solid',
+        borderWidth: 1,
+        borderColor: selected ? token('focus.ring') : token('hairline'),
+        borderTopColor: live ? token('glow') : selected ? token('focus.ring') : token('hairline'),
         background: token('surface.3'),
         color: token('text.primary'),
         fontSize: 'var(--type-body)',

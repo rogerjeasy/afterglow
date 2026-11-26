@@ -17,6 +17,7 @@ export function Button({
   disabled,
   ariaLabel,
   style,
+  tourId,
 }: {
   children: ReactNode;
   onClick?: (() => void) | undefined;
@@ -25,6 +26,8 @@ export function Button({
   disabled?: boolean | undefined;
   ariaLabel?: string | undefined;
   style?: CSSProperties | undefined;
+  /** The guide's anchor for this button (`data-tour`). */
+  tourId?: string | undefined;
 }): ReactNode {
   const fill =
     variant === 'primary'
@@ -39,6 +42,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
+      data-tour={tourId}
       style={{
         minHeight: size === 'sm' ? 44 : 56,
         padding: size === 'sm' ? '0 14px' : '0 20px',
@@ -269,13 +273,16 @@ export function Section({
   title,
   children,
   right,
+  tourId,
 }: {
   title: string;
   children: ReactNode;
   right?: ReactNode;
+  /** The guide's anchor for this section (`data-tour`). */
+  tourId?: string;
 }): ReactNode {
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <section data-tour={tourId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
       >
