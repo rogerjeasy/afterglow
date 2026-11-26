@@ -135,12 +135,17 @@ export interface SpaceDeps {
 }
 
 interface CloudActive {
+  readonly accountId: string;
   readonly email: string;
   /** In memory only while unlocked, to reconnect after an offline sign-in (CA-11 drops it). */
   secret: string;
   link: CloudLink;
   signedIn: boolean;
-  /** Other sessions still need ending after a passphrase change; retried until it succeeds. */
+  /**
+   * Other sessions still need ending after a passphrase change. Saved on the device
+   * (REVOKE_KEY) so a lock, reload or restart cannot forget it; cleared only once
+   * ending them has succeeded.
+   */
   pendingRevocation: boolean;
 }
 
@@ -152,6 +157,8 @@ interface Active {
 }
 
 const LINKS_KEY = 'afterglow.cloud.links.v1';
+/** Account ids whose other sessions still need ending. Ids only; no secret. */
+const REVOKE_KEY = 'afterglow.cloud.revoke.v1';
 /** Account names on the device are at most 40 characters; long emails are shortened for display only. */
 const displayName = (email: string): string =>
   email.length <= 40 ? email : `${email.slice(0, 39)}…`;
@@ -192,6 +199,21 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
   };
   const writeLinks = (links: Record<string, string>): void =>
     rawStorage.setItem(LINKS_KEY, JSON.stringify(links));
+  const readPendingRevocations = (): Set<string> => {
+    try {
+      const x: unknown = JSON.parse(rawStorage.getItem(REVOKE_KEY) ?? '[]');
+      return new Set(Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []);
+    } catch {
+      return new Set();
+    }
+  };
+  const markPendingRevocation = (accountId: string, pendingNow: boolean): void => {
+    const ids = readPendingRevocations();
+    if (pendingNow) ids.add(accountId);
+    else ids.delete(accountId);
+    rawStorage.setItem(REVOKE_KEY, JSON.stringify([...ids]));
+  };
+
   const linkFor = (email: string): string | null =>
     Object.entries(readLinks()).find(([, e]) => e === email)?.[0] ?? null;
 
@@ -328,9 +350,10 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
       a.cloud = {
         email: cloudEntry.email,
         secret: cloudEntry.secret,
+        accountId: session.accountId,
         link,
         signedIn: cloudEntry.signedIn,
-        pendingRevocation: false,
+        pendingRevocation: readPendingRevocations().has(session.accountId),
       };
       const links = readLinks();
       links[session.accountId] = cloudEntry.email;
@@ -346,7 +369,12 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
       cloudLinks: readLinks(),
       ...extra,
     });
-    if (a.cloud?.signedIn) void a.cloud.link.push();
+    if (a.cloud?.signedIn) {
+      // A revocation left over from an earlier passphrase change is retried on every
+      // online sign-in until it succeeds.
+      if (a.cloud.pendingRevocation) await revokeOtherSessions(a.cloud);
+      void a.cloud.link.push();
+    }
   }
 
   /**
@@ -357,10 +385,11 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
     if (!cloud) return false;
     try {
       await cloud.auth.signOutEverywhere();
-      c.pendingRevocation = false;
     } catch {
       return false;
     }
+    c.pendingRevocation = false;
+    markPendingRevocation(c.accountId, false);
     try {
       await cloud.auth.signIn(c.email, c.secret);
       c.signedIn = true;
@@ -493,6 +522,7 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
             c.secret = newSecret;
             // 4. End other sessions. Separate and retried: a failure here changes nothing above.
             c.pendingRevocation = true;
+            markPendingRevocation(c.accountId, true);
             const revoked = await revokeOtherSessions(c);
             await c.link.push();
             set({
@@ -545,6 +575,7 @@ export function createSpaceController(deps: SpaceDeps): SpaceController {
             const links = readLinks();
             delete links[a.session.accountId];
             writeLinks(links);
+            markPendingRevocation(a.session.accountId, false);
           }
           await service.deleteAccount(a.session, passphrase);
           a.vault.discard();

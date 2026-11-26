@@ -399,4 +399,23 @@ describe('Cloud accounts through the controller and the real server handler', ()
     await settle(one.controller);
     expect(one.controller.getState().cloud?.sync).toBe('synced');
   }, 60_000);
+
+  it('CA-09 a revocation that failed survives a lock and is retried at the next online sign-in', async () => {
+    let fail = true;
+    const wire: Wire = [];
+    const cloud = fakeCloud(wire, { failRevocation: () => fail });
+    const raw = memoryStorage();
+    const one = device(cloud, raw);
+    await signUp(one, 'ana@example.com', PASS_A);
+    await settle(one.controller);
+    expect(await one.controller.changePassphrase(PASS_A, PASS_B)).toBe(true);
+    await one.controller.lock();
+    // A new controller on the same device storage: a restart, not just a lock.
+    fail = false;
+    const again = device(cloud, raw);
+    const before = wire.filter((w) => w === 'signOutEverywhere').length;
+    expect(await again.controller.cloudSignIn('ana@example.com', PASS_B)).toBe(true);
+    expect(wire.filter((w) => w === 'signOutEverywhere').length).toBe(before + 1);
+    expect(raw.getItem('afterglow.cloud.revoke.v1')).toBe('[]');
+  }, 60_000);
 });
