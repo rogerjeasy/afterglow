@@ -23,3 +23,10 @@ Product description 7.2 (Lantern mode, eyes-free mode) and 7.9 (acoustic channel
 - **DF-11** WHEN the person sends a code by sound THE SYSTEM SHALL play the same transmit plan as the light as two tones (mark where lit, space where dark), scheduled on the audio clock, audible (2400/1600 Hz) or near-silent (18 600/17 800 Hz).
 - **DF-12** WHEN the person listens for tones THE SYSTEM SHALL turn each ~20 ms of microphone audio into the mark tone's share of energy (silence reads as dark) and decode the series with the same decoder, error correction and repeat vote as the camera, recording a heard message with channel `sound`.
 - **DF-13** THE SYSTEM SHALL stop listening after 90 seconds without a message and ask for a repeat, never guess.
+
+## Pairing
+
+- **DF-14** THE SYSTEM SHALL let a person show a pairing code (a QR of a link carrying their Heliograph number and the name they typed) and send the same link as an invitation; nothing passes through a server.
+- **DF-15** WHEN a pairing link is opened or scanned THE SYSTEM SHALL ask "Add this person?" and add them only on a yes; it SHALL refuse a number already used by someone else on the list and say why.
+- **DF-16** THE SYSTEM SHALL scan codes with the browser's barcode detector where available, and otherwise say to use the camera app, which opens the link in Afterglow.
+- **DF-17** THE SYSTEM SHALL draw the code as dark squares on the mode's brightest red, so it scans without white light.

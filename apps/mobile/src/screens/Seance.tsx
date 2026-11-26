@@ -16,6 +16,7 @@ import {
 import { GhostGlyph } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
 import { Lamp } from '../seance/Lamp';
+import { PairConfirm, PairSection, useOfferFromHash } from '../seance/PairSection';
 import { type ToneListening, listenErrorText, listenTones, sendTones } from '../seance/acoustic';
 import { getMySlot, nextSequence, setMySlot } from '../seance/prefs';
 import {
@@ -77,6 +78,9 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
 
   // ---- send
   const [mySlot, setMySlotState] = useState<number>(() => getMySlot());
+  // Pairing (7.9): an invitation link or a camera-app scan lands here and asks first.
+  const [hashOffer, clearHashOffer] = useOfferFromHash();
+  const [pairNote, setPairNote] = useState<string | null>(null);
   const [pending, setPending] = useState<heliograph.MessageName | null>(null);
   const [fast, setFast] = useState(false);
   const [fastOk, setFastOk] = useState(false);
@@ -405,8 +409,31 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
             <Notice>All 64 numbers are used. Remove someone to add another.</Notice>
           ) : null}
         </div>
+        <div style={{ marginTop: 20 }}>
+          <div
+            style={{
+              fontSize: 'var(--type-body)',
+              color: token('text.emphasis'),
+              marginBottom: 10,
+            }}
+          >
+            Or pair face to face
+          </div>
+          <PairSection mySlot={mySlot} store={store} />
+        </div>
       </Fold>
 
+      {hashOffer ? (
+        <PairConfirm
+          offer={hashOffer}
+          store={store}
+          onDone={(n) => {
+            clearHashOffer();
+            setPairNote(n || null);
+          }}
+        />
+      ) : null}
+      {pairNote ? <Notice>{pairNote}</Notice> : null}
       <Section title="Send a code">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Stepper

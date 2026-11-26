@@ -21,6 +21,7 @@
     "@afterglow/simulator": "workspace:*",
     "@noble/hashes": "1.8.0",
     "amazon-cognito-identity-js": "6.3.22",
+    "qrcode": "1.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
@@ -29,6 +30,7 @@
     "@playwright/test": "1.65.1",
     "@types/node": "22",
     "@types/pngjs": "6.0.5",
+    "@types/qrcode": "1.5.5",
     "@types/react": "19.0.1",
     "@types/react-dom": "19.0.1",
     "@vitejs/plugin-react": "4.3.4",
