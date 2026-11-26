@@ -40,8 +40,8 @@ export interface CrowdStore {
     cursor: string | null,
     limit: number,
   ): Promise<{ subs: { id: string; sub: string }[]; next: string | null }>;
-  /** True when this subscription already follows this cell (and has not expired). */
-  hasSub(cell: string, id: string, nowS: number): Promise<boolean>;
+  /** The stored subscription for this cell and id, if it has not expired. */
+  getSub(cell: string, id: string, nowS: number): Promise<string | null>;
 }
 
 const pad = (n: number): string => String(n).padStart(10, '0');
@@ -177,7 +177,7 @@ export function dynamoCrowdStore(
       return { subs, next: page.LastEvaluatedKey?.sk?.S ?? null };
     },
 
-    async hasSub(cell, id, nowS) {
+    async getSub(cell, id, nowS) {
       const out = await client.send(
         new QueryCommand({
           TableName: tables.push,
@@ -185,7 +185,8 @@ export function dynamoCrowdStore(
           ExpressionAttributeValues: { ':g': { S: cell }, ':id': { S: id } },
         }),
       );
-      return (out.Items ?? []).some((it) => Number(it.expiresAt?.N ?? 0) > nowS);
+      const it = (out.Items ?? []).find((x) => Number(x.expiresAt?.N ?? 0) > nowS);
+      return it?.sub?.S ?? null;
     },
 
     async claim(key, value, expiresAtS, nowS) {

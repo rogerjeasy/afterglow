@@ -430,10 +430,12 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
           return err(429, 'too many subscriptions from here; try again in a minute');
         }
         const id = await subscriptionId(sub.endpoint);
-        // Renewing an existing subscription needs no confirmation; a new one does.
+        // Renewing needs no confirmation only when the stored subscription is identical,
+        // keys included; anything new or changed is confirmed before it can overwrite.
+        const stored = JSON.stringify(sub);
         let known = true;
         for (const c of new Set(follow as string[])) {
-          if (!(await deps.store.hasSub(c, id, nowS))) known = false;
+          if ((await deps.store.getSub(c, id, nowS)) !== stored) known = false;
         }
         if (!known && deps.confirmPush) {
           const r = await deps.confirmPush(sub);
@@ -441,7 +443,7 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
           if (r === 'error') return err(503, 'could not reach the push service; try again');
         }
         for (const c of new Set(follow as string[])) {
-          await deps.store.putSub(c, id, JSON.stringify(sub), nowS + 30 * DAY_S);
+          await deps.store.putSub(c, id, stored, nowS + 30 * DAY_S);
         }
         return json(201, {
           following: [...new Set(follow)],
