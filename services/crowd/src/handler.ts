@@ -99,6 +99,28 @@ function leadingZeroBits(bytes: Uint8Array): number {
 export const powText = (day: string, x: string, y: string, nonce: string): string =>
   `afterglow-device:v1:${day}:${x}.${y}:${nonce}`;
 
+/** At most this many subscriptions follow one cell: what one notify run can send. */
+const MAX_SUBS_PER_CELL = 5000;
+
+/** The same proof of work, over any subject (a push endpoint). */
+async function powOver(
+  tag: string,
+  subject: string,
+  nonce: unknown,
+  nowMs: number,
+): Promise<boolean> {
+  if (typeof nonce !== 'string' || !/^[0-9]{1,16}$/.test(nonce)) return false;
+  for (const d of [0, 1]) {
+    const day = new Date(nowMs - d * DAY_S * 1000).toISOString().slice(0, 10);
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(`${tag}:${day}:${subject}:${nonce}`),
+    );
+    if (leadingZeroBits(new Uint8Array(digest)) >= POW_BITS) return true;
+  }
+  return false;
+}
+
 async function powOk(x: string, y: string, nonce: unknown, nowMs: number): Promise<boolean> {
   if (typeof nonce !== 'string' || !/^[0-9]{1,16}$/.test(nonce)) return false;
   // Today or yesterday (UTC), for phones registering around midnight.
@@ -400,10 +422,20 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
         if (follow.length < 1 || follow.length > 3 || !follow.every((c) => cells.isGeohash6(c))) {
           return err(400, 'cells must be 1 to 3 geohash-6 cells');
         }
+        // Each subscription costs the same proof of work as a day key (CR-08), over its
+        // endpoint, so a flood of fake ones costs a phone-second each.
+        if (!(await powOver(`afterglow-push:v1`, sub.endpoint, body?.nonce, nowMs))) {
+          return err(400, `nonce must be a proof of work of ${POW_BITS} bits for today`);
+        }
         if (!(await takeSlot(deps, `subreq:${req.requester ?? 'none'}`, 10, nowS))) {
           return err(429, 'too many subscriptions from here; try again in a minute');
         }
         const id = await subscriptionId(sub.endpoint);
+        for (const c of new Set(follow as string[])) {
+          if ((await deps.store.countSubs(c, MAX_SUBS_PER_CELL)) >= MAX_SUBS_PER_CELL) {
+            return err(429, 'this area has as many followers as one notification run can reach');
+          }
+        }
         for (const c of new Set(follow as string[])) {
           await deps.store.putSub(c, id, JSON.stringify(sub), nowS + 30 * DAY_S);
         }

@@ -21,8 +21,12 @@ function zeroBits(b: Uint8Array): number {
  * UTC day starts with POW_BITS zero bits. Done in slices so the screen stays live.
  */
 async function proofOfWork(day: string, x: string, y: string): Promise<string> {
+  return proofOfWorkOver(`afterglow-device:v1:${day}:${x}.${y}:`);
+}
+
+/** The same work over any prefix (the push subscription uses its endpoint). */
+export async function proofOfWorkOver(prefix: string): Promise<string> {
   const enc = new TextEncoder();
-  const prefix = `afterglow-device:v1:${day}:${x}.${y}:`;
   for (let nonce = 0; ; nonce++) {
     if (zeroBits(sha256(enc.encode(prefix + nonce))) >= POW_BITS) return String(nonce);
     if (nonce % 20_000 === 19_999) await new Promise((r) => setTimeout(r, 0));

@@ -35,6 +35,8 @@ export interface CrowdStore {
   putSub(cell: string, id: string, sub: string, expiresAtS: number): Promise<void>;
   deleteSub(cell: string, id: string): Promise<void>;
   subsFor(cell: string, nowS: number): Promise<{ id: string; sub: string }[]>;
+  /** How many subscriptions follow a cell, counting up to `cap` + 1 at most. */
+  countSubs(cell: string, cap: number): Promise<number>;
 }
 
 const pad = (n: number): string => String(n).padStart(10, '0');
@@ -169,8 +171,28 @@ export function dynamoCrowdStore(
           if (it.sk?.S && it.sub?.S) out.push({ id: it.sk.S, sub: it.sub.S });
         }
         start = page.LastEvaluatedKey;
-      } while (start && out.length < 2000);
+      } while (start);
       return out;
+    },
+
+    async countSubs(cell, cap) {
+      let n = 0;
+      let start: Record<string, AttributeValue> | undefined;
+      do {
+        const page = await client.send(
+          new QueryCommand({
+            TableName: tables.push,
+            KeyConditionExpression: 'geohash6 = :g',
+            ExpressionAttributeValues: { ':g': { S: cell } },
+            Select: 'COUNT',
+            Limit: cap + 1 - n,
+            ExclusiveStartKey: start,
+          }),
+        );
+        n += page.Count ?? 0;
+        start = page.LastEvaluatedKey;
+      } while (start && n <= cap);
+      return n;
     },
 
     async claim(key, value, expiresAtS, nowS) {

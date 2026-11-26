@@ -92,7 +92,8 @@ export async function sendToCell(
   payload: ReturnType<typeof message>,
   vapid: Vapid,
   nowS: number,
-): Promise<{ sent: number; gone: number; failed: number }> {
+  deadlineMs = Date.now() + 80_000,
+): Promise<{ sent: number; gone: number; failed: number; unsent: number }> {
   const webpush = (await import('web-push')).default;
   const subs = await store.subsFor(cell, nowS);
   let sent = 0;
@@ -101,6 +102,10 @@ export async function sendToCell(
   const body = JSON.stringify(payload);
   // A few at a time: the push services rate-limit bursts from one sender.
   for (let i = 0; i < subs.length; i += 20) {
+    if (Date.now() > deadlineMs) {
+      // Out of time: say how many were not reached, never cut the list quietly.
+      return { sent, gone, failed, unsent: subs.length - i };
+    }
     await Promise.all(
       subs.slice(i, i + 20).map(async ({ id, sub }) => {
         try {
@@ -114,7 +119,9 @@ export async function sendToCell(
           sent++;
         } catch (e) {
           const status = (e as { statusCode?: number }).statusCode;
-          if (status === 404 || status === 410) {
+          // Any permanent refusal from the push service (bad, unknown, expired or not ours)
+          // removes the subscription; only timeouts and 429/5xx keep it for next time.
+          if (status !== undefined && status >= 400 && status < 500 && status !== 429) {
             await store.deleteSub(cell, id);
             gone++;
           } else failed++;
@@ -122,5 +129,5 @@ export async function sendToCell(
       }),
     );
   }
-  return { sent, gone, failed };
+  return { sent, gone, failed, unsent: 0 };
 }

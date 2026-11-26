@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import raw from '../cloud/config.json';
 import { postJson } from '../public/api';
+import { proofOfWorkOver } from '../public/deviceKey';
 
 /**
  * Notifications (product description 7.13 "channels: push"). Two kinds, each off
@@ -99,6 +100,12 @@ function keyBytes(b64url: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+/** The proof of work the server asks of each subscription (crowd-reports CR-15). */
+function pushProof(endpoint: string): Promise<string> {
+  const day = new Date().toISOString().slice(0, 10);
+  return proofOfWorkOver(`afterglow-push:v1:${day}:${endpoint}:`);
+}
+
 async function subscription(): Promise<PushSubscription | null> {
   if (!canPush() || !VAPID) return null;
   const reg = await navigator.serviceWorker.ready;
@@ -121,7 +128,11 @@ export async function followArea(cell: string): Promise<NotifyOutcome> {
     if (prefs.area && prefs.area !== cell) {
       await postJson('/v1/push/unsubscribe', { endpoint: sub.endpoint, cells: [prefs.area] });
     }
-    const r = await postJson('/v1/push/subscribe', { subscription: sub.toJSON(), cells: [cell] });
+    const r = await postJson('/v1/push/subscribe', {
+      subscription: sub.toJSON(),
+      nonce: await pushProof(sub.endpoint),
+      cells: [cell],
+    });
     if (r.status !== 201) return 'failed';
     save({ ...prefs, area: cell });
     return 'on';
@@ -155,6 +166,7 @@ export async function renewArea(): Promise<void> {
   if (!sub) return;
   const r = await postJson('/v1/push/subscribe', {
     subscription: sub.toJSON(),
+    nonce: await pushProof(sub.endpoint),
     cells: [prefs.area],
   });
   if (r.status === 201) localStorage.setItem(`${KEY}.renewed`, String(Date.now()));

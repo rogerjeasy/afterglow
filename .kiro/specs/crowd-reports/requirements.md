@@ -55,3 +55,4 @@ Until now the crowd map was a seeded simulation. This makes it real: a phone tha
 - **CR-14** THE SYSTEM SHALL sign pushes with a VAPID key kept in Parameter Store as a SecureString created outside Terraform, so the private key is in neither the repository nor the state; logs of a push run carry counts only.
 
 Privacy review, `push_subs`: the push endpoint is a pseudonymous address at the browser's push service, stored with the ~1 km cell it follows. No account, device id or finer position. 30-day TTL renewed only while the app is used; no backups.
+- **CR-15** WHEN a phone subscribes THE SYSTEM SHALL require the same 20-bit proof of work over the endpoint and the day, refuse a cell already followed by 5000 subscriptions (what one notify run can reach), send to every follower page by page, report any it had no time to reach, and delete a subscription on any permanent refusal (4xx other than 429) from the push service. (Security review, 2026-11-26.)
