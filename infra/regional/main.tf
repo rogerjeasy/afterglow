@@ -119,6 +119,33 @@ locals {
       pitr          = false
       stream        = null
     }
+    # Beacon advisories per cell (consoles BE-02): public text from an authority, 3 days.
+    advisories = {
+      hash_key      = { name = "geohash6", type = "S" }
+      range_key     = { name = "sk", type = "S" }
+      ttl_attribute = "expiresAt"
+      pitr          = false
+      stream        = null
+    }
+    # A business's public status in its cell (consoles BC-03): name, kind, position,
+    # open and how it is powered. Public by design; 24 h unless renewed.
+    sites = {
+      hash_key      = { name = "geohash6", type = "S" }
+      range_key     = { name = "siteId", type = "S" }
+      ttl_attribute = "expiresAt"
+      pitr          = false
+      stream        = null
+    }
+    # Business accounts' own data, keyed by the Cognito sub (consoles BC-01, BC-04):
+    # sites, fridge readings and generator logs (400 days), and the Beacon audit log.
+    # Operational records of a business, backed up because they are its evidence.
+    business = {
+      hash_key      = { name = "pk", type = "S" }
+      range_key     = { name = "sk", type = "S" }
+      ttl_attribute = "expiresAt"
+      pitr          = true
+      stream        = null
+    }
     # One encrypted vault record per account, keyed by the Cognito subject. The
     # server stores ciphertext and KDF parameters only (ACC-18). Backed up,
     # because a lost vault cannot be recovered by anyone; deleted-account
@@ -345,9 +372,54 @@ module "public_api" {
   push_table_name    = module.table["push_subs"].name
   push_table_arn     = module.table["push_subs"].arn
   vapid_param_name   = "/afterglow/${var.environment}-${var.region}/vapid"
-  kms_key_arn        = module.kms.key_arn
-  web_origins        = concat(var.web_origins, var.dev_origins)
-  bundle_path        = "${path.root}/../../services/crowd/dist/index.mjs"
+
+  history_table_name    = module.table["cell_state"].name
+  history_table_arn     = module.table["cell_state"].arn
+  advisories_table_name = module.table["advisories"].name
+  advisories_table_arn  = module.table["advisories"].arn
+  sites_table_name      = module.table["sites"].name
+  sites_table_arn       = module.table["sites"].arn
+
+  # Ask phrasing: Claude Haiku 4.5 through the EU cross-region inference profile, so
+  # requests stay in EU regions. The profile and the model behind it, nothing else.
+  ask_model_id = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  ask_model_resources = [
+    "arn:${local.partition}:bedrock:${var.region}:${local.account_id}:inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "arn:${local.partition}:bedrock:eu-*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+  ]
+  kms_key_arn = module.kms.key_arn
+  web_origins = concat(var.web_origins, var.dev_origins)
+  bundle_path = "${path.root}/../../services/crowd/dist/index.mjs"
+}
+
+# ------------------------------------------------------------------ Consoles
+
+# Business and Beacon (.kiro/specs/consoles): signed-in routes behind the same
+# Cognito pool as the vault. Build first: pnpm --filter @afterglow/console-service build
+module "console_api" {
+  source = "../modules/console-api"
+
+  name                  = "${local.prefix}-console"
+  business_table_name   = module.table["business"].name
+  business_table_arn    = module.table["business"].arn
+  sites_table_name      = module.table["sites"].name
+  sites_table_arn       = module.table["sites"].arn
+  advisories_table_name = module.table["advisories"].name
+  advisories_table_arn  = module.table["advisories"].arn
+  public_function_arn   = module.public_api.function_arn
+  kms_key_arn           = module.kms.key_arn
+  issuer                = module.identity.issuer
+  client_id             = module.identity.app_client_id
+  web_origins           = concat(var.web_origins, var.dev_origins)
+  bundle_path           = "${path.root}/../../services/console/dist/index.mjs"
+}
+
+# Beacon is for public authorities: membership is granted by an administrator only
+# (aws cognito-idp admin-add-user-to-group), never by sign-up.
+resource "aws_cognito_user_group" "beacon" {
+  name         = "beacon"
+  user_pool_id = module.identity.user_pool_id
+  description  = "Public authorities who may publish advisories (consoles BE-02)."
 }
 
 # ------------------------------------------------------------------- Alerting

@@ -17,7 +17,43 @@ import {
  * Readers also ignore anything past its expiry, because DynamoDB's TTL deletes lazily.
  */
 
+/** A public advisory for a cell, published from Beacon. */
+export interface Advisory {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  readonly from: string;
+  readonly atMs: number;
+}
+/** A business's public status in a cell: open, and how it is powered. */
+export interface SiteStatus {
+  readonly siteId: string;
+  readonly name: string;
+  readonly kind: string;
+  readonly open: boolean;
+  readonly power: 'mains' | 'backup' | 'none';
+  readonly note: string;
+  readonly lat: number;
+  readonly lng: number;
+  readonly updatedAtMs: number;
+}
+
 export interface CrowdStore {
+  /** Cell history: the published state of one 5-minute window (kept 30 days). */
+  putWindow(
+    cell: string,
+    windowStart: number,
+    state: string,
+    deviceCount: number,
+    expiresAtS: number,
+  ): Promise<void>;
+  windowsSince(
+    cell: string,
+    fromMinute: number,
+    nowS: number,
+  ): Promise<import('./history.js').Window[]>;
+  advisoriesFor(cell: string, nowS: number): Promise<Advisory[]>;
+  sitesIn(cell: string, nowS: number): Promise<SiteStatus[]>;
   putDevice(deviceId: string, publicKeyJwk: string, expiresAtS: number): Promise<void>;
   getDevice(deviceId: string, nowS: number): Promise<string | null>;
   /** False when this device already reported for this cell and minute (deduplicated). */
@@ -47,7 +83,15 @@ export interface CrowdStore {
 const pad = (n: number): string => String(n).padStart(10, '0');
 
 export function dynamoCrowdStore(
-  tables: { reports: string; device: string; cache: string; push: string },
+  tables: {
+    reports: string;
+    device: string;
+    cache: string;
+    push: string;
+    history: string;
+    advisories: string;
+    sites: string;
+  },
   client = new DynamoDBClient({}),
 ): CrowdStore {
   return {
@@ -175,6 +219,77 @@ export function dynamoCrowdStore(
         if (it.sk?.S && it.sub?.S) subs.push({ id: it.sk.S, sub: it.sub.S });
       }
       return { subs, next: page.LastEvaluatedKey?.sk?.S ?? null };
+    },
+
+    async putWindow(cell, windowStart, state, deviceCount, expiresAtS) {
+      await client.send(
+        new PutItemCommand({
+          TableName: tables.history,
+          Item: {
+            geohash6: { S: cell },
+            windowStart: { N: String(windowStart) },
+            state: { S: state },
+            deviceCount: { N: String(deviceCount) },
+            expiresAt: { N: String(expiresAtS) },
+          },
+        }),
+      );
+    },
+
+    async windowsSince(cell, fromMinute, nowS) {
+      const out: import('./history.js').Window[] = [];
+      let start: Record<string, import('@aws-sdk/client-dynamodb').AttributeValue> | undefined;
+      do {
+        const page = await client.send(
+          new QueryCommand({
+            TableName: tables.history,
+            KeyConditionExpression: 'geohash6 = :g AND windowStart >= :from',
+            ExpressionAttributeValues: { ':g': { S: cell }, ':from': { N: String(fromMinute) } },
+            ExclusiveStartKey: start,
+          }),
+        );
+        for (const it of page.Items ?? []) {
+          if (Number(it.expiresAt?.N ?? 0) <= nowS) continue;
+          const st = it.state?.S;
+          if (st !== 'dark' && st !== 'lit' && st !== 'mixed' && st !== 'comingBack') continue;
+          out.push({
+            windowStart: Number(it.windowStart?.N),
+            state: st,
+            deviceCount: Number(it.deviceCount?.N ?? 0),
+          });
+        }
+        start = page.LastEvaluatedKey;
+      } while (start && out.length < 20_000);
+      return out;
+    },
+
+    async advisoriesFor(cell, nowS) {
+      const page = await client.send(
+        new QueryCommand({
+          TableName: tables.advisories,
+          KeyConditionExpression: 'geohash6 = :g',
+          ExpressionAttributeValues: { ':g': { S: cell } },
+          ScanIndexForward: false,
+          Limit: 10,
+        }),
+      );
+      return (page.Items ?? [])
+        .filter((it) => Number(it.expiresAt?.N ?? 0) > nowS && it.advisory?.S)
+        .map((it) => JSON.parse(it.advisory?.S as string) as Advisory);
+    },
+
+    async sitesIn(cell, nowS) {
+      const page = await client.send(
+        new QueryCommand({
+          TableName: tables.sites,
+          KeyConditionExpression: 'geohash6 = :g',
+          ExpressionAttributeValues: { ':g': { S: cell } },
+          Limit: 100,
+        }),
+      );
+      return (page.Items ?? [])
+        .filter((it) => Number(it.expiresAt?.N ?? 0) > nowS && it.status?.S)
+        .map((it) => JSON.parse(it.status?.S as string) as SiteStatus);
     },
 
     async getSub(cell, id, nowS) {

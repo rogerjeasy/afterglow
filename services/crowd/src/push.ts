@@ -61,6 +61,17 @@ export function transition(last: string | null, next: string): Transition {
   return null;
 }
 
+/** A Beacon advisory as a notification (7.16 "advisories"). */
+export function advisoryMessage(title: string, body: string) {
+  return {
+    kind: 'advisory' as const,
+    title: title.slice(0, 80),
+    body: body.slice(0, 240),
+    tag: 'advisory',
+    path: '#/lantern',
+  };
+}
+
 export function message(kind: 'outage' | 'restoration', deviceCount: number) {
   return kind === 'outage'
     ? {
@@ -142,7 +153,7 @@ export const PAGE_SIZE = 500;
 export async function sendPage(
   store: import('./store.js').CrowdStore,
   cell: string,
-  payload: ReturnType<typeof message>,
+  payload: { readonly tag: string; readonly title: string; readonly body: string },
   vapid: Vapid,
   nowS: number,
   cursor: string | null,

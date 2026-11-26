@@ -297,6 +297,16 @@ function createEngine() {
       crowdTimer = setInterval(() => void refreshCrowd(), 2 * MIN);
       // Fresh evidence ages out, so look again now and then.
       setInterval(refuse, MIN);
+      // Heartbeat (crowd-reports CR-16): a cell counts reports from the last 30 minutes,
+      // so while this phone is sure, it says so again every 10 minutes; otherwise a long
+      // outage would fade to "unknown" on the map half an hour in.
+      setInterval(() => {
+        const r = state.result;
+        const last = state.lastReport;
+        if (r.verdict === 'unknown' || !state.cell || reportTimer !== null) return;
+        if (last && last.verdict === r.verdict && Date.now() - last.atMs < 9 * MIN) return;
+        scheduleReport(r, false);
+      }, 10 * MIN);
     },
     async listen(): Promise<void> {
       if (state.listening) return;

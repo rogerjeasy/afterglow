@@ -1,16 +1,15 @@
+import { guidance } from '@afterglow/core';
 import { type ReactNode, useState } from 'react';
 import { canSpeak, speak } from '../eyesfree/eyesfree';
 import { Button, Fold, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
-import { type AskResult, ask } from './ask';
-import { type Guide, LIBRARY } from './content';
 
 /**
  * What to do (product description 7.18): ask a question or read the library. Answers
  * are library passages only, each with its source; everything works offline.
  */
 
-function SourcesList({ guide }: { guide: Guide }): ReactNode {
+function SourcesList({ guide }: { guide: guidance.Guide }): ReactNode {
   return (
     <ul
       style={{
@@ -37,11 +36,11 @@ function SourcesList({ guide }: { guide: Guide }): ReactNode {
   );
 }
 
-function spoken(guide: Guide, lines: readonly string[]): string {
+function spoken(guide: guidance.Guide, lines: readonly string[]): string {
   return `${guide.title}. ${lines.join(' ')} From ${guide.sources.map((s) => s.publisher).join(' and ')}.`;
 }
 
-function GuideBody({ guide }: { guide: Guide }): ReactNode {
+function GuideBody({ guide }: { guide: guidance.Guide }): ReactNode {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <ol
@@ -84,7 +83,7 @@ function GuideBody({ guide }: { guide: Guide }): ReactNode {
   );
 }
 
-function AnswerView({ r }: { r: AskResult }): ReactNode {
+function AnswerView({ r }: { r: guidance.AskResult }): ReactNode {
   if (r.kind === 'outside') {
     return (
       <Notice>
@@ -150,7 +149,7 @@ function AnswerView({ r }: { r: AskResult }): ReactNode {
 
 export function LibrarySection(): ReactNode {
   const [q, setQ] = useState('');
-  const [answer, setAnswer] = useState<AskResult | null>(null);
+  const [answer, setAnswer] = useState<guidance.AskResult | null>(null);
   return (
     <Section title="What to do">
       <Fold label="Ask a question or read the guidance">
@@ -158,7 +157,7 @@ export function LibrarySection(): ReactNode {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (q.trim()) setAnswer(ask(q));
+              if (q.trim()) setAnswer(guidance.ask(q));
             }}
             style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
           >
@@ -172,7 +171,7 @@ export function LibrarySection(): ReactNode {
               size="sm"
               variant="primary"
               disabled={!q.trim()}
-              onClick={() => q.trim() && setAnswer(ask(q))}
+              onClick={() => q.trim() && setAnswer(guidance.ask(q))}
             >
               Ask
             </Button>
@@ -182,7 +181,7 @@ export function LibrarySection(): ReactNode {
             Answers come only from this library and its sources, on this phone, with no connection
             needed. It is guidance, not medical advice.
           </span>
-          {LIBRARY.map((g) => (
+          {guidance.LIBRARY.map((g) => (
             <Fold key={g.id} label={g.title}>
               <GuideBody guide={g} />
             </Fold>

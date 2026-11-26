@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
+import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { handlePublic, warmPlacesNow } from './handler.js';
-import { type Vapid, confirmSubscription, message, sendPage } from './push.js';
+import { type Vapid, advisoryMessage, confirmSubscription, message, sendPage } from './push.js';
 import { dynamoCrowdStore } from './store.js';
 
 /**
@@ -14,6 +15,7 @@ const lambda = new LambdaClient({});
 const self = process.env.AWS_LAMBDA_FUNCTION_NAME ?? '';
 const deps = {
   store: null as unknown as ReturnType<typeof dynamoCrowdStore>,
+  phrase,
   confirmPush: async (sub: import('./push.js').PushSubscriptionJson) => {
     const vapid = await loadVapid();
     return vapid ? confirmSubscription(sub, vapid) : ('error' as const);
@@ -46,7 +48,10 @@ interface HttpEvent {
   readonly warmPlaces?: string;
   /** Set only on the asynchronous self-invocation that notifies a cell's followers. */
   readonly notifyCell?: string;
-  readonly kind?: 'outage' | 'restoration';
+  readonly kind?: 'outage' | 'restoration' | 'advisory';
+  /** Advisory runs only: the text, from Beacon. */
+  readonly advTitle?: string;
+  readonly advBody?: string;
   readonly deviceCount?: number;
   /** Where the next page of followers starts, for large cells; and how many runs so far. */
   readonly cursor?: string | null;
@@ -73,7 +78,59 @@ const store = dynamoCrowdStore({
   device: process.env.DEVICE_TABLE ?? '',
   cache: process.env.CACHE_TABLE ?? '',
   push: process.env.PUSH_TABLE ?? '',
+  history: process.env.HISTORY_TABLE ?? '',
+  advisories: process.env.ADVISORIES_TABLE ?? '',
+  sites: process.env.SITES_TABLE ?? '',
 });
+
+/**
+ * Ask Afterglow's phrasing (GL-07): Claude on Bedrock, in the EU, may only restate the
+ * library passages it is given. The handler then drops any phrasing with a number
+ * that is not in those passages.
+ */
+const bedrock = new BedrockRuntimeClient({});
+const ASK_MODEL = process.env.ASK_MODEL ?? '';
+const SYSTEM = [
+  'You answer one question for someone in a power outage, using ONLY the passages given.',
+  'Restate them as a short, calm answer in plain words: at most 70 words, no lists, no headings.',
+  'Do not add any fact, number, product, dose or advice that is not in the passages.',
+  'If the passages do not answer the question, say that the library does not cover it.',
+  'Never diagnose. Keep any "get help now" sign from the passages.',
+].join(' ');
+async function phrase(
+  question: string,
+  title: string,
+  passages: readonly string[],
+): Promise<string | null> {
+  if (!ASK_MODEL) return null;
+  try {
+    const out = await bedrock.send(
+      new ConverseCommand({
+        modelId: ASK_MODEL,
+        system: [{ text: SYSTEM }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                text: `Guide: ${title}\nPassages:\n${passages.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\nQuestion: ${question}`,
+              },
+            ],
+          },
+        ],
+        inferenceConfig: { maxTokens: 220, temperature: 0 },
+      }),
+    );
+    const text = out.output?.message?.content
+      ?.map((c) => c.text ?? '')
+      .join('')
+      .trim();
+    return text ? text.slice(0, 700) : null;
+  } catch (e) {
+    console.log(JSON.stringify({ route: 'ask', error: (e as Error).name }));
+    return null;
+  }
+}
 deps.store = store;
 
 /** The VAPID key pair from Parameter Store (a SecureString), read once per container. */
@@ -105,7 +162,7 @@ export async function handler(event: HttpEvent) {
   const started = Date.now();
   if (
     typeof event.notifyCell === 'string' &&
-    (event.kind === 'outage' || event.kind === 'restoration')
+    (event.kind === 'outage' || event.kind === 'restoration' || event.kind === 'advisory')
   ) {
     const vapid = await loadVapid();
     if (!vapid) {
@@ -117,7 +174,9 @@ export async function handler(event: HttpEvent) {
     const r = await sendPage(
       store,
       event.notifyCell,
-      message(event.kind, deviceCount),
+      event.kind === 'advisory'
+        ? advisoryMessage(String(event.advTitle ?? ''), String(event.advBody ?? ''))
+        : message(event.kind, deviceCount),
       vapid,
       Math.floor(Date.now() / 1000),
       typeof event.cursor === 'string' ? event.cursor : null,
@@ -132,6 +191,8 @@ export async function handler(event: HttpEvent) {
             JSON.stringify({
               notifyCell: event.notifyCell,
               kind: event.kind,
+              advTitle: event.advTitle,
+              advBody: event.advBody,
               deviceCount,
               cursor: r.next,
               hop: hop + 1,

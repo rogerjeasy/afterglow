@@ -1,4 +1,4 @@
-import { type Guide, LIBRARY } from './content';
+import { type Guide, LIBRARY } from './content.js';
 
 /**
  * Ask Afterglow, offline (product description 7.18, "AI may ... phrase

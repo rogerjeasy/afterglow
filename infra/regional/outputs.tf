@@ -54,3 +54,8 @@ output "alerts_topic_arn" {
   description = "Encrypted SNS topic that alarms publish to."
   value       = module.alerts.topic_arn
 }
+
+output "console_api_url" {
+  description = "Base URL of the consoles' API (no secret)."
+  value       = module.console_api.api_url
+}

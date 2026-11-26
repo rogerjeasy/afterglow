@@ -89,3 +89,45 @@ variable "vapid_param_name" {
     error_message = "vapid_param_name must look like /afterglow/<env>-<region>/vapid."
   }
 }
+
+variable "history_table_arn" {
+  description = "ARN of the cell history table (cell_state): published 5-minute windows, 30 days."
+  type        = string
+}
+
+variable "history_table_name" {
+  description = "Name of the cell history table."
+  type        = string
+}
+
+variable "advisories_table_arn" {
+  description = "ARN of the advisories table (read here; written by the console)."
+  type        = string
+}
+
+variable "advisories_table_name" {
+  description = "Name of the advisories table."
+  type        = string
+}
+
+variable "sites_table_arn" {
+  description = "ARN of the public business status table (read here; written by the console)."
+  type        = string
+}
+
+variable "sites_table_name" {
+  description = "Name of the public business status table."
+  type        = string
+}
+
+variable "ask_model_id" {
+  description = "Bedrock inference profile that phrases Ask answers from library passages; empty disables phrasing."
+  type        = string
+  default     = ""
+}
+
+variable "ask_model_resources" {
+  description = "ARNs the function may invoke for Ask: the inference profile and the foundation model behind it."
+  type        = list(string)
+  default     = []
+}

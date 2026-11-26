@@ -1,5 +1,6 @@
-import { cells, restoration, sensing } from '@afterglow/core';
+import { cells, guidance, restoration, sensing } from '@afterglow/core';
 import { DEFAULT_CONFIG, type Neighbourhood, buildNeighbourhood } from '@afterglow/simulator';
+import { WINDOW_MINUTES, summarise } from './history.js';
 import { type PlacesResult, type WeatherResult, fetchPlaces, fetchWeather } from './publicData.js';
 import { type PushSubscriptionJson, parseSubscription, transition } from './push.js';
 import type { CrowdStore } from './store.js';
@@ -44,6 +45,12 @@ export interface PublicDeps {
   readonly warmPlaces?: (g: string) => Promise<void>;
   readonly weather?: (g: string) => Promise<WeatherResult | null>;
   /** Notify a cell's followers in the background (an asynchronous self-invocation). */
+  /** Phrase library passages as a short answer (Bedrock); null when unavailable. */
+  readonly phrase?: (
+    question: string,
+    title: string,
+    passages: readonly string[],
+  ) => Promise<string | null>;
   /** Send the confirmation push for a new subscription. */
   readonly confirmPush?: (sub: PushSubscriptionJson) => Promise<'ok' | 'rejected' | 'error'>;
   readonly notifyCell?: (
@@ -184,6 +191,16 @@ async function areaStatus(deps: PublicDeps, g: string, nowS: number): Promise<Ar
   return { state: pub.state as AreaStatus['state'], deviceCount: pub.deviceCount };
 }
 
+/**
+ * A model's phrasing is kept only if every number in it appears in the passages it
+ * was given: no invented hours, temperatures or doses (GL-07).
+ */
+export function groundedNumbers(text: string, passages: readonly string[]): boolean {
+  const source = passages.join(' ');
+  const nums = text.match(/\d+(?:[.,]\d+)?/g) ?? [];
+  return nums.every((n) => source.includes(n));
+}
+
 /** A subscription's id: not reversible to its endpoint, the same for every cell. */
 async function subscriptionId(endpoint: string): Promise<string> {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`push:${endpoint}`));
@@ -195,7 +212,7 @@ async function subscriptionId(endpoint: string): Promise<string> {
  * One notification per crossing, claimed atomically so concurrent reports cannot
  * send it twice; the published state already hides cells under k = 5.
  */
-async function maybeNotify(deps: PublicDeps, g: string, nowS: number): Promise<void> {
+async function afterReport(deps: PublicDeps, g: string, nowS: number): Promise<void> {
   const now = toMinute(deps.nowMs());
   const reports = await deps.store.reportsSince(
     g,
@@ -203,6 +220,17 @@ async function maybeNotify(deps: PublicDeps, g: string, nowS: number): Promise<v
     nowS,
   );
   const pub = publish(stateNow(g, reports, now));
+  // History (CR-17): the published state for this 5-minute window, kept 30 days.
+  if (pub.state !== 'unknown') {
+    await deps.store.putWindow(
+      g,
+      now - (now % WINDOW_MINUTES),
+      pub.state,
+      pub.deviceCount,
+      nowS + 30 * DAY_S,
+    );
+  }
+  if (!deps.notifyCell) return;
   const last = await deps.store.getCache(`pushstate:${g}`, nowS);
   if (last === pub.state || pub.state === 'unknown' || pub.state === 'mixed') return;
   await deps.store.putCache(`pushstate:${g}`, pub.state, nowS + DAY_S);
@@ -424,7 +452,7 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
           return err(429, 'this device key has reported from enough cells today');
         }
         const fresh = await deps.store.putReport(checked, nowS + 2 * 3600);
-        if (fresh && deps.notifyCell) await maybeNotify(deps, checked.geohash6, nowS);
+        if (fresh) await afterReport(deps, checked.geohash6, nowS);
         // 202 either way: a duplicate is not an error for a client that retried.
         return json(202, { accepted: true, duplicate: !fresh });
       }
@@ -518,6 +546,95 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
           maxAge: 0,
           contentType: 'text/xml',
         };
+      }
+
+      case 'GET /v1/history': {
+        const center = req.query.cell ?? '';
+        if (!cells.isGeohash6(center)) return err(400, 'cell must be a geohash-6 cell');
+        const span = Math.min(7, Math.max(1, Number(req.query.span ?? 3) | 0));
+        const days = Math.min(30, Math.max(1, Number(req.query.days ?? 7) | 0));
+        const key = `hist:${center}:${span}:${days}`;
+        const hit = await deps.store.getCache(key, nowS);
+        if (hit) return { status: 200, body: hit, maxAge: 300 };
+        const now = toMinute(nowMs);
+        const from = now - days * 1440;
+        const grid = sensing.cellsAround(center, span, span);
+        const out = await Promise.all(
+          grid.flatMap((row, r) =>
+            row.map(async (g, c) => ({
+              row: r,
+              col: c,
+              ...summarise(g, await deps.store.windowsSince(g, from, nowS), from, now),
+            })),
+          ),
+        );
+        const body = JSON.stringify({
+          center,
+          span,
+          days,
+          fromMinute: from,
+          toMinute: now,
+          cells: out,
+        });
+        await deps.store.putCache(key, body, nowS + 300);
+        return { status: 200, body, maxAge: 300 };
+      }
+
+      case 'GET /v1/advisories': {
+        const g = req.query.cell ?? '';
+        if (!cells.isGeohash6(g)) return err(400, 'cell must be a geohash-6 cell');
+        return json(200, { advisories: await deps.store.advisoriesFor(g, nowS) }, 60);
+      }
+
+      case 'GET /v1/sites': {
+        const center = req.query.cell ?? '';
+        if (!cells.isGeohash6(center)) return err(400, 'cell must be a geohash-6 cell');
+        const grid = sensing.cellsAround(center, 3, 3).flat();
+        const sites = (
+          await Promise.all([...new Set(grid)].map((g) => deps.store.sitesIn(g, nowS)))
+        ).flat();
+        return json(200, { sites }, 60);
+      }
+
+      case 'POST /v1/ask': {
+        const body = parseBody(req.body);
+        const question =
+          typeof body?.question === 'string' ? body.question.trim().slice(0, 300) : '';
+        if (!question) return err(400, 'question is required');
+        const found = guidance.ask(question);
+        if (found.kind === 'outside') return json(200, { kind: 'outside' });
+        const base = {
+          kind: 'answer',
+          guideId: found.guide.id,
+          title: found.guide.title,
+          passages: found.passages,
+          sources: found.guide.sources,
+        };
+        // Phrasing is a courtesy: rate-limited per requester and overall, and the
+        // library passages above are the answer whether or not a model phrased them.
+        if (
+          !deps.phrase ||
+          !(await takeSlot(deps, `askreq:${req.requester ?? 'none'}`, 6, nowS)) ||
+          !(await takeSlot(deps, 'askall', 120, nowS))
+        ) {
+          return json(200, { ...base, phrased: null });
+        }
+        const phrased = await deps.phrase(
+          question,
+          found.guide.title,
+          found.passages.map((p) => p.text),
+        );
+        return json(200, {
+          ...base,
+          phrased:
+            phrased &&
+            groundedNumbers(
+              phrased,
+              found.passages.map((p) => p.text),
+            )
+              ? phrased
+              : null,
+        });
       }
 
       case 'GET /v1/cells':

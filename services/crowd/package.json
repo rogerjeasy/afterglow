@@ -16,6 +16,7 @@
     "web-push": "3.6.7"
   },
   "devDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "3.1178.0",
     "@aws-sdk/client-dynamodb": "3.1178.0",
     "@aws-sdk/client-lambda": "3.1178.0",
     "@aws-sdk/client-ssm": "3.1178.0",

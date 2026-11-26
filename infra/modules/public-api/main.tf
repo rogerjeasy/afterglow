@@ -15,6 +15,10 @@ locals {
     "POST /v1/push/unsubscribe",
     "POST /v1/voice/ussd",
     "POST /v1/voice/sms",
+    "GET /v1/history",
+    "GET /v1/advisories",
+    "GET /v1/sites",
+    "POST /v1/ask",
     "GET /v1/cells",
     "GET /v1/places",
     "GET /v1/weather",
@@ -67,6 +71,28 @@ data "aws_iam_policy_document" "fn" {
     sid       = "DeviceKeysAndCache"
     actions   = ["dynamodb:GetItem", "dynamodb:PutItem"]
     resources = [var.device_table_arn, var.cache_table_arn]
+  }
+
+  statement {
+    sid       = "CellHistory"
+    actions   = ["dynamodb:Query", "dynamodb:PutItem"]
+    resources = [var.history_table_arn]
+  }
+
+  statement {
+    sid       = "ReadAdvisoriesAndSites"
+    actions   = ["dynamodb:Query"]
+    resources = [var.advisories_table_arn, var.sites_table_arn]
+  }
+
+  # Ask phrasing (guidance GL-07): one model, through its EU inference profile only.
+  dynamic "statement" {
+    for_each = length(var.ask_model_resources) > 0 ? [1] : []
+    content {
+      sid       = "AskPhrasingModelOnly"
+      actions   = ["bedrock:InvokeModel"]
+      resources = var.ask_model_resources
+    }
   }
 
   statement {
@@ -129,11 +155,15 @@ resource "aws_lambda_function" "public" {
 
   environment {
     variables = {
-      REPORTS_TABLE = var.reports_table_name
-      DEVICE_TABLE  = var.device_table_name
-      CACHE_TABLE   = var.cache_table_name
-      PUSH_TABLE    = var.push_table_name
-      VAPID_PARAM   = var.vapid_param_name
+      REPORTS_TABLE    = var.reports_table_name
+      DEVICE_TABLE     = var.device_table_name
+      CACHE_TABLE      = var.cache_table_name
+      PUSH_TABLE       = var.push_table_name
+      VAPID_PARAM      = var.vapid_param_name
+      HISTORY_TABLE    = var.history_table_name
+      ADVISORIES_TABLE = var.advisories_table_name
+      SITES_TABLE      = var.sites_table_name
+      ASK_MODEL        = var.ask_model_id
     }
   }
 

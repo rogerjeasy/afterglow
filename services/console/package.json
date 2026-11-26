@@ -1,0 +1,23 @@
+{
+  "name": "@afterglow/console-service",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Afterglow Business and Beacon consoles: signed-in sites, cold-chain logs, public status, and Beacon advisories.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src scripts",
+    "build": "node scripts/bundle.mjs"
+  },
+  "dependencies": {
+    "@afterglow/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "3.1178.0",
+    "@aws-sdk/client-lambda": "3.1178.0",
+    "@types/node": "22",
+    "esbuild": "0.24.0",
+    "typescript": "5.7.2"
+  }
+}
