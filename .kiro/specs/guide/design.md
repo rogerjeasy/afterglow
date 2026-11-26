@@ -72,7 +72,7 @@ opacity(index, length) = 0.35 + 0.65 * index / (length - 1)              // GD-0
 - **Body:** a 56 px SVG ghost (head arc, wavy hem, two eyes) filled with `text.emphasis` at the GD-07 opacity, outlined in `focus.ring`. Eyes are `bg` cut-outs, so the ghost adds no new colour.
 - **Bubble:** fixed above the tab bar, `surface.3` with a `hairline` border, max width 496 px, an `aside` landmark named for Wisp and the step (non-modal: the page stays usable), with the line in an `aria-live="polite"` region. Buttons: `Back` (secondary), `Next` (primary; its label is per-step, for example "Turn off the lights"), `Skip tour` (ghost).
 - **Highlight:** the target gets a `tour-target` class: a 2 px `focus.ring` outline with a 4 px offset. No glow, no new colour.
-- **Motion:** the ghost bobs 4 px on a 3 s loop (`transform: translateY`), the ambient budget of design §8.2. The bubble crossfades on step change in `motion.cross`. Under `prefers-reduced-motion` the bob stops.
+- **Motion:** none ambient. `night-vision.md` rule 7 keeps the only ambient loop for the Hearth candle, so Wisp holds still (an earlier 4 px bob was removed under NS-17). Its body fades between steps in `motion.cross`.
 - **Placement:** before the bubble appears, the target is scrolled to sit in the space between the header and the bubble, and the bubble's height is reserved as bottom padding so nothing is trapped under it.
 
 ## 6. Entry points

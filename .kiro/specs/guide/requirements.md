@@ -107,7 +107,7 @@ Wisp has a sense of humour. The product's voice rule (§14.1, "never cute during
 **Acceptance criteria (EARS):**
 - THE SYSTEM SHALL draw Wisp, the bubble and the target highlight from semantic tokens only.
 - THE SYSTEM SHALL pass the pixel scan with the tour open, in Night, Dusk and Ember.
-- THE SYSTEM SHALL animate Wisp with `transform` only, AND SHALL stop the animation under reduced motion.
+- THE SYSTEM SHALL NOT give Wisp an ambient animation (`night-vision.md` rule 7); only its opacity changes, between steps.
 
 *Browser test:* `GD-09 the tour passes the pixel scan in all three modes`. *Source:* `night-vision.md`, design §8.
 

@@ -117,6 +117,57 @@ The Night Shell is the interface layer everything renders through. Afterglow is 
 
 *Status:* deferred to the component and Playwright-pixel-scan tasks; stated here so the contract is fixed. *Source:* `night-vision.md` rules 6–12.
 
+## Design pass (2026-11-26): calm screens that still show their working
+
+The screens were correct but read like an engineering console: model ids and sense names in the main copy, three or four source chips under every number, every form open at once. Cold reached 4,943 px and Plan 5,229 px on a 390 px phone in the demo outage. These requirements make the screens calm without hiding anything a person is owed.
+
+### NS-13 — Sources open on a tap, and a default is never hidden
+**User story:** As a person in the dark, I want the number first and its working one tap away, without losing the fact that a default was used.
+
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL show, next to every sourced number, one source control whose closed label is "How I know".
+- WHERE any of the sources is a default THE SYSTEM SHALL add "uses defaults" to the closed label.
+- WHEN the control is opened THE SYSTEM SHALL list every source, with its model version, in the order given, plus any link and detail lines.
+- THE SYSTEM SHALL expose the control as a button with `aria-expanded`, at least 44 px tall.
+
+*Property:* `NS-13 the closed label names defaults whenever one is used, and the open list keeps every source in order`. *Source:* `fail-closed.md` rules 6 and 9; design §8.3 ("Source chip: tap expands inline").
+
+### NS-14 — Plain words first
+**User story:** As a person who is not an engineer, I want the main text in words I use.
+
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL NOT show model identifiers (such as `thermal-appliance-v2`), sense identifiers (such as `chargingEdge`) or the words "fusion core" in visible text outside an opened source control.
+- THE SYSTEM SHALL say how the power state is known in a plain sentence (for example, "This phone stopped charging and the mains hum went quiet").
+
+*Properties:* `NS-14 sense words cover every sense and verdict, in plain words`; browser test `NS-14 no engine identifiers in visible text on any screen`.
+
+### NS-15 — One screen, one job: rows and forms fold
+**User story:** As a person under stress, I want each screen to answer its question before I have to scroll past forms I am not using.
+
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL keep add-forms (a battery, a load, a person) closed until asked for, behind one button that names the action.
+- THE SYSTEM SHALL keep per-item management (remove, details) out of a list row until the row or its list is opened for editing; a decision the person must make now (for example, "Ice crystals remain?") SHALL stay visible.
+- THE SYSTEM SHALL keep each screen, in the demo outage at 390 px, within a height budget: Hearth 1,950 px, Lantern 2,400 px, Séance 2,450 px, Cold 3,400 px, Plan 4,000 px.
+
+*Browser test:* `NS-15 every screen fits its height budget in the demo outage`. The budgets are the measured result plus about 5%, to stop regressions. They are not aspirational. Before and after this pass: Hearth 1,945 → 1,863; Séance 3,117 → 2,358; Cold 4,943 → 3,261; Plan 5,229 → 3,883; Lantern 2,392 → 2,287. Plan stays the longest on purpose: the four carbon-monoxide checks of the generator ward stay open, because folding a safety question to save scrolling is the wrong trade.
+
+### NS-16 — The costume carries the data
+**User story:** As the design system, I want each metaphor to encode its measurement where people look first.
+
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL draw cold compartments on the Hearth as tombstones, the same component and the same darkening as on Cold.
+- THE SYSTEM SHALL draw each roster member as a ghost at 0.35 opacity until heard from since the outage began, and at full opacity once heard (design §7.3).
+
+*Browser test:* `NS-16 Hearth compartments are tombstones and ghosts solidify when heard`.
+
+### NS-17 — No ambient loop except the candle
+**User story:** As a person whose eyes have adjusted, I want nothing on screen to move for its own sake.
+
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL run no infinitely repeating animation, on any screen or in the guide, other than the Hearth candle flame (not yet built).
+
+*Browser test:* `NS-17 no infinite animation on any screen or in the tour`. *Source:* `night-vision.md` rule 7. This removed the guide's bob (guide design §5 was written against the design doc's ambient budget and missed the steering rule).
+
 ## Analysis
 
 - **The central tension** (design §3.1): a red under the 8% Night ceiling can reach at most 2.6:1 on black, below WCAG AA. Resolved by shipping three modes — Night is a disclosed instrument mode; Dusk meets AA large text; Ember meets AA normal text. NS-03 and NS-06 encode both halves of this.

@@ -54,3 +54,13 @@ Tasks map to requirement ids. Property tests are the definition of done (`tech.m
 - [x] Séance added (power on, demo outage, and the lit and dark lamp itself in all three modes)
 - [ ] Add screens as they are built (medicines with a loaded table needs a signed fixture served to the browser; Lantern, Plan)
 - [ ] Dynamic Type 200% and 320 px width variants
+
+## Design pass (NS-13..NS-17)
+- [x] `Sources` control and its pure summary (`night-shell/sources.ts`), property-tested (NS-13)
+- [x] `Tile`, Cold verdict rows and the appliance detail use `Sources` (NS-13)
+- [x] Plain sense words for the Hearth, replacing the fusion read-out (NS-14)
+- [x] Hearth compartments as tombstones; roster ghosts as ghost glyphs, 0.35 until heard (NS-16)
+- [x] Fold the Plan add-forms, the Séance add-form and list editing, and Cold item management (NS-15)
+- [x] Remove the guide's bob (NS-17)
+- [x] Browser tests: NS-14 identifiers, NS-15 height budgets, NS-16 costume, NS-17 animations; update tests that open folds
+- Results: 3 pure tests (`src/night-shell/designPass.property.test.ts`) and 6 browser tests (`e2e/design-pass.e2e.ts`). NS-14 found a model id (`foodkeeper-v128`) in Cold's explanatory paragraph, now behind its source control. Four older browser tests asserted visible source labels; they now open the control and check the same labels, and that the closed control still names a default.
