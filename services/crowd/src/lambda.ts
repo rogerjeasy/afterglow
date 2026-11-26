@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { handlePublic, warmPlacesNow } from './handler.js';
 import { dynamoCrowdStore } from './store.js';
@@ -31,6 +32,17 @@ interface HttpEvent {
   readonly body?: string | null;
   readonly isBase64Encoded?: boolean;
   readonly queryStringParameters?: Record<string, string | undefined> | null;
+  readonly requestContext?: { readonly http?: { readonly sourceIp?: string } };
+}
+
+/**
+ * A coarse requester bucket for fair rate limits: 16 bits of the source address's
+ * hash. Thousands of addresses share each bucket, so it cannot identify anyone; it
+ * is never logged and lives two minutes in the cache table.
+ */
+function requesterBucket(ip: string | undefined): string {
+  if (!ip) return 'none';
+  return createHash('sha256').update(`afterglow-bucket:${ip}`).digest('hex').slice(0, 4);
 }
 
 const store = dynamoCrowdStore({
@@ -55,7 +67,12 @@ export async function handler(event: HttpEvent) {
         ? Buffer.from(event.body, 'base64').toString('utf8')
         : event.body;
   const res = await handlePublic(
-    { routeKey, query: event.queryStringParameters ?? {}, body },
+    {
+      routeKey,
+      query: event.queryStringParameters ?? {},
+      body,
+      requester: requesterBucket(event.requestContext?.http?.sourceIp),
+    },
     deps,
   );
   console.log(JSON.stringify({ route: routeKey, status: res.status, ms: Date.now() - started }));

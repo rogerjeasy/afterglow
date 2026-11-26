@@ -21,6 +21,8 @@ export interface PublicRequest {
   readonly routeKey: string;
   readonly query: Readonly<Record<string, string | undefined>>;
   readonly body: string | null;
+  /** A coarse, non-identifying requester bucket (see lambda.ts), for fair limits. */
+  readonly requester?: string;
 }
 
 export interface PublicResponse {
@@ -63,8 +65,14 @@ const MAX_REPORT_BYTES = 2048;
  */
 export const POW_BITS = 20;
 const DEVICE_CELLS_PER_DAY = 2;
-/** At most this many background places fetches start per minute, across all cells. */
-const WARMS_PER_MINUTE = 6;
+/**
+ * Background places fetches: each requester bucket may start WARMS_PER_REQUESTER a
+ * minute, so one client cannot use up everyone's budget, and WARMS_PER_MINUTE across
+ * all buckets caps the cost. The app asks again every 15 s for 6 minutes, so a short
+ * burst by someone else only delays a first-time area, it does not deny it.
+ */
+const WARMS_PER_MINUTE = 20;
+const WARMS_PER_REQUESTER = 2;
 /** How long one cell's fetch blocks another for the same cell. */
 const WARM_HOLD_S = 150;
 
@@ -117,14 +125,25 @@ async function deviceMayReport(
   return false;
 }
 
-/** A global budget of background fetches: one slot per fetch, per minute. */
-async function takeWarmSlot(deps: PublicDeps, nowS: number): Promise<boolean> {
+/** Take one of `size` slots under `prefix` this minute; false when all are taken. */
+async function takeSlot(
+  deps: PublicDeps,
+  prefix: string,
+  size: number,
+  nowS: number,
+): Promise<boolean> {
   const minute = Math.floor(nowS / 60);
-  if (await deps.store.getCache(`warmslot:${minute}:${WARMS_PER_MINUTE - 1}`, nowS)) return false;
-  for (let i = 0; i < WARMS_PER_MINUTE; i++) {
-    if (await deps.store.claim(`warmslot:${minute}:${i}`, '1', nowS + 120, nowS)) return true;
+  if (await deps.store.getCache(`${prefix}:${minute}:${size - 1}`, nowS)) return false;
+  for (let i = 0; i < size; i++) {
+    if (await deps.store.claim(`${prefix}:${minute}:${i}`, '1', nowS + 120, nowS)) return true;
   }
   return false;
+}
+
+/** The requester's own share first, then the global ceiling. */
+async function takeWarmSlot(deps: PublicDeps, requester: string, nowS: number): Promise<boolean> {
+  if (!(await takeSlot(deps, `warmreq:${requester}`, WARMS_PER_REQUESTER, nowS))) return false;
+  return takeSlot(deps, 'warmslot', WARMS_PER_MINUTE, nowS);
 }
 
 const b64urlToBytes = (s: string): Uint8Array => new Uint8Array(Buffer.from(s, 'base64url'));
@@ -355,7 +374,7 @@ export async function handlePublic(req: PublicRequest, deps: PublicDeps): Promis
           deps.warmPlaces &&
           (await deps.store.claim(`warming:${g}`, '1', nowS + WARM_HOLD_S, nowS))
         ) {
-          if (await takeWarmSlot(deps, nowS)) await deps.warmPlaces(g);
+          if (await takeWarmSlot(deps, req.requester ?? 'none', nowS)) await deps.warmPlaces(g);
           else await deps.store.putCache(`warming:${g}`, '1', nowS + 30);
         }
         if (!deps.warmPlaces) {
