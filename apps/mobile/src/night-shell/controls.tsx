@@ -322,7 +322,7 @@ export function Notice({ children }: { children: ReactNode }): ReactNode {
   );
 }
 
-export type TabId = 'hearth' | 'lantern' | 'seance' | 'cold' | 'plan' | 'you';
+export type TabId = 'hearth' | 'lantern' | 'seance' | 'cold' | 'plan' | 'you' | 'alerts';
 
 function Glyph({ children }: { children: ReactNode }): ReactNode {
   return (
@@ -400,6 +400,84 @@ const TABS: readonly { id: TabId; label: string; glyph: () => ReactNode }[] = [
   { id: 'cold', label: 'Cold', glyph: TombstoneGlyph },
   { id: 'plan', label: 'Plan', glyph: PlanGlyph },
 ];
+
+/**
+ * The Alerts centre's door (alerts spec, task 4): a bell with the count beside it.
+ * The count is a number of alerts, never a severity colour (one hue: meaning is in
+ * the number and the words).
+ */
+export function AlertsButton({
+  active,
+  count,
+  critical,
+  onClick,
+}: {
+  active: boolean;
+  count: number;
+  /** Any critical alert: the ring takes the focus tone and the label says so. */
+  critical: boolean;
+  onClick: () => void;
+}): ReactNode {
+  const label =
+    count === 0
+      ? 'Alerts: none'
+      : `Alerts: ${count}${critical ? ', at least one needs you now' : ''}`;
+  return (
+    <button
+      type="button"
+      className="press"
+      onClick={onClick}
+      aria-label={label}
+      aria-current={active ? 'page' : undefined}
+      style={{
+        position: 'relative',
+        width: 44,
+        height: 44,
+        flex: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 999,
+        borderStyle: 'solid',
+        borderWidth: critical ? 2 : 1,
+        borderColor: active || critical ? token('focus.ring') : token('hairline'),
+        background: active ? token('control.fill.primary') : token('control.fill'),
+        color: active ? token('control.label.primary') : token('text.secondary'),
+      }}
+    >
+      <Glyph>
+        <path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z" />
+        <path d="M10 20a2 2 0 0 0 4 0" />
+      </Glyph>
+      {count > 0 ? (
+        <span
+          aria-hidden="true"
+          className="clock"
+          style={{
+            position: 'absolute',
+            top: -8,
+            right: -8,
+            minWidth: 24,
+            height: 24,
+            padding: '0 5px',
+            borderRadius: 12,
+            // The caption minimum is 16 px everywhere (night-vision rule 6), badges included.
+            fontSize: 16,
+            lineHeight: '22px',
+            textAlign: 'center',
+            background: token('surface.3'),
+            color: token('text.emphasis'),
+            borderStyle: 'solid',
+            borderWidth: 1,
+            borderColor: token('focus.ring'),
+          }}
+        >
+          {count}
+        </span>
+      ) : null}
+    </button>
+  );
+}
 
 /**
  * "You" (settings, account, privacy) is not a destination of its own: the design

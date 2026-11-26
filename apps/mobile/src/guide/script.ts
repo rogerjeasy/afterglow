@@ -24,7 +24,7 @@ export type FactKey =
 
 export interface TourStep {
   readonly id: string;
-  readonly tab: Exclude<TabId, 'you'>;
+  readonly tab: Exclude<TabId, 'you' | 'alerts'>;
   /** The `data-tour` attribute of the element Wisp points at. */
   readonly target: string;
   readonly power: PowerNeed;

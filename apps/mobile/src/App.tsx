@@ -1,5 +1,6 @@
 import type { LuminanceMode } from '@afterglow/design-system';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useAlerts } from './alerts/useAlerts';
 import { foodIndex } from './data/foodkeeper';
 import { Wisp, WispFinish } from './guide/Wisp';
 import { readFacts } from './guide/facts';
@@ -18,10 +19,18 @@ import {
 import { browserStorage } from './household/store';
 import { useHousehold, useNow } from './household/useHousehold';
 import { ModeSwitch } from './night-shell/components';
-import { Button, Notice, TabBar, type TabId, YouButton } from './night-shell/controls';
+import {
+  AlertsButton,
+  Button,
+  Notice,
+  TabBar,
+  type TabId,
+  YouButton,
+} from './night-shell/controls';
 import { decideMode } from './night-shell/modePolicy';
 import { applyMode, token } from './night-shell/theme';
 import { readFlag, shouldOnboard, writeFlag } from './onboarding/logic';
+import { Alerts } from './screens/Alerts';
 import { Cold } from './screens/Cold';
 import { Hearth } from './screens/Hearth';
 import { Lantern } from './screens/Lantern';
@@ -40,6 +49,7 @@ function tabFromHash(): TabId {
   if (h.startsWith('#/seance')) return 'seance';
   if (h.startsWith('#/plan')) return 'plan';
   if (h.startsWith('#/you')) return 'you';
+  if (h.startsWith('#/alerts')) return 'alerts';
   return 'hearth';
 }
 const HASH: Record<TabId, string> = {
@@ -49,6 +59,7 @@ const HASH: Record<TabId, string> = {
   cold: '#/cold',
   plan: '#/plan',
   you: '#/you',
+  alerts: '#/alerts',
 };
 
 /**
@@ -66,6 +77,7 @@ export function App(): ReactNode {
   const { store, state } = useHousehold();
   const nowMs = useNow(1000);
   const outage = state.view.outageStartedAtMs !== null;
+  const alertList = useAlerts(nowMs);
 
   const [tab, setTab] = useState<TabId>(tabFromHash);
   const [coldSelected, setColdSelected] = useState<string | null>(null);
@@ -220,19 +232,35 @@ export function App(): ReactNode {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 8,
           padding: '12px 20px',
           maxWidth: 520,
           margin: '0 auto',
         }}
       >
         <ModeSwitch mode={mode} onCycle={cycleMode} />
-        <span style={{ fontSize: 'var(--type-title)', color: token('text.emphasis') }}>
+        <span
+          style={{
+            // Scales down on the narrowest phones so the header never crowds its buttons.
+            fontSize: 'clamp(22px, 7vw, var(--type-title))',
+            color: token('text.emphasis'),
+            minWidth: 0,
+          }}
+        >
           Afterglow
         </span>
         {showOnboarding ? (
           <span style={{ width: 44 }} aria-hidden />
         ) : (
-          <YouButton active={tab === 'you'} onClick={() => go('you')} />
+          <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
+            <AlertsButton
+              active={tab === 'alerts'}
+              count={alertList.length}
+              critical={alertList.some((a) => a.priority === 'critical')}
+              onClick={() => go('alerts')}
+            />
+            <YouButton active={tab === 'you'} onClick={() => go('you')} />
+          </div>
         )}
       </header>
 
@@ -291,6 +319,8 @@ export function App(): ReactNode {
         <Plan nowMs={nowMs} />
       ) : tab === 'cold' ? (
         <Cold nowMs={nowMs} selectedId={coldSelected} onSelect={setColdSelected} />
+      ) : tab === 'alerts' ? (
+        <Alerts list={alertList} outage={outage} />
       ) : (
         <You onStartTour={space.kind === 'account' ? undefined : startTour} />
       )}
