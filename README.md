@@ -57,7 +57,7 @@ The app runs fully offline in the browser. Install it as a PWA on a phone and tu
 ## What is real and what is simulated
 
 Real and tested:
-- The deterministic core in [`packages/core`](packages/core/src): events, cells and k-anonymity, schedules, thermal models, USDA FoodKeeper rules over all 661 products, formulary clocks, the energy planner, CO Guard, the Heliograph codec and receiver, and the restoration estimator.
+- The deterministic core in [`packages/core`](packages/core/src): events, cells and k-anonymity, schedules, thermal models, USDA FoodKeeper rules over all 661 products, formulary clocks, the energy planner, CO Guard, the Heliograph codec and receiver, the restoration estimator, and alerts that gather all of them into one sourced, deduplicated list.
 - The Night Shell design system: luminance tokens and a pixel scanner that fails the build if any pixel on any screen exceeds the mode's brightness ceiling.
 - The web app, local encrypted accounts (AES-256-GCM, PBKDF2 with 600k iterations), the formulary signing pipeline, and the Terraform for five AWS regions (planned and policy-checked, never applied).
 
@@ -70,7 +70,7 @@ Simulated, and labelled as simulated in the app:
 
 Afterglow was built spec-first in Kiro. Everything below is in the repository.
 
-**Specs: 18 modules, EARS requirements traced to property tests.** Each module in [`.kiro/specs/`](.kiro/specs) has `requirements.md` written in EARS with ids such as `GS-07` or `CE-03`, and a `tasks.md`. Every id appears in the name of the property test that proves it, so `grep CE-03` shows the requirement, the task and the test together.
+**Specs: 19 modules, EARS requirements traced to property tests.** Each module in [`.kiro/specs/`](.kiro/specs) has `requirements.md` written in EARS with ids such as `GS-07` or `CE-03`, and a `tasks.md`. Every id appears in the name of the property test that proves it, so `grep CE-03` shows the requirement, the task and the test together.
 
 **Steering: 9 files, three inclusion modes.** Four safety invariants are always included: [`fail-closed`](.kiro/steering/fail-closed.md), [`privacy-aggregation`](.kiro/steering/privacy-aggregation.md), [`night-vision`](.kiro/steering/night-vision.md) and [`label-only-medicine`](.kiro/steering/label-only-medicine.md). [`terraform-regions`](.kiro/steering/terraform-regions.md) loads only for `infra/**`. [`release-checklist`](.kiro/steering/release-checklist.md) is manual.
 
@@ -126,7 +126,7 @@ pnpm typecheck && pnpm lint
 pnpm --filter @afterglow/mobile e2e      # Playwright, including the pixel scan
 ```
 
-About 545 TypeScript unit and property tests, 120 Playwright browser tests (including the pixel scan of every screen in three modes), Python property tests for the Crew app, and 63 offline Terraform plan tests.
+About 560 TypeScript unit and property tests, 135 Playwright browser tests (including the pixel scan of every screen in three modes), Python property tests for the Crew app, and 63 offline Terraform plan tests.
 
 ## Not an emergency service
 
