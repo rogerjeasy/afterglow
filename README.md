@@ -159,7 +159,16 @@ pnpm typecheck && pnpm lint
 pnpm --filter @afterglow/mobile e2e      # Playwright, including the pixel scan
 ```
 
-TEST_COUNTS_PLACEHOLDER
+Every check below passes on the current commit (2026-11-27):
+
+| Suite | Tests |
+|---|---|
+| TypeScript unit and property tests (`pnpm test`, 12 packages) | 858 |
+| Playwright browser tests, including the pixel scan of every screen in three modes and two colours | 239 |
+| Python property tests (`afterglow-crew`, Hypothesis) | 95 |
+| Terraform tests (offline plans of the stacks and modules) | 69 |
+
+CI runs lint, typecheck, the property suites (in Node and in headless Chromium), the build and the pixel scan on every push.
 
 ## Sources
 
