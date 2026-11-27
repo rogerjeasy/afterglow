@@ -20,10 +20,10 @@
 
 Between **1.5 billion** people (IFC, 2019) and **3.5 billion** (Ayaburi et al., 2020) live without reliable electricity, depending on where the reliability line is drawn. For them an outage is not news; it is Tuesday. Outage apps answer one question, *when will it come back?* Afterglow answers the ones people have **while they sit in the dark**:
 
-- Is it just my house, or the whole street?
 - Can I still eat what is in the fridge?
 - How cold, or hot, will my home get tonight?
 - Is my mother okay, when the network is down too?
+- Is it just my house, or the whole street?
 - Is it safe to run the generator?
 
 It is built for the real conditions: a mid-range phone, a dying battery, a pitch-black room and a congested network. So the whole interface is **red on pure black under a measured luminance ceiling**, checked pixel by pixel in CI. That keeps your night vision, does not light up the room and spends as little battery as possible. An amber variant serves people with red colour blindness.
@@ -37,10 +37,10 @@ It is built for the real conditions: a mid-range phone, a dying battery, a pitch
 | Costume | What it measures |
 |---|---|
 | **Tombstone** | A fridge or freezer. The epitaph is the time until the food must go, from USDA rules and a thermal model of *your* appliance. |
-| **Ghost** | Someone you look after who has not been heard from since the outage began. They turn solid when they check in. |
+| **Graveyard Shift** | Tonight's indoor temperature curve, with a headstone where your home crosses the danger line. |
+| **Ghost** | Someone you look after who has not been heard from since the outage began. They materialise, solid, when they check in. |
 | **Lantern map** | Where mains power still is, from phones and people in a ~1 km cell, shown only when at least 5 devices back it. |
 | **Séance** | "I am safe" or "Help" sent as flashes of light from one phone's screen to another phone's camera. No network at all. |
-| **Graveyard Shift** | Tonight's indoor temperature curve, with a headstone where your home crosses the danger line. |
 | **Candle** | A battery: what it can keep running, in what order, for how long. |
 | **Ward** | An unsafe action the app refuses, such as running a generator before the carbon-monoxide checks are confirmed. |
 | **Wisp** | The guide: a small ghost who is scared of bright screens. Jokes, yes; numbers of its own, never. |
@@ -52,20 +52,36 @@ It is built for the real conditions: a mid-range phone, a dying battery, a pitch
 3. **Hearth** shows the one line of truth and the clocks. **Cold** shows each food's verdict with its USDA rule. **Lantern** shows the neighbourhood; drag the playback to watch the night end. **Séance** has *Simulate a message*, which feeds a recorded signal through the real decoder (or point a second phone's camera at the screen). **Plan** draws the Graveyard Shift and the generator ward.
 4. Tap **How I know** under any number to see where it came from.
 5. Install it as an app from the browser menu, turn on flight mode, and open it again: everything above still works.
+6. Have a fridge thermometer? Open **[Field checks](https://afterglow-flax.vercel.app/app/field)** and test the numbers yourself: unplug the fridge on a calm day, or turn the heating off for a night, and the app puts your readings next to its model.
 
 No account is needed. Accounts are real (see below) and free; any email works.
 
 ## Why it is different
 
-- **It never guesses to look helpful.** Grid state, food discard time, hours of safety, the restoration estimate and every map cell come from deterministic, property-tested code with cited inputs. "Unknown" is a real answer, and the app says why it does not know.
-- **The label is the law for medicine.** A medicine clock comes only from a pharmacist-signed entry in a separate formulary pipeline. No entry, no clock: the app says "ask your pharmacist" and shows the FDA's cited insulin guidance instead. The app ships with no signed table, and says so.
-- **Privacy by construction.** Location leaves the phone only as a ~1 km cell. A cell is published only when at least 5 distinct devices back it, enforced in the core and again at the API. Camera and microphone data never leave memory.
-- **Measured darkness, in two colours.** The same screens in amber (You → Colour) for people with red colour blindness, under the same ceilings and the same pixel scan.
+- **A clock for your own fridge, and a way to check it with your own thermometer.** Each fridge and freezer gets a countdown from the USDA FoodKeeper rules (all 661 products) and a thermal model of that appliance, with a verdict for every food in it. Unplug it on a calm day and log a few thermometer readings in **Field checks**: the app draws them against its curve, reports the error, fits *your* appliance's time constant, and can use it, but only ever to make the clock shorter. The answer to "why not just use a thermometer?" is: use one, and the app learns from it.
+- **Tonight's temperature in your home.** The Graveyard Shift forecasts the indoor temperature through the night for a home with no power, from building archetypes (NREL ResStock) and the outdoor temperature, as a range rather than a single guess, with a headstone where it crosses your line (stricter for babies and older people). A field check puts a real night next to it.
+- **Measured darkness.** Brightness is a budget, not a theme: every screen is pixel-scanned in CI in three luminance modes, in red and in amber for people with red colour blindness, and the build fails if one pixel is too bright.
 
   <img src="docs/screenshots/amber-hearth.png" alt="Hearth during an outage in the amber colour, Night mode" width="260">
 
+- **It never guesses to look helpful.** Grid state, food discard time, hours of safety, the restoration estimate and every map cell come from deterministic, property-tested code with cited inputs. "Unknown" is a real answer, and the app says why it does not know.
+- **The label is the law for medicine.** A medicine clock comes only from a pharmacist-signed entry in a separate formulary pipeline. No entry, no clock: the app says "ask your pharmacist" and shows the FDA's cited insulin guidance instead. The app ships with no signed table, and says so.
+- **Privacy by construction.** Location leaves the phone only as a ~1 km cell. A cell is published only when at least 5 distinct devices back it, enforced in the core and again at the API. Camera and microphone data never leave memory.
 - **Light as a radio.** The Heliograph sends short coded messages (Manchester coding, Hamming(12,8), CRC-4, two agreeing repeats) between a screen and a camera, through a window or across a courtyard. Property tests found that 3 of the 2,816 possible messages could never be read; that bug is fixed and documented.
 - **AI phrases; it never decides.** The one runtime use of a model is optional: Claude on Amazon Bedrock may rephrase a guidance answer the offline library already chose, and a check throws the phrasing away if it contains any number the cited passages do not.
+
+## Prior art, and what Afterglow adds
+
+Most of Afterglow's parts have been done before, by people worth crediting. What we have not found elsewhere is the combination: a food countdown for your own appliance that you can check with a thermometer, an overnight indoor forecast for a home without power, and an interface whose brightness is a tested budget, all offline in one app.
+
+| Idea | Done before by | What Afterglow adds |
+|---|---|---|
+| Phones as power-outage sensors | **GridWatch** (Klugman, Rosa, Pannuto, Podolsky, Huang and Dutta, HotMobile 2014): a phone notices its charger power change, checks with its sensors and confirms with other phones; later taken to Accra, Ghana. US patent 10,566,835, *Detecting power outages using smartphone sensors*. | A cell is shown only when at least 5 devices back it, enforced in the core and again at the API; senses that disagree give "unknown"; a person who cannot be sensed (iPhone Safari) can report and counts as one device. The map is one answer among five, not the product. |
+| Neighbours reporting their area | **ESP (EskomSePush)**, South Africa: load-shedding schedules and one-tap check-ins per area, used by about a million people a month. | Works offline, and answers what to do in the dark: food, the night's temperature, people, the generator. |
+| Data from a screen to a camera | **HiLight** (Li, An, Xiao, Campbell and Zhou, MobiSys 2015), and flashlight-Morse apps that read light with the camera. | A closed set of 11 safety messages with error correction that refuses rather than guesses, property-tested over all 2,816 messages, sent from the screen so it works through a window. |
+| Food-safety rules for outages | **USDA FoodKeeper** and USDA FSIS (4 hours for a fridge, 48 for a full freezer). | A live countdown per appliance and a verdict per food, from the same rules, and the thermometer check above. |
+| Carbon-monoxide advice | **CDC** and **US CPSC** generator guidance. | The ward: the app will not mark a generator as set up until each check is a yes. |
+| Red screens for night vision | Astronomy apps and the operating system's colour filters. | A luminance ceiling per mode, enforced on every screen by a pixel scan in CI. |
 
 ## What is real and what is simulated
 
@@ -76,12 +92,15 @@ No account is needed. Accounts are real (see below) and free; any email works.
 - **The public crowd API**: signed, rate-limited reports from phones (a 20-bit proof of work per device key per day), k-anonymous cells, outage history, places from OpenStreetMap, weather from Open-Meteo, push alerts when your area goes dark, and **Voice**: USSD menus and SMS replies for feature phones. OpenAPI description: [`apps/mobile/public/openapi.json`](apps/mobile/public/openapi.json).
 - **Grid Sense in the browser**: the charger edge (Chromium and Android) and the mains hum through the microphone, on request. Where a browser cannot sense (iPhone Safari), the person's own "Power just went out" becomes a report, and still counts as only one device toward the five a cell needs.
 - **Business and Beacon consoles**: cold-chain logs, a public "open and lit" status for shops and clinics, and area advisories for verified organisations.
+- **Field checks** ([`/app/field`](https://afterglow-flax.vercel.app/app/field)): a fridge or freezer against a thermometer, a night with the heating off against the Graveyard Shift, and Séance at a measured distance, with CSV and JSON export. A check never starts the outage clock or sends a report. The comparison, the time-constant fit and the "only ever shorter" rule are property-tested (`FC-01` to `FC-07`).
+- **Language**: the app is written in English. French, Spanish and Portuguese drafts cover the main labels and wait for review by native speakers; the app says so where the language is chosen.
 
 **Simulated, and labelled as simulated in the app**
 - The neighbourhood in the demo: a seeded simulation of about 900 devices whose reports go through the real k-anonymity code. The live map is real, and empty until five devices in a cell report.
 - The demo household and its outage.
 
-**Not built yet**
+**Not done yet**
+- Published results from real field checks, and from people using Afterglow in a real outage. They will go in [`docs/field/`](docs/field/), with the method, when they exist.
 - Native Android and iOS apps, with background sensing, the phone torch and Bluetooth relay. In the browser the app says "unknown" rather than pretend to sense.
 - A signed medicine table: it needs a licensed pharmacist, which a hackathon cannot supply. The pipeline that will hold it is built and tested.
 - Utility schedule providers. A manual schedule works; no provider is connected yet.
@@ -94,7 +113,7 @@ On 25 November the Kiro credits ran out. From 26 November the work continued in 
 
 ### The Kiro surface
 
-**Specs: [29 modules](.kiro/specs).** EARS requirements with ids such as `HL-07` or `CE-03`, a `tasks.md` of numbered tasks that cite them, and a `design.md` where the module needed one. [`kiro-guardrails`](.kiro/specs/kiro-guardrails) is a bugfix spec in Kiro's format (current, expected and unchanged behaviour). Requirement ids are unique across specs and appear in the names of the tests that prove them, so `grep HL-07` shows the requirement, the task and the test together.
+**Specs: [30 modules](.kiro/specs).** EARS requirements with ids such as `HL-07` or `CE-03`, a `tasks.md` of numbered tasks that cite them, and a `design.md` where the module needed one. [`kiro-guardrails`](.kiro/specs/kiro-guardrails) is a bugfix spec in Kiro's format (current, expected and unchanged behaviour). Requirement ids are unique across specs and appear in the names of the tests that prove them, so `grep HL-07` shows the requirement, the task and the test together.
 
 **Steering: [11 files](.kiro/steering), all four inclusion modes.** Four safety invariants are always included: [`fail-closed`](.kiro/steering/fail-closed.md), [`privacy-aggregation`](.kiro/steering/privacy-aggregation.md), [`night-vision`](.kiro/steering/night-vision.md) and [`label-only-medicine`](.kiro/steering/label-only-medicine.md), with `product`, `tech` and `structure`. [`terraform-regions`](.kiro/steering/terraform-regions.md) loads only for `infra/**` (fileMatch). The architecture and product documents load only when a request is about them (`auto`), which keeps about 140 KB out of every turn. [`release-checklist`](.kiro/steering/release-checklist.md) is manual. [`AGENTS.md`](AGENTS.md) is the short contract every agent reads.
 
@@ -163,8 +182,8 @@ Every check below passes on the current commit (2026-11-27):
 
 | Suite | Tests |
 |---|---|
-| TypeScript unit and property tests (`pnpm test`, 12 packages) | 861 |
-| Playwright browser tests, including the pixel scan of every screen in three modes and two colours | 242 |
+| TypeScript unit and property tests (`pnpm test`, 12 packages) | 873 |
+| Playwright browser tests, including the pixel scan of every screen in three modes and two colours | 254 |
 | Python property tests (`afterglow-crew`, Hypothesis) | 95 |
 | Terraform tests (offline plans of the stacks and modules) | 69 |
 
@@ -175,6 +194,7 @@ CI runs lint, typecheck, the property suites (in Node and in headless Chromium),
 - IFC (2019), *The Dirty Footprint of the Broken Grid*: "About 1.5 billion people around the world live day-to-day with 'broken' electricity grids."
 - Ayaburi, Bazilian, Kincer and Moss (2020), "Measuring 'Reasonably Reliable' access to electricity services", *The Electricity Journal* 33(7): over 3.5 billion people without reliable electricity, counting those with no connection at all.
 - USDA FoodKeeper (CC0) and USDA FSIS outage guidance; CDC and US CPSC carbon-monoxide guidance; FDA insulin storage guidance; NREL ResStock building archetypes; Open-Meteo; OpenStreetMap.
+- Prior art: Klugman, Rosa, Pannuto, Podolsky, Huang and Dutta (2014), "Grid Watch: Mapping Blackouts with Smart Phones", *HotMobile '14*, doi:10.1145/2565585.2565607; US patent 10,566,835, "Detecting power outages using smartphone sensors"; Li, An, Xiao, Campbell and Zhou (2015), "Real-Time Screen-Camera Communication Behind Any Scene", *MobiSys '15*; ESP (EskomSePush), [App Store listing](https://apps.apple.com/app/id968648379).
 
 ## Not an emergency service
 

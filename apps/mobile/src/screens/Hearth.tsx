@@ -104,7 +104,9 @@ export function Hearth({
       ? `No outage. ${senseText(gs.result, 0).why}`
       : !demo && gs.result.verdict === 'absent'
         ? `Grid Sense says the power is out here: ${senseText(gs.result, gs.crowdAbsent).why} Tap "Power just went out" to start the clocks.`
-        : 'No outage reported. On a phone, Grid Sense listens for it. On the web you can tell the app.';
+        : demo
+          ? 'No outage in the demo household. Its senses are simulated; in your own browser you tell the app when the power goes.'
+          : 'No outage reported. On a phone, Grid Sense listens for it. On the web you can tell the app.';
 
   const homeText = hoursOfSafetyText(hours);
   // What "Read it to me" and the voice command "read it to me" say.
@@ -171,9 +173,14 @@ export function Hearth({
           {demo ? (
             <div className="sm:rounded-[24px] sm:border sm:border-hairline sm:bg-surface-1 sm:p-5">
               <div className="text-body text-primary">
-                {sense.headline} <span className="text-secondary">{sense.why}</span>
+                In this demo, {sense.headline.charAt(0).toLowerCase() + sense.headline.slice(1)}{' '}
+                <span className="text-secondary">{sense.why}</span>
               </div>
-              {sim ? <SourceChip label="simulated neighbourhood (demo)" /> : null}
+              <SourceChip
+                label={
+                  sim ? 'simulated senses and neighbourhood (demo)' : 'simulated senses (demo)'
+                }
+              />
               <Sources
                 labels={[
                   `Grid Sense: ${scenario.verdict}`,
@@ -434,7 +441,7 @@ export function Hearth({
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="text-label font-bold text-primary">{r.label}</span>
                       <span className="text-caption text-secondary">
-                        {r.done ? 'Set up' : r.hint}
+                        {r.done ? 'Done' : `Not yet · ${r.hint}`}
                       </span>
                     </span>
                     <Icon name="arrowRight" size={20} className="block flex-none text-secondary" />

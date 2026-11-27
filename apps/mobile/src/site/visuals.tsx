@@ -65,6 +65,79 @@ export function MiniStones({ className }: { className?: string }): ReactNode {
   );
 }
 
+/**
+ * The lead card's visual (field-checks): tall tombstones for the fridge and freezer,
+ * and under them a strip of thermometer readings against the model's curve, with the
+ * USDA line dashed. Illustrative values; the app draws the real ones on /app/field.
+ */
+export function FridgeCheckVisual({ className }: { className?: string }): ReactNode {
+  return (
+    <div className={cx('flex w-full flex-col gap-4', className)}>
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { title: 'Fridge', epitaph: '2 h 23 m', dark: 0.18 },
+          { title: 'Freezer', epitaph: '47 h 13 m', dark: 0.04 },
+        ].map((st) => (
+          <div
+            key={st.title}
+            className="relative flex min-h-[132px] min-w-0 flex-col justify-end overflow-hidden rounded-t-[48px] border border-hairline border-t-glow bg-surface-3 px-4 pt-6 pb-4"
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-bg"
+              style={{ opacity: st.dark }}
+            />
+            <div className="relative">
+              <div className="text-caption text-secondary">{st.title}</div>
+              <div className="clock mt-1 text-[22px] leading-tight whitespace-nowrap text-emphasis">
+                {st.epitaph}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-hairline bg-bg p-3">
+        <svg aria-hidden="true" viewBox="0 0 320 90" className="block h-auto w-full">
+          <line
+            x1="0"
+            y1="34"
+            x2="320"
+            y2="34"
+            strokeDasharray="4 6"
+            style={{ stroke: 'var(--text-secondary)' }}
+            strokeWidth="1.5"
+          />
+          <path
+            d="M0 82 C 80 70, 170 52, 320 22"
+            fill="none"
+            strokeWidth="3"
+            strokeLinecap="round"
+            style={{ stroke: 'var(--text-secondary)' }}
+          />
+          {[
+            [64, 72],
+            [128, 58],
+            [192, 42],
+            [256, 28],
+          ].map(([x, y]) => (
+            <circle
+              key={x}
+              cx={x}
+              cy={y}
+              r="6"
+              style={{ fill: 'var(--text-emphasis)', stroke: 'var(--bg)' }}
+              strokeWidth="2"
+            />
+          ))}
+        </svg>
+        <div className="mt-1 text-caption text-secondary">
+          Dots: your thermometer · Line: the model · Dashed: 4.4 °C
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** A live miniature of the Hearth in the demo household's outage. */
 export function HeroPhone(): ReactNode {
   const now = useTicker(opened);

@@ -9,12 +9,15 @@ import { CtaBand, PageHero } from './Features';
  * are indicative and set regionally by purchasing-power parity.
  */
 
+/** A tier line: a plain string is available today; `planned` marks one that is not built yet. */
+type Feature = string | { readonly text: string; readonly planned: true };
+
 interface Tier {
   name: string;
   who: string;
   price: string;
   unit: string;
-  features: readonly string[];
+  features: readonly Feature[];
   cta: { to: string; label: string };
   featured?: boolean;
 }
@@ -27,7 +30,7 @@ const TIERS: readonly Tier[] = [
     unit: 'forever, without ads',
     featured: true,
     features: [
-      'Every safety module: Grid Sense, Lantern map, Séance, food and medicine clocks, hours of safety, CO ward',
+      'Every safety module: Grid Sense, Lantern map, Séance, food clocks, hours of safety, CO ward, and medicine clocks once a pharmacist signs the table',
       'Alerts and the guidance library',
       'Up to 5 people on your roster',
       '30 days of outage history',
@@ -43,8 +46,9 @@ const TIERS: readonly Tier[] = [
     features: [
       'Unlimited roster',
       'Full history and reports',
-      'Smart-home and sensor integrations',
-      'Food inventory and custom Séance phrases',
+      'Food inventory for every fridge and freezer',
+      { text: 'Smart-home and sensor integrations', planned: true },
+      { text: 'Custom Séance phrases', planned: true },
     ],
     cta: { to: '/signup', label: 'Start free, upgrade later' },
   },
@@ -53,7 +57,11 @@ const TIERS: readonly Tier[] = [
     who: 'Households and guardians',
     price: '≈ $4',
     unit: 'per month',
-    features: ['Plus for up to 6 people', 'Dependents and their guardians', 'Guardian escalation'],
+    features: [
+      { text: 'Plus for up to 6 people', planned: true },
+      'Dependents and their guardians',
+      'Guardian escalation',
+    ],
     cta: { to: '/signup', label: 'Start free, upgrade later' },
   },
 ];
@@ -90,7 +98,11 @@ const ORG_TIERS: readonly Tier[] = [
     who: 'Developers and partners',
     price: 'Usage',
     unit: 'API by volume; open data free',
-    features: ['Public crowd cells, k ≥ 5', 'Lit places and the forecast', 'Webhooks for partners'],
+    features: [
+      'Public crowd cells, k ≥ 5',
+      'Lit places and the forecast',
+      { text: 'Webhooks for partners', planned: true },
+    ],
     cta: { to: '/organisations#api', label: 'About the API' },
   },
 ];
@@ -124,14 +136,25 @@ function TierCard({ t, delay }: { t: Tier; delay: number }): ReactNode {
           <span className="text-caption text-secondary">{t.unit}</span>
         </div>
         <ul className="relative m-0 flex flex-1 list-none flex-col gap-3 p-0 text-label text-primary">
-          {t.features.map((f) => (
-            <li key={f} className="flex items-start gap-3">
-              <span className="mt-1 flex-none text-emphasis">
-                <Icon name="check" size={18} />
-              </span>
-              <span className="min-w-0">{f}</span>
-            </li>
-          ))}
+          {t.features.map((f) => {
+            const text = typeof f === 'string' ? f : f.text;
+            const planned = typeof f !== 'string';
+            return (
+              <li key={text} className="flex items-start gap-3">
+                <span className={cx('mt-1 flex-none', planned ? 'text-muted' : 'text-emphasis')}>
+                  <Icon name={planned ? 'clock' : 'check'} size={18} />
+                </span>
+                <span className={cx('min-w-0', planned && 'text-secondary')}>
+                  {text}
+                  {planned ? (
+                    <span className="ml-2 inline-block rounded-full border border-hairline px-2 align-middle text-caption text-secondary">
+                      Planned
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
         </ul>
         <CtaLink
           to={t.cta.to}
@@ -164,7 +187,7 @@ const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'Is the code open?',
-    a: 'Yes. The client and the sensing core are open source under Apache-2.0, and the medicine table and its provenance are public.',
+    a: 'Yes. The client, the core and the services are open source under Apache-2.0, and so is the pipeline a medicine table must pass. No table has been signed by a pharmacist yet, so the app gives no medicine clocks.',
   },
 ];
 
@@ -223,6 +246,10 @@ export function PricingPage(): ReactNode {
             <TierCard key={t.name} t={t} delay={i * 90} />
           ))}
         </div>
+        <p className="m-0 mt-8 text-caption text-secondary">
+          Paid tiers are not on sale yet. Everything in Free works today; lines marked Planned are
+          not built.
+        </p>
       </section>
 
       <section className="border-y border-hairline bg-surface-1 py-20 sm:py-28">
@@ -239,7 +266,7 @@ export function PricingPage(): ReactNode {
           </div>
           <p className="m-0 mt-8 text-caption text-secondary">
             All prices are indicative and set regionally by purchasing-power parity. Paid tiers are
-            not yet on sale; everything in Free is available today.
+            not on sale yet; lines marked Planned are not built.
           </p>
         </div>
       </section>

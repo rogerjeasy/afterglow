@@ -124,6 +124,31 @@ const SOURCES: readonly { name: string; use: string; where: string }[] = [
   { name: 'Afterglow crowd cells', use: 'Mains verdicts from phones, k ≥ 5', where: 'Lantern' },
 ];
 
+/** Prior work Afterglow builds on, credited by name (the README carries the full citations). */
+const PRIOR: readonly { idea: string; before: string; adds: string }[] = [
+  {
+    idea: 'Phones as outage sensors',
+    before:
+      'GridWatch (Klugman et al., HotMobile 2014) noticed a phone’s charger power change and confirmed it with other phones; later taken to Accra, Ghana. US patent 10,566,835.',
+    adds: 'Cells only at five or more devices, enforced twice; disagreement gives “unknown”; people who cannot be sensed can still report.',
+  },
+  {
+    idea: 'Neighbours reporting their area',
+    before: 'ESP (EskomSePush) in South Africa: schedules and one-tap check-ins per area.',
+    adds: 'Works offline, and answers what to do in the dark: food, tonight’s temperature, people, the generator.',
+  },
+  {
+    idea: 'Data from a screen to a camera',
+    before: 'HiLight (Li et al., MobiSys 2015), and flashlight Morse apps.',
+    adds: 'Eleven safety messages with error correction that refuses rather than guesses, tested over all 2,816 messages.',
+  },
+  {
+    idea: 'Food rules for outages',
+    before: 'USDA FoodKeeper and USDA FSIS: 4 hours for a fridge, 48 for a full freezer.',
+    adds: 'A live countdown for your own appliance, a verdict per food, and a check against your own thermometer.',
+  },
+];
+
 export function SciencePage(): ReactNode {
   return (
     <>
@@ -148,6 +173,7 @@ export function SciencePage(): ReactNode {
           { id: 'luminance', label: 'Luminance budget' },
           { id: 'privacy', label: 'Privacy' },
           { id: 'sources', label: 'Data sources' },
+          { id: 'prior', label: 'Prior work' },
         ]}
       />
 
@@ -279,9 +305,49 @@ export function SciencePage(): ReactNode {
         </Reveal>
       </section>
 
+      <section id="prior" className="container-x scroll-mt-36 pb-20 sm:pb-28">
+        <SectionHead
+          eyebrow="Prior work"
+          icon="book"
+          title="Built on other people’s good ideas."
+          lead="Most parts of Afterglow were done before, and we credit them. What we have not found elsewhere is the whole: a food clock for your own fridge you can check with a thermometer, tonight’s indoor temperature for a home without power, and a screen whose brightness is a tested budget, offline in one app."
+        />
+        <Reveal className="mt-12">
+          <div className="overflow-x-auto rounded-[24px] border border-hairline bg-surface-1">
+            <table className="w-full min-w-[720px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-hairline text-caption text-secondary">
+                  <th className="px-5 py-4 font-bold">Idea</th>
+                  <th className="px-5 py-4 font-bold">Done before by</th>
+                  <th className="px-5 py-4 font-bold">What Afterglow adds</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PRIOR.map((p) => (
+                  <tr key={p.idea} className="border-b border-hairline align-top last:border-b-0">
+                    <td className="px-5 py-4 font-display text-[20px] text-emphasis">{p.idea}</td>
+                    <td className="px-5 py-4 text-label text-primary">{p.before}</td>
+                    <td className="px-5 py-4 text-label text-secondary">{p.adds}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="m-0 mt-6 text-label text-secondary">
+            Do not take our numbers on trust: the app’s Field checks put your own thermometer
+            readings next to the model.
+          </p>
+          <div className="mt-4">
+            <CtaLink to="/app/field" variant="secondary" icon="arrowRight">
+              Open field checks
+            </CtaLink>
+          </div>
+        </Reveal>
+      </section>
+
       <CtaBand
         title="Open where it matters."
-        lead="The client and the sensing core are open source under Apache-2.0, and the medicine table and its provenance are public."
+        lead="The client, the core and the services are open source under Apache-2.0, and so is the pipeline a medicine table must pass. No pharmacist has signed a table yet, so the app gives no medicine clocks."
       >
         <a
           href="https://github.com/rogerjeasy/afterglow"

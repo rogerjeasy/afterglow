@@ -5,7 +5,14 @@ import { Link } from '../router';
 import { Icon, type IconName } from '../ui/icons';
 import { CtaLink, Eyebrow, Reveal, SectionHead, cx } from '../ui/kit';
 import { setSiteMode, useSiteMode } from './SiteLayout';
-import { FlashCode, HeroPhone, MiniCandles, MiniGraveyard, MiniMap, MiniStones } from './visuals';
+import {
+  FlashCode,
+  FridgeCheckVisual,
+  HeroPhone,
+  MiniCandles,
+  MiniGraveyard,
+  MiniMap,
+} from './visuals';
 
 /**
  * The homepage (web-experience WX-04). Five beats and no repeats: what this is, the
@@ -38,9 +45,9 @@ function Hero(): ReactNode {
             The only app you can read when <span className="text-ember italic">the grid dies.</span>
           </h1>
           <p className="m-0 max-w-[54ch] animate-rise text-lead text-secondary [animation-delay:160ms]">
-            Afterglow is a blackout companion. It senses the outage, counts down what is still safe
-            in your fridge and medicine cabinet, hears from your people without a network, and stays
-            readable in pitch dark without stealing your night vision.
+            Afterglow is a blackout companion. It counts down what is still safe in your own fridge,
+            forecasts how cold your home will get tonight, hears from your people without a network,
+            and stays readable in pitch dark without stealing your night vision.
           </p>
           <div className="flex w-full animate-rise flex-col gap-3 [animation-delay:240ms] sm:w-auto sm:flex-row">
             <CtaLink to="/app?tour=1" icon="arrowRight">
@@ -142,23 +149,23 @@ function Answers(): ReactNode {
         <div className="mt-12 grid gap-4 lg:grid-cols-6">
           <Reveal className="lg:col-span-4">
             <Answer
-              q="Is it just my house?"
-              tab="Lantern"
-              title="Your neighbourhood, lit or dark, live."
-              body="Phones and people report, and a ~1 km cell appears only when at least five devices back it, so no house is ever singled out."
+              q="Can I still eat the chicken?"
+              tab="Cold"
+              title="A tombstone for every fridge."
+              body="USDA rules for 661 foods and a model of your own fridge: the epitaph is the time left. Have a thermometer? Check the model against it, and what you measure can only make the clock shorter."
               big
             >
-              <MiniMap className="w-full max-w-[280px] flex-none" />
+              <FridgeCheckVisual className="max-w-[340px] flex-none" />
             </Answer>
           </Reveal>
           <Reveal delay={80} className="lg:col-span-2">
             <Answer
-              q="Can I still eat the chicken?"
-              tab="Cold"
-              title="A tombstone for every fridge."
-              body="USDA rules and a model of your own fridge. The epitaph is the time left."
+              q="How cold will it get tonight?"
+              tab="Plan"
+              title="The Graveyard Shift."
+              body="Building physics and the outdoor temperature give a band, with a headstone where your home crosses the danger line."
             >
-              <MiniStones className="mt-auto" />
+              <MiniGraveyard className="mt-auto" />
             </Answer>
           </Reveal>
           <Reveal className="lg:col-span-2">
@@ -173,12 +180,12 @@ function Answers(): ReactNode {
           </Reveal>
           <Reveal delay={80} className="lg:col-span-2">
             <Answer
-              q="How cold will it get tonight?"
-              tab="Plan"
-              title="The Graveyard Shift."
-              body="Building physics and the forecast give a band, with a headstone where your home crosses the danger line."
+              q="Is it just my house?"
+              tab="Lantern"
+              title="Your neighbourhood, lit or dark."
+              body="Phones and people report, and a ~1 km cell appears only when at least five devices back it, so no house is ever singled out."
             >
-              <MiniGraveyard className="mt-auto" />
+              <MiniMap className="mt-auto w-full max-w-[220px]" />
             </Answer>
           </Reveal>
           <Reveal delay={160} className="lg:col-span-2">

@@ -504,8 +504,8 @@ const GROUPS: readonly {
         id: 'light-and-offline',
         eyebrow: 'Light, languages, offline',
         icon: 'flashlight',
-        title: 'A light, in your language, with no network.',
-        body: 'Turn the phone into a dim red light that keeps your night vision. Afterglow installs like an app, opens with no connection, and speaks English, French, Spanish and Portuguese.',
+        title: 'A light, and the whole app, with no network.',
+        body: 'Turn the phone into a dim red light that keeps your night vision. Afterglow installs like an app and opens with no connection. It is written in English; French, Spanish and Portuguese drafts cover the main labels so far and wait for review by native speakers.',
         bullets: [
           'Lantern light mode with a confirmed white-light escape hatch',
           'The whole app is cached on install and works offline',
@@ -594,7 +594,7 @@ export function FeaturesPage(): ReactNode {
             Everything you need <span className="text-ember italic">in the dark.</span>
           </>
         }
-        lead="Grid sensing, a crowd map, food and medicine clocks, hours of safety, energy planning, and a way to reach your people with light. Safety features are free, forever."
+        lead="Food clocks you can check with a thermometer, tonight's indoor temperature, a way to reach your people with light, a crowd map, energy planning, and refusals where a guess would be unsafe. Safety features are free, forever."
       >
         <CtaLink to="/app?tour=1" icon="arrowRight">
           Take the tour

@@ -45,7 +45,7 @@ const NIGHT: readonly { when: string; title: string; body: string; icon: IconNam
     when: 'The moment it goes',
     title: 'Lights out',
     icon: 'boltOff',
-    body: 'The screen fades to black and lands in Night mode. One long buzz. Grid Sense has two senses agreeing, and the clocks start for your fridge, freezer, medicines and home.',
+    body: 'The screen fades to black and lands in Night mode. One long buzz. Grid Sense has two senses agreeing, and the clocks start for your fridge, freezer and home. A medicine gets a clock only from a pharmacist-signed table.',
   },
   {
     when: 'During',
