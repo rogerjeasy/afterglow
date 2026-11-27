@@ -1,5 +1,5 @@
 # Files the agent must never read (AGENTS.md: "No secrets in code, logs, or prompts").
-# Same syntax as .gitignore. To adopt: cp docs/kiro/kiroignore.proposed .kiroignore
+# Same syntax as .gitignore (kiro.dev/docs/kiroignore). A human added it: Kiro denies agent writes to this file.
 
 # Environment files and secrets
 .env

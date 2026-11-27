@@ -8,12 +8,10 @@ Afterglow is the blackout companion for people who live with unreliable electric
 
 Built for Kiroween 2026, Costume Contest category. In this product the spooky costume is always a measurement: candle = energy store, tombstone = cold compartment, ghost = roster member not yet heard from, lantern map = where mains exists, ward = refused unsafe action. A metaphor that encodes no data gets cut.
 
-The full specification, including personas, the 20 feature modules and non-goals, is here:
-
-#[[file:docs/afterglow-project-description.md]]
+The full specification (personas, every feature module, surfaces and non-goals) is in `docs/afterglow-project-description.md`; the `product-reference` steering file loads it when a request is about product scope.
 
 ## Product family
-One shared core, design system, privacy model and data platform behind five products: Afterglow (consumer app: Android, iOS, web PWA), Voice (USSD/SMS/IVR), Business (cold-chain compliance), Beacon (institution dashboard), Platform (API, SDKs, open data).
+One shared core, design system and privacy model behind five surfaces. Built today: Afterglow (web PWA), Voice (USSD and SMS endpoints), Business and Beacon (consoles in the app), and the public API. Planned: native Android and iOS, IVR, SDKs and open-data exports.
 
 ## Principles to apply when making product decisions
 1. Deterministic core. Every verdict comes from deterministic code with citable inputs. AI proposes, translates or audits; it never decides.

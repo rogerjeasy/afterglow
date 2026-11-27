@@ -5,6 +5,8 @@ This file is the always-included contract for every agent and contributor workin
 ## The product in one line
 Afterglow is the blackout companion for people with unreliable electricity: "the only app you can read when the grid dies." Built for Kiroween 2026 (Costume Contest), where every spooky element is a measurement.
 
+**How it was built.** In Kiro (IDE and CLI) from 2026-11-03 to 2026-11-25; in Claude Code from 2026-11-26, after the Kiro credits ran out. Both work from this file, `.kiro/steering/` and the specs, and the same hooks' rules apply. `docs/kiro/session-evidence.md` says which is which.
+
 ## The five invariants (never violate)
 
 1. **Deterministic core.** Every verdict (mains state, discard time, medicine budget, hours of safety, restoration estimate, map cell) comes from pure deterministic code with citable inputs. AI may propose, translate, phrase, or audit — it is **never on the verdict path**. See `.kiro/steering/fail-closed.md`.
@@ -30,6 +32,5 @@ Afterglow is the blackout companion for people with unreliable electricity: "the
 
 - Allowed by default: `pnpm test*`, `pnpm lint*`, `pnpm typecheck*`, read-only git.
 - **Never** run `npm publish`, `eas submit`, `terraform apply`, or anything that sends SMS, calls, or push to real users. Publishing and deploying are human steps.
-- **Scoped exception (2026-11-26, decided by the founder):** the agent may run `terraform apply` for `infra/bootstrap` and `infra/regional` in AWS account 503002144480, and only after showing the founder the plan (resources and cost) and getting a yes for that plan. Everything else above still stands.
-- **Standing rule for code-only deploys (2026-11-26, decided by the founder):** a plan whose only changes are the code (`source_code_hash`) of our own Lambda functions may be applied without asking. Any plan that adds, removes or replaces a resource, or changes IAM, tables, data or anything else, is shown to the founder and applied only on a yes.
+- **Who applies infrastructure (2026-11-26, decided by the founder):** Kiro agents never run `terraform apply`; the `deny-publish-deploy` hook blocks it. An agent prepares the plan and shows the founder its resources and cost; the founder applies it, or explicitly lets an assistant apply that one plan for `infra/bootstrap` or `infra/regional`. A plan whose only change is the code (`source_code_hash`) of our own Lambda functions is the one standing exception. Anything that adds, removes or replaces a resource, or changes IAM, tables or data, needs a yes for that plan.
 - No secrets in code, logs, or prompts. Files matched by `.kiroignore` (env files, keys, raw audio) are never read.
