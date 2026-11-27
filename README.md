@@ -164,7 +164,7 @@ Every check below passes on the current commit (2026-11-27):
 | Suite | Tests |
 |---|---|
 | TypeScript unit and property tests (`pnpm test`, 12 packages) | 858 |
-| Playwright browser tests, including the pixel scan of every screen in three modes and two colours | 239 |
+| Playwright browser tests, including the pixel scan of every screen in three modes and two colours | 242 |
 | Python property tests (`afterglow-crew`, Hypothesis) | 95 |
 | Terraform tests (offline plans of the stacks and modules) | 69 |
 
