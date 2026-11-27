@@ -71,7 +71,7 @@ Surfaces, hairlines and the ember glow are identical in all three modes; only th
 - Onboarding, Business and Beacon default to Ember; Beacon additionally offers a **Daylight operations theme** (section 4.5), the only non-black surface in the product, because operators work in lit control rooms. The consumer app never offers it.
 
 ### 3.4 Amber alternative (protanopia)
-About one in a hundred men perceives red as very dark. For them, every mode has an **Amber** variant at identical luminance tiers (`#784300` at 8%, `#864B00` at 10%, `#AE6100` at 17.6%). Amber bleaches rhodopsin a little more than red; the trade is stated in Settings and the default remains red.
+About one in a hundred men perceives red as very dark. For them, every mode has an **Amber** variant at identical luminance tiers (`#774300` at 7.9%, `#854B00` at 10.0%, `#AE6100` at 17.5%), never above the mode's red ceiling. Amber bleaches rhodopsin a little more than red; the trade is stated in Settings (You, Colour) and the default remains red.
 
 ### 3.5 What this means for judges
 The app is readable at 1 lux because its design is measured in luminance, and it is WCAG-conformant because Dusk and Ember exist. The write-up and the trust centre say exactly this, with the numbers.
@@ -122,7 +122,7 @@ Hierarchy note: the Dusk ceiling admits exactly one text shade that reaches 3:1 
 Rules: components consume semantic tokens only; raw hex never appears outside `theme.night.json`; a lint rule and the Playwright luminance scan enforce the ceiling per mode; every token file is the single source for native, web, print and the Figma library (Figma variables → tokens via the Figma Power).
 
 ### 4.3 Amber ramp (same luminance stops)
-`#000000 · #0A0600 · #140C00 · #1E1100 · #2A1700 · #3B2100 (2%) · #553000 (4%) · #683A00 (6%) · #784300 (8%) · #864B00 (10%) · #AE6100 (17.6%) · #B86700 (18.9%)`.
+`#000000 · #0A0600 · #140C00 · #1E1100 · #2A1700 · #3B2100 (2%) · #553000 (4%) · #683A00 (6%) · #774300 (7.9%) · #854B00 (10.0%) · #AE6100 (17.5%) · #B86700 (19.9%)`. Each red step maps to one of these in `theme.night.json` (`amberFor`), and no amber text token is brighter than its mode's red ceiling (night-shell NS-18).
 
 ### 4.4 Data colour (charts)
 Single-hue sequential ramps from the base ramp (five stops), pattern fills for categories (hatch, dot, dash), never hue-coded series; the "coming back" state is the glow token pulsing; satellite confirmation is a hairline badge, not a colour.

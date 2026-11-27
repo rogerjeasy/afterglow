@@ -6,6 +6,7 @@ import { HistorySection } from '../history/HistorySection';
 import { TrustCentre } from '../history/TrustCentre';
 import { useNow } from '../household/useHousehold';
 import { LanguagePicker } from '../i18n/LanguagePicker';
+import { HueSettings } from '../night-shell/HueSettings';
 import { Button, ChoiceChip, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
 import { NotifySettings } from '../notify/NotifySettings';
@@ -190,6 +191,7 @@ export function You({
             <HistorySection />
             <NotifySettings />
             <LanguagePicker />
+            <HueSettings />
             <EyesFreeSettings />
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useT } from '../i18n/i18n';
 import { Button, ChoiceChip, Notice } from '../night-shell/controls';
-import { token } from '../night-shell/theme';
+import { token, useHue } from '../night-shell/theme';
 
 /**
  * Lantern mode (product description 7.2): the phone as a light.
@@ -86,6 +86,9 @@ function minutesLeft(ms: number): string {
 export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
   useWakeLock();
   const tr = useT();
+  // The light follows the chosen colour (red, or amber for red colour blindness).
+  const hue = useHue();
+  const colour = hue === 'amber' ? 'amber' : 'red';
   const [kind, setKind] = useState<Kind>('red');
   const [level, setLevel] = useState(1);
   const [confirm, setConfirm] = useState<'white' | 'sos' | null>(null);
@@ -152,7 +155,7 @@ export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
         ? 'SOS: flashing in Morse'
         : kind === 'beacon'
           ? 'Beacon: steady light'
-          : `Red light, ${tr(LEVEL_KEY[level] ?? 'light.bright')}`;
+          : `${hue === 'amber' ? 'Amber' : 'Red'} light, ${tr(LEVEL_KEY[level] ?? 'light.bright')}`;
 
   return (
     <dialog
@@ -217,7 +220,7 @@ export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
           <>
             <Notice>
               White light for 30 seconds. It ends your night vision: afterwards your eyes need about
-              20 minutes to see well in the dark again. Then it turns red by itself.
+              20 minutes to see well in the dark again. Then it turns {colour} by itself.
             </Notice>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button
@@ -230,7 +233,7 @@ export function LightMode({ onClose }: { onClose: () => void }): ReactNode {
                 White for 30 seconds
               </Button>
               <Button variant="ghost" onClick={() => setConfirm(null)}>
-                Keep red
+                Keep {colour}
               </Button>
             </div>
           </>

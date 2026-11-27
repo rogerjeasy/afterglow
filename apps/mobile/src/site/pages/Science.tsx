@@ -221,7 +221,7 @@ export function SciencePage(): ReactNode {
             <p className="m-0 mt-4 text-caption text-secondary">
               Red on black under the Night ceiling cannot reach WCAG 4.5:1, so Night trades contrast
               for dark adaptation, and Ember is always one tap away. Amber is the variant for
-              protanopia, at the same luminance tiers.
+              protanopia, at the same luminance tiers: switch to it in the app under You, Colour.
             </p>
           </Reveal>
         </div>

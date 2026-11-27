@@ -27,7 +27,7 @@ export function parseHex(hex: string): Rgb {
 }
 
 /** Linearise one 0..255 channel per the WCAG sRGB formula. */
-function linearise(channel8: number): number {
+export function linearise(channel8: number): number {
   const c = channel8 / 255;
   return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }

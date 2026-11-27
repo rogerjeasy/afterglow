@@ -1,11 +1,19 @@
-import { type LuminanceMode, MODES, scanRgba } from '@afterglow/design-system';
+import {
+  type Hue,
+  type LuminanceMode,
+  MODES,
+  resolveToken,
+  scanRgba,
+} from '@afterglow/design-system';
 import { type Page, expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
 
 /**
  * NS-10 / NS-11: every route, in every mode and in the outage state, painted
  * by a real browser, must stay under the mode's luminance ceiling and be red.
- * The judging is the pure `scanRgba`; this file only drives the browser.
+ * NS-21: the same routes, modes and ceilings in the amber variant, which must
+ * stay amber-family. The judging is the pure `scanRgba`; this file only drives
+ * the browser.
  */
 
 const MIN = 60_000;
@@ -47,17 +55,17 @@ async function setMode(page: Page, mode: LuminanceMode): Promise<void> {
   throw new Error(`could not reach mode ${mode}`);
 }
 
-async function scan(page: Page, mode: LuminanceMode, name: string): Promise<void> {
+async function scan(page: Page, mode: LuminanceMode, name: string, hue: Hue): Promise<void> {
   // Reveal-on-scroll content is hidden until scrolled to; show it all so the scan sees it.
   await page.evaluate(() => {
     for (const e of document.querySelectorAll('.reveal')) e.classList.add('is-in');
   });
   await page.waitForTimeout(900);
   const png = PNG.sync.read(await page.screenshot({ fullPage: true, animations: 'disabled' }));
-  const result = scanRgba(png.data, png.width, png.height, mode);
+  const result = scanRgba(png.data, png.width, png.height, mode, 5, hue);
   expect(
     result,
-    `${name} in ${mode}: ${result.offenders} offending pixels of ${result.pixels}, brightest red ${result.maxRed}. First: ${JSON.stringify(result.examples)}`,
+    `${name} in ${mode} (${hue}): ${result.offenders} offending pixels of ${result.pixels}, brightest red ${result.maxRed}. First: ${JSON.stringify(result.examples)}`,
   ).toMatchObject({ ok: true });
 }
 
@@ -96,20 +104,46 @@ const SCENARIOS: readonly Scenario[] = [
   { name: 'sign up', url: '/signup' },
 ];
 
+async function run(page: Page, scenario: Scenario, mode: LuminanceMode, hue: Hue): Promise<void> {
+  if (scenario.seed) {
+    const events = seededEvents(Date.now());
+    await page.addInitScript((json) => {
+      window.localStorage.setItem('afterglow.household.events.v1', json);
+      window.localStorage.setItem('afterglow.household.epoch.v1', 'dev-e2e');
+    }, JSON.stringify(events));
+  }
+  if (hue === 'amber') {
+    await page.addInitScript(() => window.localStorage.setItem('afterglow.hue.v1', 'amber'));
+  }
+  await page.goto(scenario.url);
+  await page.waitForSelector('main');
+  await setMode(page, mode);
+  if (hue === 'amber') {
+    // Not vacuous: the page really is painting the amber tokens.
+    const live = await page.evaluate(() => ({
+      hue: document.documentElement.dataset.hue,
+      primary: getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-primary')
+        .trim()
+        .toLowerCase(),
+    }));
+    expect(live).toEqual({
+      hue: 'amber',
+      primary: resolveToken(mode, 'text.primary', 'amber').toLowerCase(),
+    });
+  }
+  await scan(page, mode, scenario.name, hue);
+}
+
 for (const scenario of SCENARIOS) {
   for (const mode of MODES) {
     test(`NS-10/11 ${scenario.name} stays within the ${mode} ceiling and red`, async ({ page }) => {
-      if (scenario.seed) {
-        const events = seededEvents(Date.now());
-        await page.addInitScript((json) => {
-          window.localStorage.setItem('afterglow.household.events.v1', json);
-          window.localStorage.setItem('afterglow.household.epoch.v1', 'dev-e2e');
-        }, JSON.stringify(events));
-      }
-      await page.goto(scenario.url);
-      await page.waitForSelector('main');
-      await setMode(page, mode);
-      await scan(page, mode, scenario.name);
+      await run(page, scenario, mode, 'red');
+    });
+    test(`NS-21 amber ${scenario.name} stays within the ${mode} ceiling and amber`, async ({
+      page,
+    }) => {
+      await run(page, scenario, mode, 'amber');
     });
   }
 }
@@ -135,4 +169,32 @@ test('the scan really sees a bright pixel (it is not vacuous)', async ({ page })
   const g = scanRgba(green.data, green.width, green.height, 'night');
   expect(g.ok).toBe(false);
   expect(g.examples[0]?.reason).toBe('not red');
+});
+
+test('NS-21 the amber scan really sees a bright pixel and a green one', async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem('afterglow.hue.v1', 'amber'));
+  await page.goto('/#/');
+  await page.waitForSelector('main');
+  await setMode(page, 'night');
+  const shoot = async (background: string) => {
+    await page.evaluate((bg) => {
+      let d = document.getElementById('probe');
+      if (!d) {
+        d = document.createElement('div');
+        d.id = 'probe';
+        d.style.cssText = 'position:fixed;top:0;left:0;width:40px;height:40px;z-index:99';
+        document.body.appendChild(d);
+      }
+      d.style.background = bg;
+    }, background);
+    const png = PNG.sync.read(await page.screenshot({ animations: 'disabled' }));
+    return scanRgba(png.data, png.width, png.height, 'night', 5, 'amber');
+  };
+  // #784300 is one red unit above the Night amber ceiling token: too bright.
+  const bright = await shoot('#784300');
+  expect(bright.ok).toBe(false);
+  expect(bright.examples[0]?.reason).toBe('too bright');
+  const green = await shoot('#004000');
+  expect(green.ok).toBe(false);
+  expect(green.examples[0]?.reason).toBe('not amber');
 });

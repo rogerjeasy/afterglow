@@ -499,8 +499,8 @@ function MeetWisp(): ReactNode {
                 A ghost who is scared of bright screens.
               </h2>
               <p className="m-0 max-w-[56ch] text-lead text-secondary">
-                Wisp turns off the lights and walks you through one night, tab by tab.
-                Wisp has jokes, but never numbers of its own: every figure it says is the app’s.
+                Wisp turns off the lights and walks you through one night, tab by tab. Wisp has
+                jokes, but never numbers of its own: every figure it says is the app’s.
               </p>
             </div>
             <div className="flex flex-col gap-3">

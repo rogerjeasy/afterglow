@@ -1,7 +1,8 @@
 {
-  "$description": "Afterglow Night Shell tokens. Single source of colour for native, web, print and Figma. Values are from docs/afterglow-design.md section 4. Red-only (G=B=0) by construction; raw hex appears only here.",
+  "$description": "Afterglow Night Shell tokens. Single source of colour for native, web, print and Figma. Values are from docs/afterglow-design.md section 4. Red-only (G=B=0) by construction, with an amber variant for protanopia at the same luminance ceilings; raw hex appears only here.",
   "meta": {
     "hue": "red",
+    "hues": ["red", "amber"],
     "background": "#000000",
     "modes": ["night", "dusk", "ember"]
   },
@@ -24,18 +25,37 @@
     "red.1000": "#FF0000"
   },
   "amberRamp": {
-    "red.000": "#000000",
-    "red.005": "#0A0600",
-    "red.010": "#140C00",
-    "red.020": "#1E1100",
-    "red.050": "#2A1700",
-    "red.100": "#3B2100",
-    "red.200": "#553000",
-    "red.400": "#683A00",
-    "red.700": "#784300",
-    "red.800": "#864B00",
-    "red.900": "#AE6100",
-    "red.950": "#B86700"
+    "amber.000": "#000000",
+    "amber.005": "#0A0600",
+    "amber.010": "#140C00",
+    "amber.020": "#1E1100",
+    "amber.050": "#2A1700",
+    "amber.200": "#3B2100",
+    "amber.400": "#553000",
+    "amber.600": "#683A00",
+    "amber.700": "#774300",
+    "amber.800": "#854B00",
+    "amber.900": "#AE6100",
+    "amber.950": "#B86700"
+  },
+  "$amberForDescription": "The protanopia variant (design 3.4 and 4.3). Each red step maps to an amber step, and no amber text token is brighter than its mode's text ceiling (NS-18). From red.200 up the amber step has the nearest luminance; the amber ramp has fewer dark steps, so the surface tiers keep their order instead (each under 1.2%) and red.100 shares amber.050 with red.050. Steps the amber ramp lacks: red.300 takes amber.400, red.500 and red.600 take amber.600, red.1000 takes amber.950. amber.700 and amber.800 are one red unit under #784300 and #864B00, which sat just over the Night and Dusk ceilings.",
+  "amberFor": {
+    "red.000": "amber.000",
+    "red.005": "amber.005",
+    "red.010": "amber.010",
+    "red.020": "amber.020",
+    "red.050": "amber.050",
+    "red.100": "amber.050",
+    "red.200": "amber.200",
+    "red.300": "amber.400",
+    "red.400": "amber.400",
+    "red.500": "amber.600",
+    "red.600": "amber.600",
+    "red.700": "amber.700",
+    "red.800": "amber.800",
+    "red.900": "amber.900",
+    "red.950": "amber.950",
+    "red.1000": "amber.950"
   },
   "textCeiling": {
     "night": "red.700",

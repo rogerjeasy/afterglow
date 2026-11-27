@@ -64,3 +64,14 @@ Tasks map to requirement ids. Property tests are the definition of done (`tech.m
 - [x] Remove the guide's bob (NS-17)
 - [x] Browser tests: NS-14 identifiers, NS-15 height budgets, NS-16 costume, NS-17 animations; update tests that open folds
 - Results: 3 pure tests (`src/night-shell/designPass.property.test.ts`) and 6 browser tests (`e2e/design-pass.e2e.ts`). NS-14 found a model id (`foodkeeper-v128`) in Cold's explanatory paragraph, now behind its source control. Four older browser tests asserted visible source labels; they now open the control and check the same labels, and that the closed control still names a default.
+
+## Amber variant (NS-18..NS-22)
+Added 2026-11-27 in Claude Code (Kiro credits exhausted).
+- [x] `theme.night.json`: amber ramp keyed by the luminance tier it matches (`amber.000` .. `amber.950`) and an `amberFor` map from every red step; `amber.700` and `amber.800` set one red unit under the old `#784300` / `#864B00`, which sat just over the Night and Dusk ceilings (NS-18, NS-19)
+- [x] `tokens.ts`: `Hue`, `HUES`, `amberFor`, `ceilingHex`, and `resolveToken(mode, token, hue)` (NS-18)
+- [x] Property tests NS-18..NS-21 in `packages/design-system/src/amber.property.test.ts`
+- [x] `pixelScan.ts`: `scanRgba(..., hue)` and `judgePixel(..., hue)`; amber is judged by relative luminance against the same ceilings and by an amber-family hue rule (NS-21)
+- [x] App: the hue is remembered in `afterglow.hue.v1`, read when `night-shell/theme.ts` loads so `main.tsx` paints it before the first render, and `applyMode` sets the tokens and `<html data-hue>`; components are unchanged (NS-22)
+- [x] "Colour" setting on You (`night-shell/HueSettings.tsx`); the light's labels follow the colour; one line on the Science page says where to switch (NS-22)
+- [x] Browser tests: every pixel-scan route in amber in all three modes, an amber probe, and the persistence and first-frame test `e2e/hue.e2e.ts` (NS-21, NS-22)
+- [x] Design doc 3.4 and 4.3 updated with the corrected amber values

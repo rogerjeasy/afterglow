@@ -15,7 +15,8 @@ import '@fontsource-variable/fraunces/opsz.css';
 import './styles/tailwind.css';
 
 // Resolve the initial mode's tokens before first paint so there is never a
-// flash of unstyled (or light) content.
+// flash of unstyled (or light) content. theme.ts has already read the saved hue
+// (red, or amber; NS-22), so an amber choice paints amber from the first frame.
 applyMode('ember');
 // `#/cold`, `?tour=1` and other links from before real paths keep working.
 redirectLegacy();

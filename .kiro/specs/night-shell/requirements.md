@@ -168,8 +168,57 @@ The screens were correct but read like an engineering console: model ids and sen
 
 *Browser test:* `NS-17 no infinite animation on any screen or in the tour`. *Source:* `night-vision.md` rule 7. This removed the guide's bob (guide design §5 was written against the design doc's ambient budget and missed the steering rule).
 
+## Amber variant (NS-18..NS-22)
+
+Added 2026-11-27 in Claude Code (Kiro credits exhausted).
+
+Design 3.4 promises an Amber variant for protanopia (about one man in a hundred sees deep red as very dark), at the same luminance tiers, chosen in Settings, with red the default. The ramp existed in `theme.night.json` but nothing resolved to it and nothing let a person choose it. These requirements make the promise true.
+
+### NS-18 — Amber stays under the same ceilings
+**User story:** As a person with protanopia, I want a colour I can read that costs no more of the luminance budget than red does.
+
+**Acceptance criteria (EARS):**
+- WHILE the amber hue is chosen THE SYSTEM SHALL resolve every semantic token to an amber ramp colour whose relative luminance is at or under the active mode's text ceiling (the red ceiling: Night `red.700`, Dusk `red.800`, Ember `red.1000`).
+- THE SYSTEM SHALL keep the mapping from each red step to its amber stand-in in `theme.night.json` (`amberFor`), and raw amber hex only there.
+
+*Properties:* `NS-18 amber: no amber text token exceeds its mode luminance ceiling`, `NS-18 amber: no amber token of any kind exceeds its mode ceiling`.
+
+### NS-19 — Amber is one hue and covers every token
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL give every red ramp step an amber stand-in, so every semantic token in every mode resolves into the amber ramp, and the background stays `#000000`.
+- THE SYSTEM SHALL keep every amber ramp colour at blue 0 and green between 0.5 and 0.6 of red, rising in luminance step by step.
+
+*Properties:* `NS-19 amber: every red step has an amber stand-in, and every token resolves into the amber ramp`; `NS-19 amber: the amber ramp is one hue (B = 0, G/R between 0.5 and 0.6) and rises in luminance`.
+
+### NS-20 — Amber keeps the tiers and the WCAG claims
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL keep the order of every pair of semantic tokens by luminance the same in amber as in red, in every mode.
+- From `red.200` up, THE SYSTEM SHALL keep each amber stand-in within 7% of the red step's luminance.
+- WHERE a red text token meets the documented WCAG level (Dusk 3:1, Ember 4.5:1) THE SYSTEM SHALL ensure its amber token meets it too.
+
+*Properties:* `NS-20 amber: the tiers keep their order ...`, `NS-20 amber: from red.200 up ...`, `NS-20 amber: wherever a red token meets the documented WCAG level ...`.
+
+### NS-21 — The pixel scan covers amber
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL scan every route in every mode in amber, against the same ceilings, measured as relative luminance (amber carries green, so the red channel alone does not measure it).
+- WHILE scanning amber THE SYSTEM SHALL fail any pixel greener than the amber ramp's own hue (allowing the noise floor of 2) or with `R < 3 * B` above the noise floor, and SHALL pass pure red at or under the ceiling.
+- The red scan (NS-11) SHALL stay as it is: it rejects amber, which is not red-dominant.
+
+*Properties:* `NS-21 amber scan: ...` (4) in `packages/design-system/src/amber.property.test.ts`. *Browser tests:* `NS-21 amber <route> stays within the <mode> ceiling and amber` (25 routes x 3 modes) and `NS-21 the amber scan really sees a bright pixel and a green one`, in `apps/mobile/e2e/pixel-scan.e2e.ts`.
+
+### NS-22 — The person chooses the colour, and it holds from the first frame
+**User story:** As a person with protanopia, I want to choose amber once and never be shown deep red again on this phone.
+
+**Acceptance criteria (EARS):**
+- THE SYSTEM SHALL offer a "Colour" setting on the You screen with two options, "Red (best for night vision)" and "Amber (easier with red colour blindness)", red by default, and SHALL state there that amber costs night vision a little more than red.
+- WHEN the person chooses a colour THE SYSTEM SHALL repaint at once without changing the luminance mode, and SHALL remember the choice on this device (`afterglow.hue.v1`).
+- WHEN the app or site loads with amber remembered THE SYSTEM SHALL paint amber from the first frame with content, in the app, the public site and the sign-in pages.
+- WHERE the phone is used as a light or a Heliograph lamp THE SYSTEM SHALL use the chosen colour, since both paint the `text.emphasis` token; the Heliograph codec is unchanged.
+
+*Browser test:* `NS-22 amber is chosen on You, persists across a reload, and applies before paint` in `apps/mobile/e2e/hue.e2e.ts`.
+
 ## Analysis
 
 - **The central tension** (design §3.1): a red under the 8% Night ceiling can reach at most 2.6:1 on black, below WCAG AA. Resolved by shipping three modes — Night is a disclosed instrument mode; Dusk meets AA large text; Ember meets AA normal text. NS-03 and NS-06 encode both halves of this.
 - **Text tokens vs non-text tokens:** only text/icon tokens are bound by the text ceiling (NS-03). Dimmer reds are reserved for non-text elements (hairlines, muted rules), where WCAG's 3:1 non-text rule applies. The `TEXT_TOKENS` list fixes which tokens the ceiling check covers.
-- **Amber scope:** the amber ramp exists for protanopia at identical luminance stops but is a different hue, so NS-02 (red-dominance) is asserted only on the red ramp.
+- **Amber scope:** the amber ramp exists for protanopia at identical luminance stops but is a different hue, so NS-02 (red-dominance) is asserted only on the red ramp. NS-18..NS-22 give amber its own guards: the same ceilings, its own hue rule, and a scan of every route.
