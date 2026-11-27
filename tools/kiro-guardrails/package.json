@@ -1,0 +1,19 @@
+{
+  "name": "@afterglow/kiro-guardrails",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Executes every Kiro hook in .kiro/hooks against the documented event shape, so 'this hook blocks X' is a test result, not a claim.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src"
+  },
+  "devDependencies": {
+    "@types/node": "22",
+    "fast-check": "3.23.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}
