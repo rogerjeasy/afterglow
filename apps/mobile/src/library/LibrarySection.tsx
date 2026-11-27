@@ -41,7 +41,7 @@ function spoken(guide: guidance.Guide, lines: readonly string[]): string {
   return `${guide.title}. ${lines.join(' ')} From ${guide.sources.map((s) => s.publisher).join(' and ')}.`;
 }
 
-function GuideBody({ guide }: { guide: guidance.Guide }): ReactNode {
+export function GuideBody({ guide }: { guide: guidance.Guide }): ReactNode {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <ol

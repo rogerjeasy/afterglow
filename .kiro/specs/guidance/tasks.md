@@ -7,3 +7,4 @@ Built 2026-11-26 without new tests at the founder's request. Checked with 13 eve
 - [x] `library/LibrarySection.tsx` on Plan: ask, read, read aloud, sources — GL-05, GL-06
 - [ ] Phrasing by a model (Bedrock), restricted to the retrieved passages and citing them; needs infrastructure approval and model access
 - [ ] Translations reviewed by native speakers
+- [x] Insulin guidance under the medicine refusal on Cold — GL-08

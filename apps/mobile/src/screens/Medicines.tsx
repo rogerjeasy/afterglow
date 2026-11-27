@@ -1,4 +1,4 @@
-import { formulary, household } from '@afterglow/core';
+import { formulary, guidance, household } from '@afterglow/core';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useFormulary } from '../data/formulary';
 import {
@@ -8,8 +8,9 @@ import {
   provenanceChips,
 } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
+import { GuideBody } from '../library/LibrarySection';
 import { SourceChip } from '../night-shell/components';
-import { Button, Notice, SearchField } from '../night-shell/controls';
+import { Button, Fold, Notice, SearchField } from '../night-shell/controls';
 import { WardCard } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
 import { Panel } from '../ui/page';
@@ -165,12 +166,16 @@ function MedicineCard({
   );
 }
 
+/** Cited guidance, not a clock: the general rule the label refines (guidance GL-01). */
+const INSULIN_GUIDE = guidance.LIBRARY.find((g) => g.id === 'medicine-insulin') ?? null;
+
 /**
  * Medicines: the user's list, with a clock only where the pharmacist-approved
  * table has a validated entry. Every state is designed: loading, no table,
  * table loaded and empty, not in table, power on, running, used up, beyond
  * the label, unknown.
  */
+
 export function Medicines({
   nowMs,
   applianceId,
@@ -211,6 +216,11 @@ export function Medicines({
               not medical advice.
             </div>
             <SourceChip label={LABEL_SOURCE} />
+            {INSULIN_GUIDE ? (
+              <Fold label="What the FDA says about insulin in an outage">
+                <GuideBody guide={INSULIN_GUIDE} />
+              </Fold>
+            ) : null}
           </WardCard>
         ) : null}
 

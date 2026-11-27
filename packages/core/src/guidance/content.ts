@@ -121,7 +121,7 @@ export const LIBRARY: readonly Guide[] = [
       'Never use insulin that has frozen, or that looks cloudy when it should be clear, or has clumps.',
       'Keep it out of direct heat and sunlight; a cool, dark room is better than a warm fridge.',
       'If a life-saving medicine was stored too warm and you have no other supply, use it until you can replace it, and get a new supply as soon as you can.',
-      'Write down when your medicines left the cold. Afterglow’s medicine clock does this from the moment the power went.',
+      'Write down when your medicines left the cold. Afterglow’s outage history keeps the moment the power went.',
     ],
     danger: ['Signs of very high or very low blood sugar that do not improve: get emergency help.'],
     sources: [FDA_INSULIN, FDA_DRUGS],
