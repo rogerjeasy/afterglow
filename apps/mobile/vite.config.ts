@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
 
@@ -34,7 +35,7 @@ function serviceWorker(): Plugin {
 // under a repository subpath such as GitHub Pages (`/afterglow/`).
 export default defineConfig({
   base: process.env.AFTERGLOW_BASE ?? '/',
-  plugins: [react(), serviceWorker()],
+  plugins: [react(), tailwindcss(), serviceWorker()],
   // The Cognito SRP client pulls in a Buffer polyfill that expects Node's `global`.
   // The production bundle resolves it; the dev server's dependency pre-bundling needs this.
   optimizeDeps: {

@@ -9,9 +9,10 @@ import {
 } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
 import { SourceChip } from '../night-shell/components';
-import { Button, Notice, SearchField, Section } from '../night-shell/controls';
+import { Button, Notice, SearchField } from '../night-shell/controls';
 import { WardCard } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
+import { Panel } from '../ui/page';
 
 function Badge({ label, loud }: { label: string; loud: boolean }): ReactNode {
   return (
@@ -194,8 +195,8 @@ export function Medicines({
   const target = view.appliances.find((a) => a.id === applianceId) ?? view.appliances[0] ?? null;
 
   return (
-    <Section title="Medicines">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <Panel title="Medicines" icon="pill">
+      <div className="flex flex-col gap-4">
         {table.kind === 'loading' ? (
           <Notice>Checking for the pharmacist-approved table…</Notice>
         ) : null}
@@ -205,7 +206,7 @@ export function Medicines({
             title="Pharmacist-approved table"
             refusal="No medicine clock. I will not estimate how long your medicine lasts."
           >
-            <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
+            <div className="text-caption text-secondary">
               {table.reason} Storage limits come only from that table. Ask your pharmacist. This is
               not medical advice.
             </div>
@@ -259,17 +260,9 @@ export function Medicines({
                 results.map((e) => (
                   <div
                     key={`${e.product}|${e.condition}`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+                    className="flex flex-wrap items-center gap-3 border-b border-hairline pb-3 last:border-b-0"
                   >
-                    <span
-                      style={{
-                        flex: '1 1 160px',
-                        minWidth: 0,
-                        fontSize: 'var(--type-body)',
-                        color: token('text.primary'),
-                        overflowWrap: 'anywhere',
-                      }}
-                    >
+                    <span className="min-w-0 flex-[1_1_160px] text-body text-primary [overflow-wrap:anywhere]">
                       {e.product} · {e.condition === 'inUse' ? 'in use' : 'unopened'}
                     </span>
                     <Button
@@ -297,6 +290,6 @@ export function Medicines({
           )
         ) : null}
       </div>
-    </Section>
+    </Panel>
   );
 }

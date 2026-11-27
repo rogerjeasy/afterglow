@@ -25,19 +25,12 @@ import {
 import { browserStorage } from './household/store';
 import { useHousehold, useNow } from './household/useHousehold';
 import { LightMode, openLight, useLightOpen } from './light/LightMode';
-import { ModeSwitch } from './night-shell/components';
-import {
-  AlertsButton,
-  Button,
-  Notice,
-  TabBar,
-  type TabId,
-  YouButton,
-} from './night-shell/controls';
+import type { TabId } from './night-shell/controls';
 import { decideMode } from './night-shell/modePolicy';
 import { applyMode, token } from './night-shell/theme';
 import { notifyInBackground, renewArea } from './notify/notify';
 import { readFlag, shouldOnboard, writeFlag } from './onboarding/logic';
+import { navigate, useLocation } from './router';
 import { Alerts } from './screens/Alerts';
 import { Cold } from './screens/Cold';
 import { Hearth } from './screens/Hearth';
@@ -46,33 +39,11 @@ import { Onboarding } from './screens/Onboarding';
 import { Plan } from './screens/Plan';
 import { Seance } from './screens/Seance';
 import { You } from './screens/You';
+import { AppShell, TAB_PATH, tabFromPath } from './shell/AppShell';
 import { getSpaceController, useIdleLock, useSpace } from './spaces/useSpace';
+import { Page } from './ui/page';
 
 const MODE_CYCLE: readonly LuminanceMode[] = ['night', 'dusk', 'ember'];
-
-function tabFromHash(): TabId {
-  const h = window.location.hash;
-  if (h.startsWith('#/lantern')) return 'lantern';
-  if (h.startsWith('#/cold')) return 'cold';
-  if (h.startsWith('#/seance')) return 'seance';
-  if (h.startsWith('#/plan')) return 'plan';
-  if (h.startsWith('#/you')) return 'you';
-  if (h.startsWith('#/alerts')) return 'alerts';
-  if (h.startsWith('#/business')) return 'business';
-  if (h.startsWith('#/beacon')) return 'beacon';
-  return 'hearth';
-}
-const HASH: Record<TabId, string> = {
-  hearth: '#/',
-  lantern: '#/lantern',
-  seance: '#/seance',
-  cold: '#/cold',
-  plan: '#/plan',
-  you: '#/you',
-  alerts: '#/alerts',
-  business: '#/business',
-  beacon: '#/beacon',
-};
 
 /**
  * The app shell: header, the built destinations, and the Lights-Out moment.
@@ -121,7 +92,8 @@ export function App(): ReactNode {
     }
     seenAlerts.current = keys;
   }, [alertList]);
-  const [tab, setTab] = useState<TabId>(tabFromHash);
+  const { path } = useLocation();
+  const tab: TabId = tabFromPath(path);
   const [coldSelected, setColdSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<LuminanceMode>(outage ? 'night' : 'ember');
   const [igniting, setIgniting] = useState(false);
@@ -129,7 +101,7 @@ export function App(): ReactNode {
   // `#/welcome` replays it for guests on demand.
   const [onboarding, setOnboarding] = useState<boolean>(
     () =>
-      window.location.hash.startsWith('#/welcome') ||
+      window.location.pathname.endsWith('/app/welcome') ||
       shouldOnboard({
         flag: readFlag(browserStorage()),
         spaceKind: space.kind,
@@ -172,24 +144,17 @@ export function App(): ReactNode {
     applyMode(mode);
   }, [mode]);
 
+  // `/app/welcome` replays the welcome for guests on demand.
   useEffect(() => {
-    const onHash = (): void => {
-      if (window.location.hash.startsWith('#/welcome')) setOnboarding(true);
-      setTab(tabFromHash());
-    };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+    if (path === '/app/welcome') setOnboarding(true);
+  }, [path]);
 
   // Each step opens its own tab, once, when the step begins. Tapping another tab
   // during the tour is allowed; the next step brings the visitor back.
   useEffect(() => {
     if (tourIndex === null) return;
     const s = TOUR[tourIndex];
-    if (s) {
-      window.location.hash = HASH[s.tab];
-      setTab(s.tab);
-    }
+    if (s) navigate(TAB_PATH[s.tab], { keepScroll: true });
   }, [tourIndex]);
 
   // Bring the demo to the power the step describes (GD-05). Outside the demo,
@@ -273,8 +238,7 @@ export function App(): ReactNode {
   }, [outage, spaceKey]);
 
   const go = (id: TabId): void => {
-    window.location.hash = HASH[id];
-    setTab(id);
+    navigate(TAB_PATH[id]);
   };
 
   // Voice commands: what each does, and what to say back.
@@ -336,79 +300,28 @@ export function App(): ReactNode {
   };
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', background: token('bg') }}>
+    <AppShell
+      tab={tab}
+      onGo={go}
+      mode={mode}
+      onCycleMode={cycleMode}
+      alertCount={alertList.length}
+      critical={alertList.some((a) => a.priority === 'critical')}
+      space={space}
+      onExitDemo={() => controller.exitDemo()}
+      onLock={() => void controller.lock()}
+      outageStartedAtMs={state.view.outageStartedAtMs}
+      nowMs={nowMs}
+      bare={showOnboarding}
+    >
       {light ? <LightMode onClose={() => openLight(false)} /> : null}
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          padding: '12px 20px',
-          maxWidth: 520,
-          margin: '0 auto',
-        }}
-      >
-        <ModeSwitch mode={mode} onCycle={cycleMode} />
-        <span
-          style={{
-            // Scales down on the narrowest phones so the header never crowds its buttons.
-            fontSize: 'clamp(22px, 7vw, var(--type-title))',
-            color: token('text.emphasis'),
-            minWidth: 0,
-          }}
-        >
-          Afterglow
-        </span>
-        {showOnboarding ? (
-          <span style={{ width: 44 }} aria-hidden />
-        ) : (
-          <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
-            <AlertsButton
-              active={tab === 'alerts'}
-              count={alertList.length}
-              critical={alertList.some((a) => a.priority === 'critical')}
-              onClick={() => go('alerts')}
-            />
-            <YouButton active={tab === 'you'} onClick={() => go('you')} />
-          </div>
-        )}
-      </header>
-
-      {space.kind === 'demo' ? (
-        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px 8px' }}>
-          <Notice>
-            Demo: simulated household and neighbourhood. Nothing is saved or sent, and it cannot
-            touch real data.
-            <div style={{ marginTop: 10 }}>
-              <Button size="sm" variant="primary" onClick={() => controller.exitDemo()}>
-                Exit demo
-              </Button>
-            </div>
-          </Notice>
-        </div>
-      ) : space.kind === 'account' ? (
-        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px 8px' }}>
-          <Notice>
-            Signed in as {space.cloud?.email ?? space.account?.name ?? 'your account'}.{' '}
-            {space.cloud
-              ? 'Your household is encrypted on this device and kept in step with your account.'
-              : 'Your household is saved encrypted on this device.'}
-            <div style={{ marginTop: 10 }}>
-              <Button size="sm" variant="primary" onClick={() => void controller.lock()}>
-                Lock
-              </Button>
-            </div>
-          </Notice>
-        </div>
-      ) : null}
-
       {showOnboarding ? (
         <Onboarding
           onFinish={(how) => {
             writeFlag(browserStorage(), how);
             setOnboarding(false);
-            go('hearth');
+            if (path === '/app/welcome') navigate('/app', { replace: true });
+            else go('hearth');
           }}
           onStartDemo={startDemo}
           onStartTour={startTour}
@@ -436,23 +349,10 @@ export function App(): ReactNode {
         <Alerts list={alertList} outage={outage} />
       ) : tab === 'business' || tab === 'beacon' ? (
         // The consoles are wider pages for a desk as much as a phone (7.14, 7.16).
-        <main
-          style={{
-            maxWidth: 960,
-            margin: '0 auto',
-            padding: '8px 20px 120px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 28,
-          }}
-        >
-          {tab === 'business' ? <BusinessConsole /> : <BeaconConsole />}
-        </main>
+        <Page>{tab === 'business' ? <BusinessConsole /> : <BeaconConsole />}</Page>
       ) : (
         <You onStartTour={space.kind === 'account' ? undefined : startTour} />
       )}
-
-      {showOnboarding ? null : <TabBar active={tab} onSelect={go} />}
 
       {tour.kind === 'on' && TOUR[tour.index] ? (
         <Wisp
@@ -494,6 +394,6 @@ export function App(): ReactNode {
           zIndex: 20,
         }}
       />
-    </div>
+    </AppShell>
   );
 }

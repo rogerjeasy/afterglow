@@ -4,6 +4,7 @@ import type { HouseholdStore } from '../household/store';
 import { Sources } from '../night-shell/components';
 import { Button, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
+import { href } from '../router';
 import { MAX_NAME, type PairOffer, getMyName, pairLink, parsePair, setMyName } from './pairing';
 
 /** The QR code as SVG squares: dark modules on the mode's brightest red, so it scans
@@ -273,7 +274,7 @@ export function useOfferFromHash(): [PairOffer | null, () => void] {
   }, []);
   const clear = (): void => {
     setOffer(null);
-    if (parsePair(window.location.hash)) history.replaceState(null, '', '#/seance');
+    if (parsePair(window.location.hash)) history.replaceState(null, '', href('/app/seance'));
   };
   return [offer, clear];
 }

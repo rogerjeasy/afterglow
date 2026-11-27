@@ -48,7 +48,11 @@ async function setMode(page: Page, mode: LuminanceMode): Promise<void> {
 }
 
 async function scan(page: Page, mode: LuminanceMode, name: string): Promise<void> {
-  await page.waitForTimeout(350);
+  // Reveal-on-scroll content is hidden until scrolled to; show it all so the scan sees it.
+  await page.evaluate(() => {
+    for (const e of document.querySelectorAll('.reveal')) e.classList.add('is-in');
+  });
+  await page.waitForTimeout(900);
   const png = PNG.sync.read(await page.screenshot({ fullPage: true, animations: 'disabled' }));
   const result = scanRgba(png.data, png.width, png.height, mode);
   expect(
@@ -80,6 +84,16 @@ const SCENARIOS: readonly Scenario[] = [
   { name: 'alerts, demo outage late in the night', url: '/?phase=outage&elapsed=300#/alerts' },
   { name: 'hearth, medicine with no table', url: '/#/', seed: true },
   { name: 'cold, medicine with no table', url: '/#/cold', seed: true },
+  // WX-08: the front door is scanned like the product.
+  { name: 'home page', url: '/' },
+  { name: 'features page', url: '/features' },
+  { name: 'how it works page', url: '/how-it-works' },
+  { name: 'science and privacy page', url: '/science' },
+  { name: 'organisations page', url: '/organisations' },
+  { name: 'pricing page', url: '/pricing' },
+  { name: 'not found page', url: '/nowhere-at-all' },
+  { name: 'sign in', url: '/signin' },
+  { name: 'sign up', url: '/signup' },
 ];
 
 for (const scenario of SCENARIOS) {

@@ -5,15 +5,7 @@ import { hoursOfSafetyText } from '../household/present';
 import { useHousehold } from '../household/useHousehold';
 import { LibrarySection } from '../library/LibrarySection';
 import { Sources } from '../night-shell/components';
-import {
-  Button,
-  ChoiceChip,
-  Fold,
-  Notice,
-  Section,
-  Stepper,
-  TextField,
-} from '../night-shell/controls';
+import { Button, ChoiceChip, Fold, Notice, Stepper, TextField } from '../night-shell/controls';
 import { Candle } from '../night-shell/costume';
 import { GraveyardChart } from '../night-shell/graveyard';
 import { token } from '../night-shell/theme';
@@ -33,6 +25,7 @@ import {
   whText,
 } from '../plan/present';
 import { ScheduleSection } from '../schedule/ScheduleSection';
+import { Page, PageHeader, Panel } from '../ui/page';
 import { HomeSetup } from './HomeSetup';
 
 const STORE_KINDS = Object.keys(KIND_LABEL) as energy.StoreKind[];
@@ -203,233 +196,457 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
   const until = ward.ward === 'open' ? validUntil(view.wardAnswers, coguard.MAX_AGE_MS) : null;
 
   return (
-    <main
-      style={{
-        maxWidth: 520,
-        margin: '0 auto',
-        padding: '8px 20px 120px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 32,
-      }}
-    >
-      <header>
-        <h1 style={{ margin: 0, fontSize: 'var(--type-title)', color: token('text.emphasis') }}>
-          Plan
-        </h1>
-        <p
-          style={{
-            margin: '8px 0 0',
-            fontSize: 'var(--type-body)',
-            color: token('text.secondary'),
-          }}
-        >
-          What the night allows: how long your home holds, what your batteries can carry, and a gate
-          for the generator.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Plan"
+        eyebrow="Power and readiness"
+        icon="candle"
+        lead="What the night allows: how long your home holds, what your batteries can carry, and a gate for the generator."
+      />
 
-      <Section title="Hours of safety">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 'var(--type-clock-lg)', color: token('text.emphasis') }}>
-            {homeText.value}
-          </div>
-          <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
-            {hours.kind === 'unknown'
-              ? 'Tell me about your home to get a band, not a guess.'
-              : homeText.note}
-          </div>
-          {hours.kind === 'band' ? <BandBar h={hours} /> : null}
-          <Sources
-            labels={[
-              ...homeText.sources,
-              ...(view.home
-                ? [`${formatTemp(view.home.indoorC)} in, ${formatTemp(view.home.outdoorC)} out`]
-                : []),
-            ]}
-          />
-          <Button onClick={() => setSettingUpHome(true)}>
-            {view.home ? 'Change my home' : 'Tell me about my home'}
-          </Button>
-          {settingUpHome ? (
-            <HomeSetup
-              current={view.home}
-              onCancel={() => setSettingUpHome(false)}
-              onSave={(home) => {
-                store.setHome(home);
-                setSettingUpHome(false);
-              }}
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+        <Panel title="Hours of safety" icon="clock">
+          <div className="flex flex-col gap-3">
+            <div className="clock text-[length:var(--type-clock-lg)] text-emphasis">
+              {homeText.value}
+            </div>
+            <div className="text-caption text-secondary">
+              {hours.kind === 'unknown'
+                ? 'Tell me about your home to get a band, not a guess.'
+                : homeText.note}
+            </div>
+            {hours.kind === 'band' ? <BandBar h={hours} /> : null}
+            <Sources
+              labels={[
+                ...homeText.sources,
+                ...(view.home
+                  ? [`${formatTemp(view.home.indoorC)} in, ${formatTemp(view.home.outdoorC)} out`]
+                  : []),
+              ]}
             />
-          ) : null}
-        </div>
-      </Section>
-
-      {shift.kind === 'night' && shiftText ? (
-        <Section title="Graveyard shift" tourId="graveyard">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div
-              className="clock"
-              style={{ fontSize: 'var(--type-clock-lg)', color: token('text.emphasis') }}
-            >
-              {shiftText.headline}
-            </div>
-            <div style={{ fontSize: 'var(--type-body)', overflowWrap: 'anywhere' }}>
-              {shiftText.detail}
-            </div>
-            <GraveyardChart night={shift} nowMs={nowMs} />
-            <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
-              {shiftText.axis}
-              {view.outageStartedAtMs === null
-                ? ' No outage has started, so this is what a power cut now would do.'
-                : ''}
-            </div>
-            <Sources labels={shiftText.sources} />
-            <Notice>
-              An indoor-temperature estimate from the building's heat-loss time constant. Warming
-              centres and where to go are not shown yet.
-            </Notice>
+            <Button onClick={() => setSettingUpHome(true)}>
+              {view.home ? 'Change my home' : 'Tell me about my home'}
+            </Button>
+            {settingUpHome ? (
+              <HomeSetup
+                current={view.home}
+                onCancel={() => setSettingUpHome(false)}
+                onSave={(home) => {
+                  store.setHome(home);
+                  setSettingUpHome(false);
+                }}
+              />
+            ) : null}
           </div>
-        </Section>
-      ) : null}
+        </Panel>
 
-      {/* The demo is a simulated household with no real area; forecast and places are real-only. */}
-      {demo ? null : <ForecastAndDestinations home={view.home} store={store} nowMs={nowMs} />}
+        {shift.kind === 'night' && shiftText ? (
+          <Panel title="Graveyard shift" icon="tombstone" tourId="graveyard">
+            <div className="flex flex-col gap-3">
+              <div className="clock text-[length:var(--type-clock-lg)] text-emphasis">
+                {shiftText.headline}
+              </div>
+              <div className="text-body [overflow-wrap:anywhere]">{shiftText.detail}</div>
+              <GraveyardChart night={shift} nowMs={nowMs} />
+              <div className="text-caption text-secondary">
+                {shiftText.axis}
+                {view.outageStartedAtMs === null
+                  ? ' No outage has started, so this is what a power cut now would do.'
+                  : ''}
+              </div>
+              <Sources labels={shiftText.sources} />
+              <Notice>
+                An indoor-temperature estimate from the building's heat-loss time constant. Warming
+                centres and where to go are not shown yet.
+              </Notice>
+            </div>
+          </Panel>
+        ) : null}
+      </div>
 
-      {demo ? null : <ScheduleSection nowMs={nowMs} />}
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+        <Panel title="Candles" icon="battery">
+          <div className="flex flex-col gap-5">
+            <Stepper
+              label="Cover the next"
+              valueText={hoursText(assessment.horizonHours)}
+              hint={
+                assessment.horizonIsDefault
+                  ? 'A default of 12 h. Set how long you need to cover: until dawn, or until the schedule says power returns.'
+                  : 'Set by you.'
+              }
+              decrementDisabled={assessment.horizonHours <= energy.MIN_HORIZON_HOURS + 0.5}
+              incrementDisabled={assessment.horizonHours >= energy.MAX_HORIZON_HOURS}
+              onDecrement={() => store.setHorizon(Math.max(1, assessment.horizonHours - 1))}
+              onIncrement={() =>
+                store.setHorizon(Math.min(energy.MAX_HORIZON_HOURS, assessment.horizonHours + 1))
+              }
+            />
 
-      <LibrarySection />
+            {view.energyStores.length === 0 ? (
+              <Notice>
+                No batteries yet. Add the power banks, batteries and generators you have. I need the
+                capacity of each; I will not guess it.
+              </Notice>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {view.energyStores.map((s) => {
+                  const outcome = plan?.stores.find((o) => o.store.id === s.id);
+                  return (
+                    <div
+                      key={s.id}
+                      style={{
+                        display: 'flex',
+                        gap: 14,
+                        alignItems: 'center',
+                        padding: '12px 14px',
+                        borderRadius: 'var(--radius-tile)',
+                        background: token('surface.2'),
+                        border: `1px solid ${token('hairline')}`,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <Candle
+                        startPct={s.chargePct}
+                        afterPct={outcome?.afterPct ?? s.chargePct}
+                        label={s.name}
+                      />
+                      <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 'var(--type-body)',
+                            color: token('text.primary'),
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {s.name}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 'var(--type-caption)',
+                            color: token('text.secondary'),
+                          }}
+                        >
+                          {KIND_LABEL[s.kind]} · {whText(s.capacityWh)} · {Math.round(s.chargePct)}%
+                          now
+                          {outcome ? ` · ${Math.round(outcome.afterPct)}% after the plan` : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            store.updateEnergyStore(s.id, {
+                              ...s,
+                              chargePct: Math.max(0, s.chargePct - 10),
+                            })
+                          }
+                          ariaLabel={`Lower the charge of ${s.name} by 10 percent`}
+                        >
+                          −10%
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            store.updateEnergyStore(s.id, {
+                              ...s,
+                              chargePct: Math.min(100, s.chargePct + 10),
+                            })
+                          }
+                          ariaLabel={`Raise the charge of ${s.name} by 10 percent`}
+                        >
+                          +10%
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => store.removeEnergyStore(s.id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-      <Section title="Candles">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Stepper
-            label="Cover the next"
-            valueText={hoursText(assessment.horizonHours)}
-            hint={
-              assessment.horizonIsDefault
-                ? 'A default of 12 h. Set how long you need to cover: until dawn, or until the schedule says power returns.'
-                : 'Set by you.'
-            }
-            decrementDisabled={assessment.horizonHours <= energy.MIN_HORIZON_HOURS + 0.5}
-            incrementDisabled={assessment.horizonHours >= energy.MAX_HORIZON_HOURS}
-            onDecrement={() => store.setHorizon(Math.max(1, assessment.horizonHours - 1))}
-            onIncrement={() =>
-              store.setHorizon(Math.min(energy.MAX_HORIZON_HOURS, assessment.horizonHours + 1))
-            }
-          />
+            {view.energyLoads.length === 0 ? (
+              <Notice>
+                Nothing to power yet. Add what you must keep running (a CPAP, a router, a lamp) and
+                its power draw in watts, from its label.
+              </Notice>
+            ) : null}
 
-          {view.energyStores.length === 0 ? (
-            <Notice>
-              No batteries yet. Add the power banks, batteries and generators you have. I need the
-              capacity of each; I will not guess it.
-            </Notice>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {view.energyStores.map((s) => {
-                const outcome = plan?.stores.find((o) => o.store.id === s.id);
-                return (
+            {plan ? (
+              <div className="flex flex-col gap-2.5">
+                {plan.loads.map((l) => (
                   <div
-                    key={s.id}
+                    key={l.load.id}
                     style={{
-                      display: 'flex',
-                      gap: 14,
-                      alignItems: 'center',
                       padding: '12px 14px',
                       borderRadius: 'var(--radius-tile)',
                       background: token('surface.2'),
-                      border: `1px solid ${token('hairline')}`,
-                      flexWrap: 'wrap',
+                      border: `${l.status !== 'covered' && l.load.class === 'medical' ? 2 : 1}px solid ${
+                        l.status !== 'covered' && l.load.class === 'medical'
+                          ? token('focus.ring')
+                          : token('hairline')
+                      }`,
                     }}
                   >
-                    <Candle
-                      startPct={s.chargePct}
-                      afterPct={outcome?.afterPct ?? s.chargePct}
-                      label={s.name}
-                    />
-                    <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                      <div
+                    <div
+                      style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}
+                    >
+                      <Badge
+                        label={STATUS_LABEL[l.status]}
+                        loud={l.status !== 'covered' && l.load.class === 'medical'}
+                      />
+                      <span
                         style={{
                           fontSize: 'var(--type-body)',
                           color: token('text.primary'),
                           overflowWrap: 'anywhere',
                         }}
                       >
-                        {s.name}
-                      </div>
-                      <div
-                        style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}
-                      >
-                        {KIND_LABEL[s.kind]} · {whText(s.capacityWh)} · {Math.round(s.chargePct)}%
-                        now
-                        {outcome ? ` · ${Math.round(outcome.afterPct)}% after the plan` : ''}
-                      </div>
+                        {l.load.name}
+                      </span>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          store.updateEnergyStore(s.id, {
-                            ...s,
-                            chargePct: Math.max(0, s.chargePct - 10),
-                          })
-                        }
-                        ariaLabel={`Lower the charge of ${s.name} by 10 percent`}
-                      >
-                        −10%
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          store.updateEnergyStore(s.id, {
-                            ...s,
-                            chargePct: Math.min(100, s.chargePct + 10),
-                          })
-                        }
-                        ariaLabel={`Raise the charge of ${s.name} by 10 percent`}
-                      >
-                        +10%
-                      </Button>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 'var(--type-body)',
+                        color: token('text.emphasis'),
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {l.message}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 'var(--type-caption)',
+                        color: token('text.secondary'),
+                      }}
+                    >
+                      {CLASS_LABEL[l.load.class]} · {l.load.watts} W ·{' '}
+                      {l.load.needs === 'ac' ? 'needs AC' : 'USB'} · from {drawText(l, names)} ·{' '}
+                      {hoursText(l.runtimeHours)} of {hoursText(plan.horizonHours)}
+                    </div>
+                    <div style={{ marginTop: 8 }}>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => store.removeEnergyStore(s.id)}
+                        onClick={() => store.removeEnergyLoad(l.load.id)}
                       >
                         Remove
                       </Button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
+                {plan.excluded.map((e) => (
+                  <Notice key={`${e.kind}-${e.id}-${e.reason}`}>
+                    A {e.kind} was left out. {e.reason}
+                  </Notice>
+                ))}
+                <Sources
+                  labels={[
+                    `${PLAN_SOURCE} · ${plan.modelVersion}`,
+                    ...plan.defaultsUsed.map((d) => `default: ${d}`),
+                  ]}
+                >
+                  An estimate that assumes each load runs without a break. Real devices cycle and
+                  lose some energy in conversion.
+                </Sources>
+              </div>
+            ) : assessment.result.kind === 'noPlan' ? (
+              <Notice>{assessment.result.reason}</Notice>
+            ) : null}
 
-          {view.energyLoads.length === 0 ? (
-            <Notice>
-              Nothing to power yet. Add what you must keep running (a CPAP, a router, a lamp) and
-              its power draw in watts, from its label.
-            </Notice>
-          ) : null}
+            <Fold label="Add a battery">
+              <div className="flex flex-col gap-3.5">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {STORE_KINDS.map((k) => (
+                    <ChoiceChip
+                      key={k}
+                      label={KIND_LABEL[k]}
+                      selected={kind === k}
+                      onClick={() => {
+                        setKind(k);
+                        setAc(AC_BY_DEFAULT.has(k));
+                      }}
+                    />
+                  ))}
+                </div>
+                <NumberField label="Name (optional)" value={sName} onChange={setSName} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <ChoiceChip
+                    label="Watt-hours (Wh)"
+                    selected={unit === 'wh'}
+                    onClick={() => setUnit('wh')}
+                  />
+                  <ChoiceChip
+                    label="Milliamp-hours (mAh)"
+                    selected={unit === 'mah'}
+                    onClick={() => setUnit('mah')}
+                  />
+                </div>
+                <NumberField
+                  label={unit === 'wh' ? 'Capacity (Wh)' : 'Capacity (mAh)'}
+                  value={capText}
+                  onChange={setCapText}
+                  hint={
+                    unit === 'mah'
+                      ? `Converted at ${energy.DEFAULT_CELL_VOLTS} V, the usual cell voltage (a default). Check the label for Wh if it has one.`
+                      : 'Printed on the battery or in its manual.'
+                  }
+                  error={
+                    touched && capacity === null
+                      ? 'Enter the capacity as a number above zero.'
+                      : undefined
+                  }
+                />
+                <Stepper
+                  label="Charge now"
+                  valueText={`${charge}%`}
+                  decrementDisabled={charge <= 0}
+                  incrementDisabled={charge >= 100}
+                  onDecrement={() => setCharge(Math.max(0, charge - 10))}
+                  onIncrement={() => setCharge(Math.min(100, charge + 10))}
+                />
+                <ChoiceChip
+                  label="Has a mains-style (AC) outlet"
+                  selected={ac}
+                  onClick={() => setAc(!ac)}
+                />
+                <Button variant="primary" onClick={addStore}>
+                  Add battery
+                </Button>
+              </div>
+            </Fold>
 
-          {plan ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {plan.loads.map((l) => (
+            <Fold label="Add something to power">
+              <div className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-2">
+                  <span style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
+                    A medical device? Pick it and I will power it first.
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {MEDICAL_DEVICES.map((d) => (
+                      <ChoiceChip
+                        key={d.name}
+                        label={d.name}
+                        selected={device?.name === d.name}
+                        onClick={() => {
+                          setDevice(d);
+                          setLName(d.name);
+                          setLClass('medical');
+                          setNeeds(d.needs);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <NumberField label="Name" value={lName} onChange={setLName} />
+                <NumberField
+                  label="Power draw (watts)"
+                  value={wattsText}
+                  onChange={setWattsText}
+                  hint={
+                    device && lName === device.name
+                      ? `${device.name}: ${device.typical}. Use the watts on your own device's label: I do not guess watts.`
+                      : 'From its label or manual. I do not guess watts.'
+                  }
+                  error={
+                    touched && watts === null
+                      ? 'Enter the watts as a number above zero.'
+                      : undefined
+                  }
+                />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {LOAD_CLASSES.map((c) => (
+                    <ChoiceChip
+                      key={c}
+                      label={CLASS_LABEL[c]}
+                      selected={lClass === c}
+                      onClick={() => setLClass(c)}
+                    />
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <ChoiceChip
+                    label="Runs from USB"
+                    selected={needs === 'usb'}
+                    onClick={() => setNeeds('usb')}
+                  />
+                  <ChoiceChip
+                    label="Needs an AC outlet"
+                    selected={needs === 'ac'}
+                    onClick={() => setNeeds('ac')}
+                  />
+                </div>
+                <Button variant="primary" onClick={addLoad}>
+                  Add to the plan
+                </Button>
+              </div>
+            </Fold>
+          </div>
+        </Panel>
+
+        <Panel title="Generator ward" icon="shield" tourId="ward">
+          <div className="flex flex-col gap-3.5">
+            <div
+              style={{
+                padding: 16,
+                borderRadius: 'var(--radius-tile)',
+                background: token('surface.2'),
+                border: `${ward.ward === 'closed' ? 2 : 1}px solid ${ward.ward === 'closed' ? token('focus.ring') : token('hairline')}`,
+              }}
+            >
+              <div style={{ fontSize: 'var(--type-body)', color: token('text.emphasis') }}>
+                {ward.ward === 'closed'
+                  ? 'Not set up. The generator stays off until every check is confirmed.'
+                  : `All four checks are confirmed${until ? ` until ${until}` : ''}.`}
+              </div>
+              {/* The closed bar of the ward: it stays across the card until the conditions are met. */}
+              {ward.ward === 'closed' ? (
                 <div
-                  key={l.load.id}
+                  aria-hidden="true"
+                  className="ward-bar"
+                  style={{
+                    height: 6,
+                    marginTop: 12,
+                    borderRadius: 3,
+                    background: token('focus.ring'),
+                  }}
+                />
+              ) : null}
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 'var(--type-caption)',
+                  color: token('text.secondary'),
+                }}
+              >
+                {ward.notice} Answers expire after 6 hours (an Afterglow rule), so check again when
+                you move or refuel it.
+              </div>
+            </div>
+
+            {ward.checks.map((c) => {
+              const line = checkLine(c);
+              const own = view.wardAnswers[c.spec.id];
+              return (
+                <div
+                  key={c.spec.id}
                   style={{
                     padding: '12px 14px',
                     borderRadius: 'var(--radius-tile)',
                     background: token('surface.2'),
-                    border: `${l.status !== 'covered' && l.load.class === 'medical' ? 2 : 1}px solid ${
-                      l.status !== 'covered' && l.load.class === 'medical'
-                        ? token('focus.ring')
-                        : token('hairline')
-                    }`,
+                    border: `${line.loud ? 2 : 1}px solid ${line.loud ? token('focus.ring') : token('hairline')}`,
                   }}
                 >
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Badge
-                      label={STATUS_LABEL[l.status]}
-                      loud={l.status !== 'covered' && l.load.class === 'medical'}
-                    />
+                    <Badge label={line.label} loud={line.loud} />
                     <span
                       style={{
                         fontSize: 'var(--type-body)',
@@ -437,338 +654,102 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
                         overflowWrap: 'anywhere',
                       }}
                     >
-                      {l.load.name}
+                      {c.spec.question}
                     </span>
                   </div>
+                  {line.detail ? (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 'var(--type-caption)',
+                        color: token('text.secondary'),
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {line.detail}
+                    </div>
+                  ) : null}
                   <div
                     style={{
-                      marginTop: 6,
-                      fontSize: 'var(--type-body)',
-                      color: token('text.emphasis'),
-                      overflowWrap: 'anywhere',
+                      marginTop: 8,
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
                     }}
                   >
-                    {l.message}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 'var(--type-caption)',
-                      color: token('text.secondary'),
-                    }}
-                  >
-                    {CLASS_LABEL[l.load.class]} · {l.load.watts} W ·{' '}
-                    {l.load.needs === 'ac' ? 'needs AC' : 'USB'} · from {drawText(l, names)} ·{' '}
-                    {hoursText(l.runtimeHours)} of {hoursText(plan.horizonHours)}
-                  </div>
-                  <div style={{ marginTop: 8 }}>
                     <Button
                       size="sm"
-                      variant="ghost"
-                      onClick={() => store.removeEnergyLoad(l.load.id)}
+                      variant={own?.answer === 'yes' ? 'primary' : 'secondary'}
+                      onClick={() => store.answerWard(c.spec.id, 'yes')}
+                      ariaLabel={`Yes: ${c.spec.question}`}
                     >
-                      Remove
+                      Yes
                     </Button>
-                  </div>
-                </div>
-              ))}
-              {plan.excluded.map((e) => (
-                <Notice key={`${e.kind}-${e.id}-${e.reason}`}>
-                  A {e.kind} was left out. {e.reason}
-                </Notice>
-              ))}
-              <Sources
-                labels={[
-                  `${PLAN_SOURCE} · ${plan.modelVersion}`,
-                  ...plan.defaultsUsed.map((d) => `default: ${d}`),
-                ]}
-              >
-                An estimate that assumes each load runs without a break. Real devices cycle and lose
-                some energy in conversion.
-              </Sources>
-            </div>
-          ) : assessment.result.kind === 'noPlan' ? (
-            <Notice>{assessment.result.reason}</Notice>
-          ) : null}
-
-          <Fold label="Add a battery">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {STORE_KINDS.map((k) => (
-                  <ChoiceChip
-                    key={k}
-                    label={KIND_LABEL[k]}
-                    selected={kind === k}
-                    onClick={() => {
-                      setKind(k);
-                      setAc(AC_BY_DEFAULT.has(k));
-                    }}
-                  />
-                ))}
-              </div>
-              <NumberField label="Name (optional)" value={sName} onChange={setSName} />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <ChoiceChip
-                  label="Watt-hours (Wh)"
-                  selected={unit === 'wh'}
-                  onClick={() => setUnit('wh')}
-                />
-                <ChoiceChip
-                  label="Milliamp-hours (mAh)"
-                  selected={unit === 'mah'}
-                  onClick={() => setUnit('mah')}
-                />
-              </div>
-              <NumberField
-                label={unit === 'wh' ? 'Capacity (Wh)' : 'Capacity (mAh)'}
-                value={capText}
-                onChange={setCapText}
-                hint={
-                  unit === 'mah'
-                    ? `Converted at ${energy.DEFAULT_CELL_VOLTS} V, the usual cell voltage (a default). Check the label for Wh if it has one.`
-                    : 'Printed on the battery or in its manual.'
-                }
-                error={
-                  touched && capacity === null
-                    ? 'Enter the capacity as a number above zero.'
-                    : undefined
-                }
-              />
-              <Stepper
-                label="Charge now"
-                valueText={`${charge}%`}
-                decrementDisabled={charge <= 0}
-                incrementDisabled={charge >= 100}
-                onDecrement={() => setCharge(Math.max(0, charge - 10))}
-                onIncrement={() => setCharge(Math.min(100, charge + 10))}
-              />
-              <ChoiceChip
-                label="Has a mains-style (AC) outlet"
-                selected={ac}
-                onClick={() => setAc(!ac)}
-              />
-              <Button variant="primary" onClick={addStore}>
-                Add battery
-              </Button>
-            </div>
-          </Fold>
-
-          <Fold label="Add something to power">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
-                  A medical device? Pick it and I will power it first.
-                </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {MEDICAL_DEVICES.map((d) => (
-                    <ChoiceChip
-                      key={d.name}
-                      label={d.name}
-                      selected={device?.name === d.name}
-                      onClick={() => {
-                        setDevice(d);
-                        setLName(d.name);
-                        setLClass('medical');
-                        setNeeds(d.needs);
+                    <Button
+                      size="sm"
+                      variant={own?.answer === 'no' ? 'primary' : 'secondary'}
+                      onClick={() => store.answerWard(c.spec.id, 'no')}
+                      ariaLabel={`No: ${c.spec.question}`}
+                    >
+                      No
+                    </Button>
+                    <a
+                      href={c.spec.source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        minHeight: 44,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        fontSize: 'var(--type-caption)',
+                        color: token('text.secondary'),
                       }}
-                    />
-                  ))}
+                    >
+                      {c.spec.source.title}
+                    </a>
+                  </div>
                 </div>
-              </div>
-              <NumberField label="Name" value={lName} onChange={setLName} />
-              <NumberField
-                label="Power draw (watts)"
-                value={wattsText}
-                onChange={setWattsText}
-                hint={
-                  device && lName === device.name
-                    ? `${device.name}: ${device.typical}. Use the watts on your own device's label: I do not guess watts.`
-                    : 'From its label or manual. I do not guess watts.'
-                }
-                error={
-                  touched && watts === null ? 'Enter the watts as a number above zero.' : undefined
-                }
-              />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {LOAD_CLASSES.map((c) => (
-                  <ChoiceChip
-                    key={c}
-                    label={CLASS_LABEL[c]}
-                    selected={lClass === c}
-                    onClick={() => setLClass(c)}
-                  />
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <ChoiceChip
-                  label="Runs from USB"
-                  selected={needs === 'usb'}
-                  onClick={() => setNeeds('usb')}
-                />
-                <ChoiceChip
-                  label="Needs an AC outlet"
-                  selected={needs === 'ac'}
-                  onClick={() => setNeeds('ac')}
-                />
-              </div>
-              <Button variant="primary" onClick={addLoad}>
-                Add to the plan
-              </Button>
-            </div>
-          </Fold>
-        </div>
-      </Section>
+              );
+            })}
 
-      <Section title="Generator ward" tourId="ward">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 'var(--radius-tile)',
-              background: token('surface.2'),
-              border: `${ward.ward === 'closed' ? 2 : 1}px solid ${ward.ward === 'closed' ? token('focus.ring') : token('hairline')}`,
-            }}
-          >
-            <div style={{ fontSize: 'var(--type-body)', color: token('text.emphasis') }}>
-              {ward.ward === 'closed'
-                ? 'Not set up. The generator stays off until every check is confirmed.'
-                : `All four checks are confirmed${until ? ` until ${until}` : ''}.`}
+            <ChoiceChip
+              label="Someone has symptoms"
+              selected={symptoms}
+              onClick={() => setSymptoms(!symptoms)}
+            />
+            <div className="text-caption text-secondary">
+              Symptoms: {coguard.SYMPTOMS.join(', ')}. This is asked here and never saved.
             </div>
-            {/* The closed bar of the ward: it stays across the card until the conditions are met. */}
-            {ward.ward === 'closed' ? (
+            {ward.symptomAdvice ? (
               <div
-                aria-hidden="true"
-                className="ward-bar"
+                role="alert"
                 style={{
-                  height: 6,
-                  marginTop: 12,
-                  borderRadius: 3,
-                  background: token('focus.ring'),
-                }}
-              />
-            ) : null}
-            <div
-              style={{
-                marginTop: 10,
-                fontSize: 'var(--type-caption)',
-                color: token('text.secondary'),
-              }}
-            >
-              {ward.notice} Answers expire after 6 hours (an Afterglow rule), so check again when
-              you move or refuel it.
-            </div>
-          </div>
-
-          {ward.checks.map((c) => {
-            const line = checkLine(c);
-            const own = view.wardAnswers[c.spec.id];
-            return (
-              <div
-                key={c.spec.id}
-                style={{
-                  padding: '12px 14px',
+                  padding: 16,
                   borderRadius: 'var(--radius-tile)',
+                  border: `2px solid ${token('focus.ring')}`,
                   background: token('surface.2'),
-                  border: `${line.loud ? 2 : 1}px solid ${line.loud ? token('focus.ring') : token('hairline')}`,
+                  fontSize: 'var(--type-body)',
+                  color: token('text.emphasis'),
                 }}
               >
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Badge label={line.label} loud={line.loud} />
-                  <span
-                    style={{
-                      fontSize: 'var(--type-body)',
-                      color: token('text.primary'),
-                      overflowWrap: 'anywhere',
-                    }}
-                  >
-                    {c.spec.question}
-                  </span>
-                </div>
-                {line.detail ? (
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 'var(--type-caption)',
-                      color: token('text.secondary'),
-                      overflowWrap: 'anywhere',
-                    }}
-                  >
-                    {line.detail}
-                  </div>
-                ) : null}
-                <div
-                  style={{
-                    marginTop: 8,
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Button
-                    size="sm"
-                    variant={own?.answer === 'yes' ? 'primary' : 'secondary'}
-                    onClick={() => store.answerWard(c.spec.id, 'yes')}
-                    ariaLabel={`Yes: ${c.spec.question}`}
-                  >
-                    Yes
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={own?.answer === 'no' ? 'primary' : 'secondary'}
-                    onClick={() => store.answerWard(c.spec.id, 'no')}
-                    ariaLabel={`No: ${c.spec.question}`}
-                  >
-                    No
-                  </Button>
-                  <a
-                    href={c.spec.source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      minHeight: 44,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      fontSize: 'var(--type-caption)',
-                      color: token('text.secondary'),
-                    }}
-                  >
-                    {c.spec.source.title}
-                  </a>
-                </div>
+                {ward.symptomAdvice}
               </div>
-            );
-          })}
-
-          <ChoiceChip
-            label="Someone has symptoms"
-            selected={symptoms}
-            onClick={() => setSymptoms(!symptoms)}
-          />
-          <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
-            Symptoms: {coguard.SYMPTOMS.join(', ')}. This is asked here and never saved.
+            ) : null}
+            <Notice>
+              Afterglow is not an emergency service or a carbon monoxide alarm. It cannot detect
+              gas. Only a working alarm can.
+            </Notice>
           </div>
-          {ward.symptomAdvice ? (
-            <div
-              role="alert"
-              style={{
-                padding: 16,
-                borderRadius: 'var(--radius-tile)',
-                border: `2px solid ${token('focus.ring')}`,
-                background: token('surface.2'),
-                fontSize: 'var(--type-body)',
-                color: token('text.emphasis'),
-              }}
-            >
-              {ward.symptomAdvice}
-            </div>
-          ) : null}
-          <Notice>
-            Afterglow is not an emergency service or a carbon monoxide alarm. It cannot detect gas.
-            Only a working alarm can.
-          </Notice>
-        </div>
-      </Section>
-    </main>
+        </Panel>
+      </div>
+
+      {/* The demo is a simulated household with no real area; forecast and places are real-only. */}
+      {demo ? null : <ForecastAndDestinations home={view.home} store={store} nowMs={nowMs} />}
+
+      {demo ? null : <ScheduleSection nowMs={nowMs} />}
+
+      <LibrarySection />
+    </Page>
   );
 }

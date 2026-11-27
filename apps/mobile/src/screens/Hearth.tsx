@@ -25,7 +25,8 @@ import { openLight } from '../light/LightMode';
 import { SourceChip, Sources, StatusLine, Tile } from '../night-shell/components';
 import { Button, Notice, Section } from '../night-shell/controls';
 import { GhostGlyph, Tombstone, WardCard } from '../night-shell/costume';
-import { token } from '../night-shell/theme';
+import { Icon } from '../ui/icons';
+import { Page, PageHeader, Panel } from '../ui/page';
 import { HomeSetup } from './HomeSetup';
 
 /**
@@ -114,46 +115,131 @@ export function Hearth({
   }, [spoken]);
   const homeKnown = hours.kind !== 'unknown';
 
+  // Readiness: what is set up before the dark, each item a door to where it is done.
+  const ready = [
+    {
+      label: 'Fridge or freezer',
+      done: view.appliances.length > 0,
+      hint: 'A clock for your food',
+      icon: 'tombstone' as const,
+      go: () => onOpenCold(null),
+    },
+    {
+      label: 'Your home',
+      done: view.home !== null,
+      hint: 'Hours of safety tonight',
+      icon: 'hearth' as const,
+      go: () => setSettingUpHome(true),
+    },
+    {
+      label: 'Your people',
+      done: roster.length > 0,
+      hint: 'Who to hear from',
+      icon: 'people' as const,
+      go: onOpenSeance,
+    },
+    {
+      label: 'Medicines',
+      done: medicines.length > 0,
+      hint: 'Only from the approved table',
+      icon: 'pill' as const,
+      go: () => onOpenCold(null),
+    },
+  ];
+  const readyCount = ready.filter((r) => r.done).length;
+
   return (
-    <main
-      style={{
-        maxWidth: 520,
-        margin: '0 auto',
-        padding: '8px 20px 120px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 28,
-      }}
-    >
-      <div>
-        <StatusLine timer={timer} line={line} live={outage} tourId="status" />
-        <ReadAloudButton />
-        {sim ? <SourceChip label="simulated neighbourhood (demo)" /> : null}
-        {demo ? (
-          <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 'var(--type-body)', color: token('text.primary') }}>
-              {sense.headline} <span style={{ color: token('text.secondary') }}>{sense.why}</span>
-            </div>
-            <Sources
-              labels={[
-                `Grid Sense: ${scenario.verdict}`,
-                `senses that voted: ${
-                  [...scenario.result.votedPositive, ...scenario.result.votedNegative].join(', ') ||
-                  'none'
-                }`,
-                'simulated senses (demo)',
-              ]}
-            >
-              {scenario.result.reason}
-            </Sources>
-          </div>
-        ) : null}
+    <Page>
+      {/* On a phone the tab bar already names the screen; the heading stays for screen readers. */}
+      <div className="sr-only sm:not-sr-only">
+        <PageHeader
+          eyebrow="Tonight at a glance"
+          icon="hearth"
+          title={tr('tab.hearth')}
+          lead={
+            outage
+              ? 'The clocks are running. Everything below is computed from your own household.'
+              : 'Power is on. This is what Afterglow will watch for you when it fails.'
+          }
+        />
       </div>
 
-      {demo ? null : <GridSenseCard />}
+      <div className="grid gap-6 xl:grid-cols-12">
+        <div className="flex min-w-0 flex-col gap-4 xl:col-span-8">
+          <StatusLine timer={timer} line={line} live={outage} tourId="status" />
+          <ReadAloudButton />
+          {demo ? (
+            <div className="sm:rounded-[24px] sm:border sm:border-hairline sm:bg-surface-1 sm:p-5">
+              <div className="text-body text-primary">
+                {sense.headline} <span className="text-secondary">{sense.why}</span>
+              </div>
+              {sim ? <SourceChip label="simulated neighbourhood (demo)" /> : null}
+              <Sources
+                labels={[
+                  `Grid Sense: ${scenario.verdict}`,
+                  `senses that voted: ${
+                    [...scenario.result.votedPositive, ...scenario.result.votedNegative].join(
+                      ', ',
+                    ) || 'none'
+                  }`,
+                  'simulated senses (demo)',
+                ]}
+              >
+                {scenario.result.reason}
+              </Sources>
+            </div>
+          ) : null}
+        </div>
+
+        <aside aria-label="Actions" className="flex min-w-0 flex-col gap-3 xl:col-span-4">
+          <div className="flex flex-col gap-3 xl:rounded-[24px] xl:border xl:border-hairline xl:bg-surface-1 xl:p-5">
+            <h2 className="m-0 hidden text-label font-bold text-secondary xl:block">
+              {outage ? 'While it is dark' : 'When it happens'}
+            </h2>
+            {outage ? (
+              <Button
+                variant="primary"
+                className="w-full"
+                style={{ minHeight: 72 }}
+                onClick={() => store.endOutage()}
+              >
+                <Icon name="bolt" />
+                {tr('hearth.powerBack')}
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                className="w-full"
+                style={{ minHeight: 72 }}
+                onClick={() => store.startOutage(Date.now())}
+              >
+                <Icon name="boltOff" />
+                {tr('hearth.powerOut')}
+              </Button>
+            )}
+            <Button className="w-full" onClick={() => openLight()}>
+              <Icon name="flashlight" />
+              {tr('hearth.light')}
+            </Button>
+            <VoiceButton />
+            {!outage && !demo ? (
+              <Button className="w-full" onClick={onStartDemo}>
+                <Icon name="sparkle" />
+                Demo night: a simulated neighbourhood
+              </Button>
+            ) : null}
+            {!outage && onStartTour ? (
+              <Button variant="ghost" className="w-full" onClick={onStartTour}>
+                <Icon name="play" />
+                Show me a night with Wisp, the guide
+              </Button>
+            ) : null}
+          </div>
+        </aside>
+      </div>
 
       <Section title={outage ? 'What the dark is doing' : 'If the power fails'}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
           {assessments.map((a) => {
             const text = applianceTileText(a);
             const firstFridge = assessments.find((x) => x.model.appliance.class === 'fridge') === a;
@@ -187,16 +273,27 @@ export function Hearth({
             />
           ) : null}
 
-          <Tile
-            title="Hours of safety"
-            value={homeText.value}
-            note={homeKnown ? homeText.note : 'Tell me about your home to get a band, not a guess.'}
-            sources={[...homeText.sources, ...(homeKnown ? [MODEL_SOURCE] : [])]}
-            live={outage && homeKnown}
-            onClick={() => setSettingUpHome(true)}
-          />
-
-          <div style={{ gridColumn: '1 / -1' }}>
+          <div
+            className={
+              (assessments.length === 0 ? 1 : assessments.length) % 2 === 0
+                ? 'col-span-2 min-w-0 lg:col-span-1'
+                : 'min-w-0'
+            }
+          >
+            <Tile
+              title="Hours of safety"
+              value={homeText.value}
+              note={
+                homeKnown ? homeText.note : 'Tell me about your home to get a band, not a guess.'
+              }
+              sources={[...homeText.sources, ...(homeKnown ? [MODEL_SOURCE] : [])]}
+              live={outage && homeKnown}
+              onClick={() => setSettingUpHome(true)}
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+          <div className="min-w-0">
             <Tile
               title="Your people"
               value={
@@ -231,7 +328,7 @@ export function Hearth({
               tourId="tile-people"
             />
           </div>
-          <div style={{ gridColumn: '1 / -1' }}>
+          <div className="min-w-0">
             {worst ? (
               <Tile
                 title="Medicines"
@@ -258,7 +355,7 @@ export function Hearth({
                 title="Medicines"
                 refusal="No medicine clock. I will not estimate how long your medicine lasts."
               >
-                <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
+                <div className="text-caption text-secondary">
                   {table.kind === 'loading'
                     ? 'Checking for the pharmacist-approved table. '
                     : `${table.reason} `}
@@ -290,41 +387,64 @@ export function Hearth({
         </Notice>
       ) : null}
 
-      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <VoiceButton />
-        <Button style={{ width: '100%' }} onClick={() => openLight()}>
-          {tr('hearth.light')}
-        </Button>
-        {outage ? (
-          <Button
-            variant="primary"
-            style={{ width: '100%', minHeight: 72 }}
-            onClick={() => store.endOutage()}
-          >
-            {tr('hearth.powerBack')}
-          </Button>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {demo ? null : (
-              <Button style={{ width: '100%' }} onClick={onStartDemo}>
-                Demo night: a simulated neighbourhood
-              </Button>
-            )}
-            <Button
-              variant="primary"
-              style={{ width: '100%', minHeight: 72 }}
-              onClick={() => store.startOutage(Date.now())}
-            >
-              {tr('hearth.powerOut')}
-            </Button>
-            {onStartTour ? (
-              <Button variant="ghost" style={{ width: '100%' }} onClick={onStartTour}>
-                Show me a night with Wisp, the guide
-              </Button>
-            ) : null}
+      <div className="grid gap-6 xl:grid-cols-12">
+        {demo ? null : (
+          <div className={outage ? 'min-w-0 xl:col-span-12' : 'min-w-0 xl:col-span-8'}>
+            <GridSenseCard />
           </div>
         )}
+        {/* Readiness is a lit-room question: during an outage the screen answers the night. */}
+        {outage ? null : (
+          <Panel
+            title="Ready for the dark"
+            icon="check"
+            className={demo ? 'xl:col-span-12' : 'xl:col-span-4'}
+            right={
+              <span className="clock text-label text-secondary">
+                {readyCount} of {ready.length}
+              </span>
+            }
+          >
+            <div
+              aria-hidden="true"
+              className="h-2 overflow-hidden rounded-full border border-hairline bg-surface-2"
+            >
+              <div
+                className="h-full origin-left rounded-full bg-emphasis transition-transform duration-700 ease-out"
+                style={{ transform: `scaleX(${readyCount / ready.length})` }}
+              />
+            </div>
+            <ul className="m-0 flex list-none flex-col gap-2 p-0">
+              {ready.map((r) => (
+                <li key={r.label}>
+                  <button
+                    type="button"
+                    onClick={r.go}
+                    className="press flex min-h-14 w-full items-center gap-3 rounded-2xl border border-hairline bg-surface-2 px-3.5 text-left transition-transform duration-200 hover:-translate-y-px"
+                  >
+                    <span
+                      className={
+                        r.done
+                          ? 'flex size-9 flex-none items-center justify-center rounded-full border border-ring bg-control-primary text-control-label'
+                          : 'flex size-9 flex-none items-center justify-center rounded-full border border-dashed border-muted text-secondary'
+                      }
+                    >
+                      <Icon name={r.done ? 'check' : r.icon} size={18} />
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="text-label font-bold text-primary">{r.label}</span>
+                      <span className="text-caption text-secondary">
+                        {r.done ? 'Set up' : r.hint}
+                      </span>
+                    </span>
+                    <Icon name="arrowRight" size={20} className="block flex-none text-secondary" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
       </div>
-    </main>
+    </Page>
   );
 }

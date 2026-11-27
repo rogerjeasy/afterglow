@@ -9,7 +9,9 @@ import { LanguagePicker } from '../i18n/LanguagePicker';
 import { Button, ChoiceChip, Notice, Section, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
 import { NotifySettings } from '../notify/NotifySettings';
+import { navigate } from '../router';
 import { useSpace } from '../spaces/useSpace';
+import { Page, PageHeader } from '../ui/page';
 
 type Mode = 'home' | 'create' | 'signin' | 'recover' | 'cloudCreate' | 'cloudSignIn';
 type Manage = null | 'passphrase' | 'recovery' | 'delete';
@@ -167,45 +169,34 @@ export function You({
     </>
   );
 
-  const header = (
-    <header>
-      <h1 style={{ margin: 0, fontSize: 'var(--type-title)', color: token('text.emphasis') }}>
-        You
-      </h1>
-      <p
-        style={{ margin: '8px 0 0', fontSize: 'var(--type-body)', color: token('text.secondary') }}
-      >
-        {space.kind === 'account'
-          ? `Signed in as ${space.account?.name ?? 'your account'}.`
-          : space.kind === 'demo'
-            ? 'You are in the demo.'
-            : 'You are using Afterglow without an account.'}
-      </p>
-    </header>
-  );
+  const lead =
+    space.kind === 'account'
+      ? `Signed in as ${space.account?.name ?? 'your account'}.`
+      : space.kind === 'demo'
+        ? 'You are in the demo.'
+        : 'You are using Afterglow without an account.';
 
   const frame = (children: ReactNode, settings = false): ReactNode => (
-    <main
-      style={{
-        maxWidth: 520,
-        margin: '0 auto',
-        padding: '8px 20px 120px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 28,
-      }}
-    >
-      {header}
-      {children}
-      {settings && space.kind === 'account' ? (
-        <ConsolesSection signedIn={space.cloud !== null} />
-      ) : null}
-      {settings ? <HistorySection /> : null}
-      {settings ? <NotifySettings /> : null}
-      {settings ? <LanguagePicker /> : null}
-      {settings ? <EyesFreeSettings /> : null}
-      {settings ? <TrustCentre /> : null}
-    </main>
+    <Page width={settings ? 'wide' : 'narrow'}>
+      <PageHeader title="You" eyebrow="Account, privacy and settings" icon="settings" lead={lead} />
+      {settings ? (
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+          <div className="flex min-w-0 flex-col gap-8">
+            {children}
+            {space.kind === 'account' ? <ConsolesSection signedIn={space.cloud !== null} /> : null}
+            <TrustCentre />
+          </div>
+          <div className="flex min-w-0 flex-col gap-8">
+            <HistorySection />
+            <NotifySettings />
+            <LanguagePicker />
+            <EyesFreeSettings />
+          </div>
+        </div>
+      ) : (
+        children
+      )}
+    </Page>
   );
 
   // The recovery code is shown once, before anything else.
@@ -840,7 +831,7 @@ export function You({
         <Button
           variant="ghost"
           onClick={() => {
-            window.location.hash = '#/welcome';
+            navigate('/app/welcome');
           }}
         >
           Show the welcome again

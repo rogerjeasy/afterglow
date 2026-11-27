@@ -35,7 +35,7 @@ async function scan(page: Page, mode: LuminanceMode, name: string): Promise<void
 
 /** The highlighted target sits in the clear space above the bubble. */
 async function expectTargetClear(page: Page, step: number): Promise<void> {
-  const target = page.locator('.tour-target');
+  const target = page.locator('[data-tour-target]');
   await expect(target, `step ${step} has a highlighted target`).toHaveCount(1);
   await expect(target).toBeVisible();
   const t = await target.boundingBox();
@@ -60,7 +60,7 @@ test('GD-06 the whole night: every step shows its target above the bubble, and t
   const tabs: string[] = [];
   for (let i = 0; i < STEPS; i++) {
     await expectTargetClear(page, i);
-    tabs.push(new URL(page.url()).hash);
+    tabs.push(new URL(page.url()).pathname);
     // Wisp never says a number the screen did not compute: the lights-out line repeats the cell's count.
     if (i === 1) {
       const status = (await page.locator('[data-tour="status"]').textContent()) ?? '';
@@ -70,7 +70,9 @@ test('GD-06 the whole night: every step shows its target above the bubble, and t
     }
     await primary(page).click();
   }
-  expect(new Set(tabs)).toEqual(new Set(['#/', '#/cold', '#/lantern', '#/seance', '#/plan']));
+  expect(new Set(tabs)).toEqual(
+    new Set(['/app', '/app/cold', '/app/lantern', '/app/seance', '/app/plan']),
+  );
   await expect(bubble(page)).toContainText('That was one night');
   await expect(page.getByText('POWER ON')).toBeVisible();
 });

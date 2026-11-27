@@ -50,15 +50,12 @@ export function Onboarding({
   return (
     <main
       aria-label="Welcome"
-      style={{
-        maxWidth: 520,
-        margin: '0 auto',
-        padding: '8px 20px 48px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 24,
-      }}
+      className="page-enter relative mx-auto flex w-full max-w-[680px] flex-col gap-6 px-5 pt-4 pb-12 sm:px-8 lg:pt-14"
     >
+      <div
+        aria-hidden="true"
+        className="halo-soft pointer-events-none absolute inset-x-0 -top-24 -z-10 h-[420px] opacity-70"
+      />
       {step !== 'welcome' && step !== 'done' ? (
         <div>
           <div
@@ -141,27 +138,14 @@ function Welcome({
   return (
     <>
       <div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 'var(--type-display)',
-            lineHeight: 1.1,
-            color: token('text.emphasis'),
-          }}
-        >
+        <h1 className="m-0 font-display text-[clamp(36px,7vw,56px)] leading-[1.05] font-medium tracking-[-0.02em] text-emphasis">
           The only app you can read when the grid dies.
         </h1>
-        <p style={{ margin: '16px 0 0', fontSize: 'var(--type-body)', lineHeight: 1.4 }}>
+        <p className="m-0 mt-4 text-body leading-[1.45]">
           Afterglow tells you what in your fridge is still good, how long your medicine and your
           home hold, who is okay, and where the lights still are.
         </p>
-        <p
-          style={{
-            margin: '12px 0 0',
-            fontSize: 'var(--type-caption)',
-            color: token('text.secondary'),
-          }}
-        >
+        <p className="m-0 mt-3 text-caption text-secondary">
           Every number names its source, and when I do not know, I say unknown.
         </p>
       </div>
@@ -170,8 +154,8 @@ function Welcome({
         See what the dark looks like
       </Button>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Button variant="primary" style={{ minHeight: 72 }} onClick={onStart}>
+      <div className="flex flex-col gap-3">
+        <Button variant="primary" className="min-h-[72px]" onClick={onStart}>
           Set it up (about 2 minutes)
         </Button>
         <Button onClick={onTour}>Take the one-minute tour with Wisp</Button>

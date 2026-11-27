@@ -9,6 +9,12 @@
   box-sizing: border-box;
 }
 
+/* Screens written before Tailwind expect inline SVG glyphs; new code uses the `block` utility. */
+svg {
+  display: inline;
+  vertical-align: baseline;
+}
+
 :root {
   /* Type scale (design doc section 5.2), Night/Dusk values. */
   --type-body: 20px;
@@ -21,12 +27,15 @@
   --type-clock-md: 24px;
   --type-headline: 22px;
 
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Atkinson Hyperlegible Next: drawn for low vision, which is everyone in the dark (design 5.1). */
+  --font-ui: "Atkinson Hyperlegible Next", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
   /* Tabular figures so clocks never jump as they tick. */
-  --font-clock: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --font-clock: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
 
-  --radius-control: 12px;
-  --radius-tile: 16px;
+  --radius-control: 14px;
+  --radius-tile: 20px;
 
   color-scheme: dark;
 }
@@ -238,7 +247,8 @@ html {
 }
 
 /* Guide (Wisp). The target highlight is the focus ring, nothing brighter (GD-09). */
-.tour-target {
+.tour-target,
+[data-tour-target] {
   outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
   border-radius: var(--radius-tile);

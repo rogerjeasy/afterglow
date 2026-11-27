@@ -54,11 +54,19 @@ test('NS-13 sources open on a tap, name every source, and never hide a default',
 });
 
 const BUDGETS: Record<string, number> = {
-  '#/': 1950,
-  '#/lantern': 2400,
-  '#/seance': 2450,
-  '#/cold': 3400,
-  '#/plan': 4000,
+  // 2026-11-27 (web-experience): 1950 -> 2050. The Hearth now sets in Atkinson Hyperlegible
+  // (design 5.1), which runs wider than the system UI face it was measured with, and keeps
+  // the actions in their own block. Readiness, the page heading and the long demo notice
+  // were moved off the phone layout to stay close to the old height.
+  '#/': 2050,
+  // Same reason as the Hearth (2400 -> 2500); its lead is hidden on phones, said again below.
+  '#/lantern': 2500,
+  // Same reason (2450 -> 2650); its lead, which says what a ghost means, stays on phones.
+  '#/seance': 2650,
+  // Same reason (3400 -> 3650).
+  '#/cold': 3650,
+  // Same reason (4000 -> 4400); its panels have titled rows. Nothing was unfolded.
+  '#/plan': 4400,
 };
 
 test('NS-15 every screen fits its height budget in the demo outage', async ({ page }) => {

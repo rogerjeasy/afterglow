@@ -71,7 +71,7 @@ export function LiveLantern({ cell }: { cell: string }): ReactNode {
   return (
     <>
       <AdvisoriesNotice cell={cell} />
-      <Section title="Lantern">
+      <Section title="Right now">
         <StatusLine
           timer={mine ? (STATE_LINE[mine.state] ?? 'UNKNOWN') : 'CHECKING…'}
           line={
@@ -79,7 +79,7 @@ export function LiveLantern({ cell }: { cell: string }): ReactNode {
           }
           live={mine?.state === 'dark'}
         />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div className="flex flex-wrap gap-1.5">
           <SourceChip label="crowd (live)" />
           {cellsState.kind === 'ready' ? (
             <SourceChip
@@ -97,55 +97,63 @@ export function LiveLantern({ cell }: { cell: string }): ReactNode {
         </div>
       </Section>
 
-      {answer ? (
-        <Section title="Your area and around it">
-          <LanternMap
-            cols={answer.cols}
-            rows={answer.rows}
-            cells={mapCells}
-            selectedId={sel?.geohash6 ?? cell}
-            onSelect={setSelected}
-            label="The crowd map around your area, about 6 by 3 kilometres"
-          />
-          <MapLegend />
-          {sel ? (
-            <Tile
-              title={sel.geohash6 === cell ? 'Your area' : 'Neighbouring area'}
-              value={STATE_WORD[sel.state]}
-              note={cellNote(sel.state, sel.deviceCount)}
-              sources={[
-                'crowd',
-                sel.deviceCount > 0 ? `${sel.deviceCount} devices` : 'fewer than 5 devices',
-                'privacy rule: k ≥ 5',
-              ]}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start">
+        {answer ? (
+          <Section title="Your area and around it">
+            <LanternMap
+              cols={answer.cols}
+              rows={answer.rows}
+              cells={mapCells}
+              selectedId={sel?.geohash6 ?? cell}
+              onSelect={setSelected}
+              label="The crowd map around your area, about 6 by 3 kilometres"
             />
-          ) : null}
-        </Section>
-      ) : cellsState.kind === 'unavailable' ? (
-        <Notice>
-          The crowd map is unreachable right now and there is no earlier map on this phone.
-        </Notice>
-      ) : null}
+            <MapLegend />
+            {sel ? (
+              <Tile
+                title={sel.geohash6 === cell ? 'Your area' : 'Neighbouring area'}
+                value={STATE_WORD[sel.state]}
+                note={cellNote(sel.state, sel.deviceCount)}
+                sources={[
+                  'crowd',
+                  sel.deviceCount > 0 ? `${sel.deviceCount} devices` : 'fewer than 5 devices',
+                  'privacy rule: k ≥ 5',
+                ]}
+              />
+            ) : null}
+          </Section>
+        ) : cellsState.kind === 'unavailable' ? (
+          <Notice>
+            The crowd map is unreachable right now and there is no earlier map on this phone.
+          </Notice>
+        ) : (
+          <span className="hidden" />
+        )}
 
-      <Section title="When will power return?">
-        <Notice>
-          {sched.current
-            ? `Your utility announced power back at ${formatClockTime(sched.current.endMinute * 60_000)}. Announcements slip: this map says "coming back" when neighbours' phones start charging, whatever the schedule says.`
-            : sched.next
-              ? `No announced outage now. The next one announced starts at ${formatClockTime(sched.next.startMinute * 60_000)}.`
-              : 'No schedule is announced for your area, so I show no promised time and no estimate. When neighbours\' phones start charging again, this map says "coming back" before anyone announces it. You can add announced times on the Plan tab.'}
-        </Notice>
-      </Section>
+        <div className="flex min-w-0 flex-col gap-8">
+          <Section title="When will power return?">
+            <Notice>
+              {sched.current
+                ? `Your utility announced power back at ${formatClockTime(sched.current.endMinute * 60_000)}. Announcements slip: this map says "coming back" when neighbours' phones start charging, whatever the schedule says.`
+                : sched.next
+                  ? `No announced outage now. The next one announced starts at ${formatClockTime(sched.next.startMinute * 60_000)}.`
+                  : 'No schedule is announced for your area, so I show no promised time and no estimate. When neighbours\' phones start charging again, this map says "coming back" before anyone announces it. You can add announced times on the Plan tab.'}
+            </Notice>
+          </Section>
 
-      <Comparisons cell={cell} />
+          <Comparisons cell={cell} />
+        </div>
+      </div>
       <OpenBusinesses cell={cell} />
-      <PlacesSection cell={cell} places={places} cellsAnswer={answer} />
-      <SignalSection cell={cell} places={places} />
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+        <PlacesSection cell={cell} places={places} cellsAnswer={answer} />
+        <SignalSection cell={cell} places={places} />
+      </div>
 
       <Section title="Your area">
-        <span style={{ fontSize: 'var(--type-body)', color: token('text.primary') }}>
-          Your area code is <span style={{ color: token('text.emphasis') }}>{cell}</span>. Write it
-          down for neighbours with basic phones: it is what Afterglow's text and USSD menus ask for.
+        <span className="text-body text-primary">
+          Your area code is <span className="clock text-emphasis">{cell}</span>. Write it down for
+          neighbours with basic phones: it is what Afterglow's text and USSD menus ask for.
         </span>
         <Sources labels={['a ~1 km cell (geohash-6)', 'never your position']}>
           Only the cell is kept and sent. The map, places and forecast are asked for by cell.

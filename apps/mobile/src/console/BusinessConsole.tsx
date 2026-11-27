@@ -1,8 +1,10 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { download, printReport } from '../history/export';
 import { Sources } from '../night-shell/components';
-import { Button, ChoiceChip, Fold, Notice, Section, TextField } from '../night-shell/controls';
+import { Button, ChoiceChip, Fold, Notice, TextField } from '../night-shell/controls';
 import { token } from '../night-shell/theme';
+import { Icon, type IconName } from '../ui/icons';
+import { PageHeader, Panel } from '../ui/page';
 import { type LogEntry, type Site, consoleApi } from './api';
 import { coldChainReport, generatorSummary, summariseFridges } from './coldchain';
 
@@ -193,7 +195,7 @@ function SiteCard({
   const report = entries ? coldChainReport(site, entries, days, Date.now()) : '';
 
   return (
-    <Section title={site.name}>
+    <Panel title={site.name} icon="building" className="h-full">
       <span style={small}>
         {KIND_WORD[site.kind] ?? site.kind} · area {site.geohash6}
         {site.status
@@ -366,7 +368,7 @@ function SiteCard({
           Delete site
         </Button>
       )}
-    </Section>
+    </Panel>
   );
 }
 
@@ -376,29 +378,68 @@ export function BusinessConsole(): ReactNode {
   useEffect(() => {
     void consoleApi.sites().then((r) => (r.ok ? setSites(r.value.sites) : setErr(r.message)));
   }, []);
+  const list = sites ?? [];
+  const lit = list.filter((x) => x.status?.open && x.status.power !== 'none').length;
+  const fridges = list.reduce((n, x) => n + x.fridges.length, 0);
+  const published = list.filter((x) => x.status).length;
   return (
     <>
-      <Section title="Afterglow Business">
-        <span style={{ fontSize: 'var(--type-body)', color: token('text.secondary') }}>
-          For pharmacies, clinics, shops and shelters: tell people you are open and powered, keep
-          your fridges’ log, and print the cold-chain report.
-        </span>
-        {err ? <Notice>{err}</Notice> : null}
-        {sites ? <NewSite onCreated={(s) => setSites([...sites, s])} /> : null}
-        <Sources labels={['your account', 'public: name, kind, position, open and power']}>
-          Your sites and logs are kept with your account (not end-to-end encrypted: they are your
-          business records, backed up). Only what you publish is public.
-        </Sources>
-      </Section>
-      {sites?.length === 0 ? <Notice>No sites yet. Add one above.</Notice> : null}
-      {sites?.map((s) => (
-        <SiteCard
-          key={s.siteId}
-          site={s}
-          onChange={(n) => setSites(sites.map((x) => (x.siteId === n.siteId ? n : x)))}
-          onDeleted={() => setSites(sites.filter((x) => x.siteId !== s.siteId))}
-        />
-      ))}
+      <PageHeader
+        title="Afterglow Business"
+        eyebrow="For pharmacies, clinics, shops and shelters"
+        icon="building"
+        lead="Tell people you are open and powered, keep your fridges’ log, and print the cold-chain report."
+      />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Sites" value={sites ? String(list.length) : '…'} icon="building" />
+        <Stat label="Open and lit" value={sites ? String(lit) : '…'} icon="bolt" />
+        <Stat label="Fridges logged" value={sites ? String(fridges) : '…'} icon="snow" />
+        <Stat label="Public statuses" value={sites ? String(published) : '…'} icon="globe" />
+      </div>
+      {err ? <Notice>{err}</Notice> : null}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
+        <Panel title="Your sites" icon="sparkle">
+          {sites ? <NewSite onCreated={(s) => setSites([...sites, s])} /> : null}
+          <Sources labels={['your account', 'public: name, kind, position, open and power']}>
+            Your sites and logs are kept with your account (not end-to-end encrypted: they are your
+            business records, backed up). Only what you publish is public.
+          </Sources>
+        </Panel>
+        <div className="grid min-w-0 gap-6 xl:grid-cols-2">
+          {sites?.length === 0 ? <Notice>No sites yet. Add one with the form.</Notice> : null}
+          {sites?.map((s) => (
+            <SiteCard
+              key={s.siteId}
+              site={s}
+              onChange={(n) => setSites(sites.map((x) => (x.siteId === n.siteId ? n : x)))}
+              onDeleted={() => setSites(sites.filter((x) => x.siteId !== s.siteId))}
+            />
+          ))}
+        </div>
+      </div>
     </>
+  );
+}
+
+/** One figure in the console's stat row. */
+export function Stat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: IconName;
+}): ReactNode {
+  return (
+    <div className="card flex min-w-0 items-center gap-4 p-4 sm:p-5">
+      <span className="flex size-11 flex-none items-center justify-center rounded-xl border border-hairline bg-surface-2 text-icon">
+        <Icon name={icon} size={22} />
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-caption text-secondary">{label}</span>
+        <span className="clock text-title leading-tight text-emphasis">{value}</span>
+      </span>
+    </div>
   );
 }

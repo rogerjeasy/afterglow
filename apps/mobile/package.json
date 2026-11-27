@@ -19,11 +19,16 @@
     "@afterglow/core": "workspace:*",
     "@afterglow/design-system": "workspace:*",
     "@afterglow/simulator": "workspace:*",
+    "@fontsource-variable/fraunces": "5.3.0",
+    "@fontsource/atkinson-hyperlegible-mono": "5.3.0",
+    "@fontsource/atkinson-hyperlegible-next": "5.3.0",
     "@noble/hashes": "1.8.0",
+    "@tailwindcss/vite": "4.3.5",
     "amazon-cognito-identity-js": "6.3.22",
     "qrcode": "1.5.4",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "tailwindcss": "4.3.5"
   },
   "devDependencies": {
     "@afterglow/vault-service": "workspace:*",

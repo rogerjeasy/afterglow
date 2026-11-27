@@ -2,8 +2,10 @@ import type { alerts } from '@afterglow/core';
 import type { ReactNode } from 'react';
 import { alertText } from '../alerts/present';
 import { Sources } from '../night-shell/components';
-import { Notice, Section } from '../night-shell/controls';
-import { token } from '../night-shell/theme';
+import { Notice } from '../night-shell/controls';
+import { Icon } from '../ui/icons';
+import { cx } from '../ui/kit';
+import { Page, PageHeader } from '../ui/page';
 
 /**
  * The Alerts centre (design 11.8; alerts spec): what needs you, most urgent first,
@@ -22,40 +24,35 @@ function AlertCard({ alert }: { alert: alerts.Alert }): ReactNode {
   return (
     <article
       aria-label={`${PRIORITY_WORD[alert.priority]}: ${t.title}`}
-      style={{
-        padding: '14px 16px',
-        borderRadius: 'var(--radius-tile)',
-        background: token('surface.2'),
-        borderStyle: 'solid',
-        borderWidth: critical ? 2 : 1,
-        borderColor: critical ? token('focus.ring') : token('hairline'),
-        minWidth: 0,
-      }}
+      className={cx(
+        'flex h-full min-w-0 gap-4 rounded-[var(--radius-tile)] border-solid bg-surface-2 p-4 sm:p-5',
+        critical ? 'border-2 border-ring' : 'border border-hairline',
+      )}
     >
-      <div style={{ fontSize: 'var(--type-caption)', color: token('text.secondary') }}>
-        {PRIORITY_WORD[alert.priority]}
-      </div>
-      <div
-        style={{
-          marginTop: 4,
-          fontSize: 'var(--type-body)',
-          color: critical ? token('text.emphasis') : token('text.primary'),
-          overflowWrap: 'anywhere',
-        }}
+      <span
+        aria-hidden="true"
+        className={cx(
+          'flex size-11 flex-none items-center justify-center rounded-xl border',
+          critical
+            ? 'border-ring bg-control-primary text-control-label'
+            : 'border-hairline bg-surface-1 text-secondary',
+        )}
       >
-        {t.title}
+        <Icon name={alert.kind === 'help' ? 'seance' : critical ? 'bell' : 'clock'} size={22} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-caption text-secondary">{PRIORITY_WORD[alert.priority]}</div>
+        <div
+          className={cx(
+            'mt-1 text-body [overflow-wrap:anywhere]',
+            critical ? 'text-emphasis' : 'text-primary',
+          )}
+        >
+          {t.title}
+        </div>
+        <div className="mt-1.5 text-caption text-secondary [overflow-wrap:anywhere]">{t.body}</div>
+        <Sources labels={alert.sources} />
       </div>
-      <div
-        style={{
-          marginTop: 6,
-          fontSize: 'var(--type-caption)',
-          color: token('text.secondary'),
-          overflowWrap: 'anywhere',
-        }}
-      >
-        {t.body}
-      </div>
-      <Sources labels={alert.sources} />
     </article>
   );
 }
@@ -67,47 +64,43 @@ export function Alerts({
   list: readonly alerts.Alert[];
   outage: boolean;
 }): ReactNode {
+  const now = list.filter((a) => a.priority === 'critical').length;
   return (
-    <main
-      style={{
-        maxWidth: 520,
-        margin: '0 auto',
-        padding: '8px 20px 120px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 20,
-      }}
-    >
-      <Section title="Alerts">
-        {list.length === 0 ? (
-          <Notice>
+    <Page width="narrow">
+      <PageHeader
+        title="Alerts"
+        eyebrow="What needs you"
+        icon="bell"
+        lead={
+          list.length === 0
+            ? 'Most urgent first, each with how it is known.'
+            : `${list.length} alert${list.length === 1 ? '' : 's'}${now > 0 ? `, ${now} need${now === 1 ? 's' : ''} you now` : ''}. Most urgent first, each with how it is known.`
+        }
+      />
+      {list.length === 0 ? (
+        <div className="card flex flex-col items-center gap-4 px-6 py-12 text-center">
+          <span className="flex size-14 items-center justify-center rounded-2xl border border-hairline bg-surface-2 text-secondary">
+            <Icon name="bell" size={26} />
+          </span>
+          <p className="m-0 max-w-[48ch] text-body text-secondary">
             {outage
               ? 'Nothing needs you right now. I will say here when a fridge, your home or one of your people does.'
               : 'Nothing to report. With the power on I stay quiet, unless someone on your list sends HELP.'}
-          </Notice>
-        ) : (
-          <ul
-            style={{
-              listStyle: 'none',
-              margin: 0,
-              padding: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
-            {list.map((a) => (
-              <li key={a.key}>
-                <AlertCard alert={a} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+          </p>
+        </div>
+      ) : (
+        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+          {list.map((a) => (
+            <li key={a.key}>
+              <AlertCard alert={a} />
+            </li>
+          ))}
+        </ul>
+      )}
       <Notice>
         Alerts here come from the same models as every other screen, and each says how it is known.
         Afterglow does not send texts or calls from this build, and it is not an emergency service.
       </Notice>
-    </main>
+    </Page>
   );
 }

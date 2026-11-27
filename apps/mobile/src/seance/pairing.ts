@@ -1,3 +1,4 @@
+import { href } from '../router';
 /**
  * Pairing in person (product description 7.9 "roster and pairing"): a link that says
  * "this is me, and this is my number on your list". It is shown as a QR code to be
@@ -43,7 +44,8 @@ export function setMyName(name: string): void {
 
 export function pairLink(offer: PairOffer, origin = window.location.origin): string {
   const q = new URLSearchParams({ s: String(offer.slot), n: cleanName(offer.name) });
-  return `${origin}/#/seance/pair?${q.toString()}`;
+  // The Séance's real path, with the offer in the hash so it never reaches a server log.
+  return `${origin}${href('/app/seance')}#/seance/pair?${q.toString()}`;
 }
 
 /** The offer in a hash or a scanned text, or null for anything else. */

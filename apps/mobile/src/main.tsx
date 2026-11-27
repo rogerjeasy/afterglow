@@ -1,12 +1,24 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
+import { Root } from './Root';
 import { applyMode } from './night-shell/theme';
-import './night-shell/night-shell.css';
+import { redirectLegacy } from './router';
+// Self-hosted type (the CSP allows fonts from our own origin only): Atkinson Hyperlegible
+// Next for reading in the dark, its Mono for clocks, Fraunces for display lines.
+import '@fontsource/atkinson-hyperlegible-next/latin-400.css';
+import '@fontsource/atkinson-hyperlegible-next/latin-600.css';
+import '@fontsource/atkinson-hyperlegible-next/latin-700.css';
+import '@fontsource/atkinson-hyperlegible-next/latin-800.css';
+import '@fontsource/atkinson-hyperlegible-mono/latin-500.css';
+import '@fontsource/atkinson-hyperlegible-mono/latin-700.css';
+import '@fontsource-variable/fraunces/opsz.css';
+import './styles/tailwind.css';
 
 // Resolve the initial mode's tokens before first paint so there is never a
 // flash of unstyled (or light) content.
 applyMode('ember');
+// `#/cold`, `?tour=1` and other links from before real paths keep working.
+redirectLegacy();
 
 const container = document.getElementById('root');
 if (!container) {
@@ -15,7 +27,7 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>,
 );
 

@@ -18,6 +18,8 @@ import {
   fetchPlaces,
   fetchSites,
 } from '../public/api';
+import { PageHeader, Panel } from '../ui/page';
+import { Stat } from './BusinessConsole';
 import { consoleApi } from './api';
 
 /**
@@ -129,19 +131,38 @@ export function BeaconConsole(): ReactNode {
     [places, center, live],
   );
 
-  if (allowed === null) return <Notice>Checking your Beacon access…</Notice>;
+  if (allowed === null)
+    return (
+      <>
+        <PageHeader
+          title="Afterglow Beacon"
+          eyebrow="For cities, utilities and relief organisations"
+          icon="radio"
+          lead="The whole region at once, its history, and advisories to the people who follow an area. Aggregates only."
+        />
+        <Notice>Checking your Beacon access…</Notice>
+      </>
+    );
   if (!allowed) {
     return (
-      <Section title="Afterglow Beacon">
-        <Notice>
-          {why ??
-            'Beacon is for municipalities, utilities and relief organisations. Your account does not have Beacon access yet: Afterglow grants it after checking who you work for.'}
-        </Notice>
-        <span style={small}>
-          Everything Beacon shows is also public in Afterglow, area by area. What Beacon adds is the
-          region at once, history, and advisories to the people who follow an area.
-        </span>
-      </Section>
+      <>
+        <PageHeader
+          title="Afterglow Beacon"
+          eyebrow="For cities, utilities and relief organisations"
+          icon="radio"
+          lead="The whole region at once, its history, and advisories to the people who follow an area. Aggregates only."
+        />
+        <Section title="Access">
+          <Notice>
+            {why ??
+              'Beacon is for municipalities, utilities and relief organisations. Your account does not have Beacon access yet: Afterglow grants it after checking who you work for.'}
+          </Notice>
+          <span style={small}>
+            Everything Beacon shows is also public in Afterglow, area by area. What Beacon adds is
+            the region at once, history, and advisories to the people who follow an area.
+          </span>
+        </Section>
+      </>
     );
   }
 
@@ -159,8 +180,22 @@ export function BeaconConsole(): ReactNode {
 
   return (
     <>
-      <Section title="Afterglow Beacon">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <PageHeader
+        title="Afterglow Beacon"
+        eyebrow="For cities, utilities and relief organisations"
+        icon="radio"
+        lead="The whole region at once, its history, and advisories to the people who follow an area. Aggregates only."
+      />
+      {live ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Areas dark" value={String(counts.dark)} icon="boltOff" />
+          <Stat label="Coming back" value={String(counts.comingBack)} icon="bolt" />
+          <Stat label="Areas lit" value={String(counts.lit)} icon="lantern" />
+          <Stat label="Devices reporting" value={String(counts.devices)} icon="phone" />
+        </div>
+      ) : null}
+      <Panel title="Region" icon="map">
+        <div className="flex flex-wrap items-end gap-2">
           <TextField
             label="Centre area code"
             value={centerText}
@@ -178,7 +213,7 @@ export function BeaconConsole(): ReactNode {
             Use my position
           </Button>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap gap-1.5">
           {[1, 7, 30].map((d) => (
             <ChoiceChip
               key={d}
@@ -189,197 +224,189 @@ export function BeaconConsole(): ReactNode {
           ))}
         </div>
         {loading ? <span style={small}>Loading the region…</span> : null}
-      </Section>
+      </Panel>
 
-      {live ? (
-        <Section title="Now">
-          <div style={{ fontSize: 'var(--type-body)', color: token('text.primary') }}>
-            {counts.dark} dark, {counts.comingBack} coming back, {counts.lit} lit, {counts.mixed}{' '}
-            mixed and {counts.unknown} without enough phones, of {live.cells.length} areas;{' '}
-            {counts.devices} devices reporting.
-          </div>
-          <LanternMap
-            cols={live.cols}
-            rows={live.rows}
-            cells={mapCells}
-            selectedId={selected}
-            onSelect={setSelected}
-            label="The region, 7 by 7 areas of about 1 km"
-          />
-          <MapLegend />
-          {sel ? (
-            <span style={small}>
-              {sel.geohash6}: {STATE_WORD[sel.state]}
-              {sel.deviceCount ? `, ${sel.deviceCount} devices` : ''}
-              {selHist
-                ? ` · ${formatDuration(selHist.darkMinutes)} dark in ${days} day${days === 1 ? '' : 's'}, ${selHist.outages} outage${selHist.outages === 1 ? '' : 's'}`
-                : ''}
-            </span>
-          ) : null}
-        </Section>
-      ) : null}
-
-      {hist ? (
-        <Section title="History">
-          {daily.length ? (
-            <div
-              role="img"
-              aria-label="Dark area-minutes per day across the region"
-              style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}
-            >
-              {daily.map(([day, v]) => (
-                <div
-                  key={day}
-                  title={`${day}: ${formatDuration(v)}`}
-                  style={{
-                    flex: 1,
-                    height: `${8 + (v / maxDaily) * 72}px`,
-                    background: v ? token('control.fill.primary') : token('surface.2'),
-                    borderRadius: 2,
-                  }}
-                />
-              ))}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-start">
+        {live ? (
+          <Panel title="Now" icon="lantern" live={counts.dark > 0}>
+            <div className="text-body text-primary">
+              {counts.dark} dark, {counts.comingBack} coming back, {counts.lit} lit, {counts.mixed}{' '}
+              mixed and {counts.unknown} without enough phones, of {live.cells.length} areas;{' '}
+              {counts.devices} devices reporting.
             </div>
-          ) : null}
-          {ranked.length === 0 ? (
-            <Notice>No outages recorded in this region in that time.</Notice>
-          ) : (
-            <ol
-              style={{
-                margin: 0,
-                paddingLeft: 20,
-                color: token('text.primary'),
-                display: 'grid',
-                gap: 4,
-              }}
-            >
-              {ranked.map((c) => (
-                <li key={c.geohash6}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(c.geohash6)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'inherit',
-                      font: 'inherit',
-                      padding: 0,
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    {c.geohash6}
-                  </button>
-                  : {formatDuration(c.darkMinutes)} dark, {c.outages} outage
-                  {c.outages === 1 ? '' : 's'}, longest {formatDuration(c.longestDarkMinutes)}
-                </li>
-              ))}
-            </ol>
-          )}
-          <Button
-            size="sm"
-            onClick={() =>
-              download(
-                `afterglow-beacon-${center}-${days}d.csv`,
-                'text/csv',
-                csv([
-                  [
-                    'area',
-                    'row',
-                    'col',
-                    'state_now',
-                    'devices_now',
-                    `dark_minutes_${days}d`,
-                    'outages',
-                    'longest_dark_minutes',
-                  ],
-                  ...(hist?.cells ?? []).map((c) => {
-                    const l = live?.cells.find((x) => x.geohash6 === c.geohash6);
-                    return [
-                      c.geohash6,
-                      c.row,
-                      c.col,
-                      l?.state ?? 'unknown',
-                      l?.deviceCount ?? 0,
-                      c.darkMinutes,
-                      c.outages,
-                      c.longestDarkMinutes,
-                    ];
-                  }),
-                ]),
-              )
-            }
-          >
-            Export CSV
-          </Button>
-        </Section>
-      ) : null}
-
-      {center ? (
-        <Section title="Health facilities near the centre">
-          {health.length === 0 ? (
-            <Notice>
-              {places
-                ? 'No hospitals, clinics or pharmacies mapped within 2 km.'
-                : 'Places are loading or unreachable; try again shortly.'}
-            </Notice>
-          ) : (
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: 18,
-                color: token('text.primary'),
-                display: 'grid',
-                gap: 4,
-              }}
-            >
-              {health.map((h) => (
-                <li key={h.place.id}>
-                  {h.place.name ?? h.place.kind}:{' '}
-                  {h.cellState === 'lit'
-                    ? 'area has power'
-                    : h.cellState === 'dark'
-                      ? 'area is dark'
-                      : h.cellState === 'comingBack'
-                        ? 'power coming back'
-                        : 'not enough phones'}
-                  {h.place.backupPower ? ' · backup power recorded' : ''}
-                </li>
-              ))}
-            </ul>
-          )}
-          {sites.length ? (
-            <>
-              <span style={{ fontSize: 'var(--type-body)', color: token('text.emphasis') }}>
-                Businesses reporting
+            <LanternMap
+              cols={live.cols}
+              rows={live.rows}
+              cells={mapCells}
+              selectedId={selected}
+              onSelect={setSelected}
+              label="The region, 7 by 7 areas of about 1 km"
+            />
+            <MapLegend />
+            {sel ? (
+              <span style={small}>
+                {sel.geohash6}: {STATE_WORD[sel.state]}
+                {sel.deviceCount ? `, ${sel.deviceCount} devices` : ''}
+                {selHist
+                  ? ` · ${formatDuration(selHist.darkMinutes)} dark in ${days} day${days === 1 ? '' : 's'}, ${selHist.outages} outage${selHist.outages === 1 ? '' : 's'}`
+                  : ''}
               </span>
-              <ul
-                style={{
-                  margin: 0,
-                  paddingLeft: 18,
-                  color: token('text.primary'),
-                  display: 'grid',
-                  gap: 4,
-                }}
+            ) : null}
+          </Panel>
+        ) : null}
+
+        {hist ? (
+          <Panel title="History" icon="chart">
+            {daily.length ? (
+              <div
+                role="img"
+                aria-label="Dark area-minutes per day across the region"
+                className="flex h-24 items-end gap-1 border-b border-hairline pb-1"
               >
-                {sites.map((s) => (
-                  <li key={s.siteId}>
-                    {s.name}: {s.open ? 'open' : 'closed'},{' '}
-                    {s.power === 'mains'
-                      ? 'mains power'
-                      : s.power === 'backup'
-                        ? 'backup power'
-                        : 'no power'}
-                    {s.note ? ` · ${s.note}` : ''}
+                {daily.map(([day, v]) => (
+                  <div
+                    key={day}
+                    title={`${day}: ${formatDuration(v)}`}
+                    style={{
+                      flex: 1,
+                      height: `${8 + (v / maxDaily) * 72}px`,
+                      background: v ? token('control.fill.primary') : token('surface.2'),
+                      borderRadius: 2,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
+            {ranked.length === 0 ? (
+              <Notice>No outages recorded in this region in that time.</Notice>
+            ) : (
+              <div className="overflow-x-auto rounded-[var(--radius-control)] border border-hairline">
+                <table className="w-full min-w-[460px] border-collapse text-left text-caption">
+                  <thead className="bg-surface-2 text-secondary">
+                    <tr>
+                      <th className="px-3 py-2.5 font-bold">Area</th>
+                      <th className="px-3 py-2.5 font-bold">Dark</th>
+                      <th className="px-3 py-2.5 font-bold">Outages</th>
+                      <th className="px-3 py-2.5 font-bold">Longest</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-primary">
+                    {ranked.map((c) => (
+                      <tr
+                        key={c.geohash6}
+                        className={
+                          c.geohash6 === selected
+                            ? 'border-t border-hairline bg-surface-3'
+                            : 'border-t border-hairline'
+                        }
+                      >
+                        <td className="px-3 py-1">
+                          <button
+                            type="button"
+                            onClick={() => setSelected(c.geohash6)}
+                            className="clock min-h-11 cursor-pointer border-none bg-transparent p-0 text-emphasis underline"
+                          >
+                            {c.geohash6}
+                          </button>
+                        </td>
+                        <td className="clock px-3 py-1">{formatDuration(c.darkMinutes)}</td>
+                        <td className="clock px-3 py-1">{c.outages}</td>
+                        <td className="clock px-3 py-1">{formatDuration(c.longestDarkMinutes)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Button
+              size="sm"
+              onClick={() =>
+                download(
+                  `afterglow-beacon-${center}-${days}d.csv`,
+                  'text/csv',
+                  csv([
+                    [
+                      'area',
+                      'row',
+                      'col',
+                      'state_now',
+                      'devices_now',
+                      `dark_minutes_${days}d`,
+                      'outages',
+                      'longest_dark_minutes',
+                    ],
+                    ...(hist?.cells ?? []).map((c) => {
+                      const l = live?.cells.find((x) => x.geohash6 === c.geohash6);
+                      return [
+                        c.geohash6,
+                        c.row,
+                        c.col,
+                        l?.state ?? 'unknown',
+                        l?.deviceCount ?? 0,
+                        c.darkMinutes,
+                        c.outages,
+                        c.longestDarkMinutes,
+                      ];
+                    }),
+                  ]),
+                )
+              }
+            >
+              Export CSV
+            </Button>
+          </Panel>
+        ) : null}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        {center ? (
+          <Panel title="Health facilities near the centre" icon="heart">
+            {health.length === 0 ? (
+              <Notice>
+                {places
+                  ? 'No hospitals, clinics or pharmacies mapped within 2 km.'
+                  : 'Places are loading or unreachable; try again shortly.'}
+              </Notice>
+            ) : (
+              <ul className="m-0 grid list-disc gap-1 pl-5 text-label text-primary">
+                {health.map((h) => (
+                  <li key={h.place.id}>
+                    {h.place.name ?? h.place.kind}:{' '}
+                    {h.cellState === 'lit'
+                      ? 'area has power'
+                      : h.cellState === 'dark'
+                        ? 'area is dark'
+                        : h.cellState === 'comingBack'
+                          ? 'power coming back'
+                          : 'not enough phones'}
+                    {h.place.backupPower ? ' · backup power recorded' : ''}
                   </li>
                 ))}
               </ul>
-            </>
-          ) : null}
-        </Section>
-      ) : null}
+            )}
+            {sites.length ? (
+              <>
+                <span className="text-body text-emphasis">Businesses reporting</span>
+                <ul className="m-0 grid list-disc gap-1 pl-5 text-label text-primary">
+                  {sites.map((s) => (
+                    <li key={s.siteId}>
+                      {s.name}: {s.open ? 'open' : 'closed'},{' '}
+                      {s.power === 'mains'
+                        ? 'mains power'
+                        : s.power === 'backup'
+                          ? 'backup power'
+                          : 'no power'}
+                      {s.note ? ` · ${s.note}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </Panel>
+        ) : null}
 
-      {live ? <AdvisoryForm live={live} selected={selected} /> : null}
+        {live ? <AdvisoryForm live={live} selected={selected} /> : null}
+      </div>
 
       <Sources labels={['crowd: k ≥ 5 per area', 'OpenStreetMap', 'business self-reports']}>
         Beacon shows the same data the public sees, for many areas at once. No person, phone or
@@ -422,7 +449,7 @@ function AdvisoryForm({ live, selected }: { live: CellsAnswer; selected: string 
     } else setMsg(r.message);
   };
   return (
-    <Section title="Send an advisory">
+    <Panel title="Send an advisory" icon="bell">
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <ChoiceChip
           label="The selected area"
@@ -478,6 +505,6 @@ function AdvisoryForm({ live, selected }: { live: CellsAnswer; selected: string 
         Shown in Afterglow in those areas for 3 days and pushed to people who follow them. Every
         advisory is recorded with the account that sent it.
       </span>
-    </Section>
+    </Panel>
   );
 }

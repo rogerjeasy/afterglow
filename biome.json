@@ -5,7 +5,10 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": true
+    "ignoreUnknown": true,
+    "ignore": [
+      "**/src/styles/tailwind.css"
+    ]
   },
   "formatter": {
     "enabled": true,

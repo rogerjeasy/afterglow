@@ -12,6 +12,7 @@ import { token } from '../night-shell/theme';
  */
 
 const TARGET_CLASS = 'tour-target';
+const TARGET_ATTR = 'data-tour-target';
 /** Space kept clear above a target: the header and a little air. */
 const TOP_CLEARANCE = 84;
 
@@ -44,7 +45,10 @@ function useTarget(target: string | null): void {
         return;
       }
       if (!el) return;
+      // An attribute as well as the class: React rewrites `className` when a screen re-renders
+      // (a tile going live), which would drop the class; it never touches this attribute.
       el.classList.add(TARGET_CLASS);
+      el.setAttribute(TARGET_ATTR, '');
       const top = window.scrollY + el.getBoundingClientRect().top - TOP_CLEARANCE;
       window.scrollTo({
         top: Math.max(0, top),
@@ -55,6 +59,7 @@ function useTarget(target: string | null): void {
     return () => {
       cancelAnimationFrame(frame);
       (el as Element | null)?.classList.remove(TARGET_CLASS);
+      (el as Element | null)?.removeAttribute(TARGET_ATTR);
     };
   }, [target]);
 }
@@ -122,22 +127,9 @@ function Bubble({
       ref={ref}
       aria-label={label}
       data-wisp="bubble"
-      style={{
-        position: 'fixed',
-        left: 12,
-        right: 12,
-        bottom: 'calc(64px + env(safe-area-inset-bottom) + 12px)',
-        maxWidth: 496,
-        margin: '0 auto',
-        zIndex: 15,
-        padding: '18px 16px 16px',
-        paddingTop: 30,
-        borderRadius: 'var(--radius-tile)',
-        background: token('surface.3'),
-        borderStyle: 'solid',
-        borderWidth: 1,
-        borderColor: token('hairline'),
-      }}
+      // Above the tab bar on a phone; on a desk (no tab bar) it sits low in the content
+      // column, clear of the sidebar.
+      className="fixed inset-x-3 bottom-[calc(64px+env(safe-area-inset-bottom)+12px)] z-[15] mx-auto max-w-[520px] animate-rise rounded-[var(--radius-tile)] border border-hairline bg-surface-3 px-4 pt-[30px] pb-4 lg:right-6 lg:bottom-6 lg:left-[324px]"
     >
       <div style={{ position: 'absolute', top: -38, left: 14 }}>
         <WispGhost opacity={opacity} />

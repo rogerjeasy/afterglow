@@ -263,3 +263,17 @@ tour step 5 in night: 1 pixel at r=166, ceiling red.700 = 165   (after a first f
 **Fix:** shorten after normalising, with ASCII dots. A new property, `CA-12 any email up to 254 characters makes a valid account name (NFKC, at most 40)`, and a controller test that signs up and signs in elsewhere with a 68-character email; both fail on the old code. A failed sign-in or confirmation now also signs out of Cognito, so no half-open session stays in memory.
 
 **What was wrong:** the implementation, and a gap in tests that only ever used short emails. Worth recording because only a test of the deployed app, with realistic data, found it.
+
+---
+
+## 2026-11-27 · NS-10/GD-09 · a focus-ring border on the guide's bubble scanned one step over the Dusk ceiling
+
+**Caught by:** the Playwright pixel scan of the tour (`e2e/tour.e2e.ts`, GD-09), during the web-experience redesign.
+
+**Counterexample:** tour step 5 in Dusk, one pixel at red 184, against a ceiling of 183 (`#B70000`), on the edge of Wisp's speech bubble.
+
+**Root cause:** the redesign gave the bubble a `focus.ring` border. In Dusk that token sits exactly at the text ceiling, and the bubble also fades in with an opacity animation. Compositing the border's antialiased edge over the moving layer rounded one pixel up a step. It is the same family as the 2026-11-26 ghost-outline catch: a colour at the ceiling must never be blended.
+
+**Fix:** the bubble keeps the `hairline` border it had before. Ceiling-tone colours stay on opaque, unanimated strokes.
+
+**What was wrong:** the design change, not the rule or the scan.
