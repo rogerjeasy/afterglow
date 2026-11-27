@@ -421,3 +421,22 @@ minute by minute: 155 dark · 160 mixed · 160 mixed · 160 lit
 **Tests added:** `CE-12 a partly dark (mixed) cell comes back once k devices report a restore edge`, `CE-13 a dark cell whose restores trickle in still passes through coming back` (both fail on the old rule), and `SIM-04 regression: seed 1872461 passes through coming back`.
 
 **What was wrong:** the requirement, and the test written from it. Ten random seeds a run had found it about once in many runs; a flaky red is a finding, not noise.
+
+---
+
+## 2026-11-27 · FK-05 · a freezer at −3×10⁻³²³ °C: the oracle and the closed form disagreed by six minutes
+
+**Requirement:** FK-05 (frozen food: ok while frozen, look required once at 0 °C).
+
+**Property:** `FK-05 frozen: ok while frozen, lookRequired once at 0 C, never ok past 40 F without a yes`, 2,000 runs, here in headless Chromium on CI.
+
+**Shrunken counterexample:**
+```
+{ startC: -3e-323, ambientC: 2.5e-323, tauMinutes: 60 }, t = 41.59 min  →  ok (expected lookRequired)
+```
+
+**Root cause (test generator):** fast-check draws subnormal doubles on purpose. At ±10⁻³²³ °C, IEEE 754 arithmetic has a few bits of precision left, so the test's independent oracle (bisection on `temperatureAt`) saw the model reach 0 °C at 41.6 minutes while the core's closed-form crossing said 47.3 minutes. Both describe a freezer that is, physically, at exactly 0 °C. No thermometer or appliance profile can produce such a value, and the 2,000-run property drew one about once in many runs.
+
+**Fix:** the generator draws temperatures at a thermometer's resolution (10⁻⁶ °C), which maps subnormals to 0. The property passed 60,000 runs in a row afterwards. The core is unchanged. The thermal and formulary suites still draw raw doubles, because they test the model's own invariants (bounded, monotone), which hold even for subnormal inputs; only FK-05 compares two different computations of the same crossing.
+
+**What was wrong:** the test's input space, which included values with no physical meaning. Recorded because the next reader of a red CI run deserves to know it was looked at, not retried.

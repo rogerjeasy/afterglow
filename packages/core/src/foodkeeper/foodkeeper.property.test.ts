@@ -98,10 +98,16 @@ const SNAPSHOT: FoodKeeperSnapshot = {
 const INDEX = buildFoodIndex(SNAPSHOT, RULES);
 
 // A refrigerator-ish and a freezer-ish compartment, plus arbitrary ones.
+// Temperatures at a thermometer's resolution (1e-6 °C). fast-check also draws subnormal
+// doubles such as -3e-323, where the model's own arithmetic underflows and the bisection
+// oracle and the closed form disagree about a freezer that is, physically, at 0 °C
+// (pbt-catches 2026-11-27, FK-05).
+const celsius = (min: number, max: number): fc.Arbitrary<number> =>
+  fc.double({ min, max, noNaN: true }).map((x) => Math.round(x * 1e6) / 1e6 + 0);
 const stateArb = (): fc.Arbitrary<CompartmentState> =>
   fc.record({
-    startC: fc.double({ min: -25, max: 8, noNaN: true }),
-    ambientC: fc.double({ min: -10, max: 40, noNaN: true }),
+    startC: celsius(-25, 8),
+    ambientC: celsius(-10, 40),
     tauMinutes: fc.double({ min: 60, max: 10000, noNaN: true }),
   });
 const timeArb = (): fc.Arbitrary<number> => fc.double({ min: 0, max: 20000, noNaN: true });
