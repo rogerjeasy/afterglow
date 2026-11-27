@@ -12,3 +12,6 @@ Status: `[x]` done, `[ ]` planned. Tests added 2026-11-27 (10 tests, ids WX-01, 
 - [x] 8. Every product screen on `Page`/`PageHeader`, responsive grids — _WX-05, WX-07_
 - [x] 9. Hosting: Vercel rewrites, PWA start URL — _WX-01_
 - [x] 10. Extend the Playwright pixel scan to the public routes and auth pages — _WX-08_
+- [x] 11. Trim the homepage from ten sections to six: problem and features merged into one "questions" section; How it works, Privacy and Organisations replaced by three links; Wisp and the final call to action merged. Phone height 15,042 → 8,802 px, desktop 8,796 → 5,074 px — _WX-09_
+- [x] 12. Header nav cut to three pages; Organisations and Pricing in the phone menu's second group and the footer; "Take the tour" in the phone menu; footer links to what was built where — _WX-09_
+- [x] 13. Browser tests hold the nav, the section count and the phone height budget (`e2e/site-shape.e2e.ts`) — _WX-09_

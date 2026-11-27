@@ -55,6 +55,16 @@ function MiniStone({
   );
 }
 
+/** The demo household's fridge and freezer as two tombstones. */
+export function MiniStones({ className }: { className?: string }): ReactNode {
+  return (
+    <div className={cx('grid grid-cols-2 gap-2', className)}>
+      <MiniStone title="Fridge" epitaph="2 h 23 m" dark={0.18} />
+      <MiniStone title="Freezer" epitaph="47 h 13 m" dark={0.04} />
+    </div>
+  );
+}
+
 /** A live miniature of the Hearth in the demo household's outage. */
 export function HeroPhone(): ReactNode {
   const now = useTicker(opened);

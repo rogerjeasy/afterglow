@@ -12,11 +12,16 @@ import { Logo, LogoMark, cx } from '../ui/kit';
  * footer. The site opens in Ember (a lit room); the mode switch dims the whole page.
  */
 
+/** The three pages a household needs before trying it. Everything else is in the footer. */
 export const SITE_NAV: readonly { to: string; label: string }[] = [
   { to: '/features', label: 'Features' },
   { to: '/how-it-works', label: 'How it works' },
   { to: '/science', label: 'Science & privacy' },
-  { to: '/organisations', label: 'Organisations' },
+];
+
+/** Pages for organisations and buyers: in the phone menu's second group and the footer. */
+const SECONDARY_NAV: readonly { to: string; label: string }[] = [
+  { to: '/organisations', label: 'For organisations' },
   { to: '/pricing', label: 'Pricing' },
 ];
 
@@ -99,7 +104,29 @@ function MobileMenu({
             <Icon name="arrowRight" size={24} className="block text-secondary" />
           </Link>
         ))}
-        <div className="mt-8 flex flex-col gap-3">
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1">
+          {SECONDARY_NAV.map((n) => (
+            <Link
+              key={n.to}
+              to={n.to}
+              onClick={onClose}
+              tabIndex={open ? 0 : -1}
+              aria-current={path === n.to ? 'page' : undefined}
+              className="inline-flex min-h-11 items-center text-label text-secondary no-underline hover:text-primary"
+            >
+              {n.label}
+            </Link>
+          ))}
+        </div>
+        <div className="mt-6 flex flex-col gap-3">
+          <Link
+            to="/app?tour=1"
+            onClick={onClose}
+            tabIndex={open ? 0 : -1}
+            className="press inline-flex min-h-14 items-center justify-center rounded-full border border-hairline bg-control text-label font-bold text-primary no-underline"
+          >
+            Take the tour
+          </Link>
           <Link
             to="/app"
             onClick={onClose}
@@ -169,7 +196,7 @@ function Header(): ReactNode {
             </span>
             <Link
               to="/signin"
-              className="hidden min-h-11 items-center rounded-full px-3 text-caption whitespace-nowrap text-secondary no-underline transition-colors hover:text-primary xl:inline-flex"
+              className="hidden min-h-11 items-center rounded-full px-3 text-caption whitespace-nowrap text-secondary no-underline transition-colors hover:text-primary lg:inline-flex"
             >
               Sign in
             </Link>
@@ -233,6 +260,11 @@ const FOOTER: readonly {
       {
         to: 'https://github.com/rogerjeasy/afterglow/tree/main/.kiro',
         label: 'How it was built with Kiro',
+        external: true,
+      },
+      {
+        to: 'https://github.com/rogerjeasy/afterglow/blob/main/docs/kiro/session-evidence.md',
+        label: 'What was built where',
         external: true,
       },
       { to: '/openapi.json', label: 'Platform API', external: true },
