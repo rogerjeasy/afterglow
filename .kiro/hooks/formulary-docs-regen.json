@@ -8,9 +8,9 @@
       "matcher": "afterglow-formulary/validated/.*\\.json$",
       "action": {
         "type": "command",
-        "command": "cd \"$KIRO_WORKSPACE_ROOT/afterglow-formulary\" && pnpm pipeline docs",
-        "timeout": 60
-      }
+        "command": "cd afterglow-formulary && pnpm pipeline docs"
+      },
+      "timeout": 60
     }
   ]
 }

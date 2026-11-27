@@ -8,9 +8,9 @@
       "matcher": "packages/core/src/fusion/.*\\.ts$",
       "action": {
         "type": "command",
-        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && pnpm --filter @afterglow/core test",
-        "timeout": 120
-      }
+        "command": "pnpm --filter @afterglow/core test"
+      },
+      "timeout": 120
     }
   ]
 }

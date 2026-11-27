@@ -7,9 +7,9 @@
       "description": "A task is only complete when the invariants hold: typecheck, lint, every property suite, and the Playwright pixel scan of every route in all three luminance modes. A post-task hook cannot block, so a red result is reported loudly and the Stop gate is what refuses completion.",
       "action": {
         "type": "command",
-        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && { pnpm typecheck && pnpm lint && pnpm test && (cd apps/mobile && pnpm build >/dev/null && pnpm exec playwright test pixel-scan); } >/tmp/afterglow-post-task.log 2>&1 || { echo 'post-task-verify: an invariant is RED after this task. Fix it before the next task.' >&2; tail -30 /tmp/afterglow-post-task.log >&2; exit 1; }",
-        "timeout": 900
-      }
+        "command": "{ pnpm typecheck && pnpm lint && pnpm test && (cd apps/mobile && pnpm build >/dev/null && pnpm exec playwright test pixel-scan); } >/tmp/afterglow-post-task.log 2>&1 || { echo 'post-task-verify: an invariant is RED after this task. Fix it before the next task.' >&2; tail -30 /tmp/afterglow-post-task.log >&2; exit 1; }"
+      },
+      "timeout": 900
     }
   ]
 }

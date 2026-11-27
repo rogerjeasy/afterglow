@@ -8,9 +8,9 @@
       "matcher": "theme\\.night\\.json$",
       "action": {
         "type": "command",
-        "command": "cd \"$KIRO_WORKSPACE_ROOT\" && pnpm --filter @afterglow/design-system test",
-        "timeout": 120
-      }
+        "command": "pnpm --filter @afterglow/design-system test"
+      },
+      "timeout": 120
     }
   ]
 }

@@ -5,12 +5,12 @@
       "name": "Deny publish and deploy",
       "trigger": "PreToolUse",
       "description": "Blocks npm/pnpm publish, eas submit/update, terraform apply/destroy and tile uploads. Publishing and deploying are human-approved steps.",
-      "matcher": "execute_bash",
+      "matcher": "shell",
       "action": {
         "type": "command",
-        "command": "in=$(cat); c=$(printf '%s' \"$in\" | jq -r '.. | .command? // empty' 2>/dev/null | head -n 1); [ -n \"$c\" ] || c=\"$in\"; if printf '%s' \"$c\" | grep -Eiq '(^|[;&|(]|[[:space:]])((npm|pnpm|yarn|bun) +([^;&|]* )?publish|eas +(submit|update)|(terraform|tofu) +([^;&|]* )?(apply|destroy)|aws +s3 +(cp|sync|mv|rm) .*tiles)'; then echo 'deny-publish-deploy: publishing and deploying are human steps. Prepare the change and stop; run it yourself.' >&2; exit 2; fi; exit 0",
-        "timeout": 10
-      }
+        "command": "in=$(cat); c=$(printf '%s' \"$in\" | jq -r '.. | .command? // empty' 2>/dev/null | head -n 1); [ -n \"$c\" ] || c=\"$in\"; if printf '%s' \"$c\" | grep -Eiq '(^|[;&|(]|[[:space:]])((npm|pnpm|yarn|bun) +([^;&|]* )?publish|eas +(submit|update)|(terraform|tofu) +([^;&|]* )?(apply|destroy)|aws +s3 +(cp|sync|mv|rm) .*tiles)'; then echo 'deny-publish-deploy: publishing and deploying are human steps. Prepare the change and stop; run it yourself.' >&2; exit 2; fi; exit 0"
+      },
+      "timeout": 10
     }
   ]
 }
