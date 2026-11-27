@@ -17,6 +17,11 @@ export default defineConfig({
     deviceScaleFactor: 1,
     colorScheme: 'dark',
     reducedMotion: 'reduce',
+    // Phones smooth text in greyscale. Desktop Chromium on Linux uses sub-pixel (LCD)
+    // smoothing, which paints coloured fringes at glyph edges: harmless for pure red, which
+    // has no green to fringe, but greener than the amber ramp in amber mode. Scan what a
+    // phone shows (NS-21).
+    launchOptions: { args: ['--disable-lcd-text'] },
     // Every test but the onboarding one starts as a person who has already been welcomed.
     storageState: {
       cookies: [],
