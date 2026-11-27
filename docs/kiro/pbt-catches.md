@@ -395,4 +395,4 @@ base "/", location "/#/constructor"
 
 **Fix:** the browser tests render text the way a phone does (`--disable-lcd-text` in `apps/mobile/playwright.config.ts`). The hue rule itself was not loosened. CI is green on Ubuntu, with all 75 amber scans and all red scans passing.
 
-**What was wrong:** the test environment. The finding is still useful: on a Linux or Windows desktop browser with sub-pixel smoothing, amber text edges are slightly greener than the amber ramp. That does not affect the luminance ceiling, which every pixel still met.
+**What was wrong:** the test environment. The finding is still useful: on a Linux or Windows desktop browser with sub-pixel smoothing, amber text edges are slightly greener than the amber ramp. Every offender the scanner reported was a hue failure ("not amber"), none a brightness one.
