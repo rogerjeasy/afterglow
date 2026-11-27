@@ -197,8 +197,8 @@ function SenseVisual(): ReactNode {
 
 function StonesVisual(): ReactNode {
   const stones = [
-    { t: 'Fridge', e: '2 h 46 m', d: 0.2 },
-    { t: 'Freezer', e: '21 h 15 m', d: 0.05 },
+    { t: 'Fridge', e: '2 h 23 m', d: 0.2 },
+    { t: 'Freezer', e: '47 h 13 m', d: 0.05 },
     { t: 'Insulin', e: 'ask your pharmacist', d: 0 },
   ];
   return (
@@ -373,7 +373,7 @@ const GROUPS: readonly {
         body: 'A thermal model of your own fridge and freezer, anchored to USDA guidance, starts the four-hour clock when the food crosses 4 °C, not when the power goes. Medicines get a clock only from a pharmacist-approved table built from the label.',
         bullets: [
           'Per-food discard decisions from USDA FoodKeeper, with the citation',
-          'Medicine budgets from openFDA label text, never estimated',
+          'Medicine budgets only from a pharmacist-signed label table, never estimated; none is signed yet, so no clock is shown',
           'Not in the table: no clock, and “ask your pharmacist”',
         ],
         visual: <StonesVisual />,
@@ -645,7 +645,7 @@ export function FeaturesPage(): ReactNode {
 
       <CtaBand
         title="See it work on one night."
-        lead="Wisp, a ghost who is scared of bright screens, walks you through a simulated outage in about ninety seconds."
+        lead="Wisp, a ghost who is scared of bright screens, walks you through a simulated outage, tab by tab."
       >
         <CtaLink to="/app?tour=1" icon="play">
           Start the tour

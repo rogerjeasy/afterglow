@@ -43,7 +43,7 @@ function Hero(): ReactNode {
           </p>
           <div className="flex w-full animate-rise flex-col gap-3 [animation-delay:240ms] sm:w-auto sm:flex-row">
             <CtaLink to="/app?tour=1" icon="arrowRight">
-              Take the 90-second tour
+              Take the tour with Wisp
             </CtaLink>
             <CtaLink to="/app?phase=outage&elapsed=45" variant="secondary" icon="boltOff">
               Jump into a blackout
@@ -94,11 +94,11 @@ function Hero(): ReactNode {
 const SOURCES = [
   'USDA FoodKeeper',
   'USDA FSIS',
-  'openFDA labels',
+  'CDC',
+  'US CPSC',
   'NREL ResStock',
   'Open-Meteo',
   'OpenStreetMap',
-  'OpenCelliD',
 ];
 
 function SourceStrip(): ReactNode {
@@ -499,7 +499,7 @@ function MeetWisp(): ReactNode {
                 A ghost who is scared of bright screens.
               </h2>
               <p className="m-0 max-w-[56ch] text-lead text-secondary">
-                Wisp turns off the lights and walks you through one night in about ninety seconds.
+                Wisp turns off the lights and walks you through one night, tab by tab.
                 Wisp has jokes, but never numbers of its own: every figure it says is the app’s.
               </p>
             </div>

@@ -36,7 +36,7 @@ const PIPELINE: readonly { n: string; title: string; body: string; icon: IconNam
       title: 'Say it plainly',
       icon: 'book',
       body: 'One line of truth, a costume that carries the number, and “How I know” one tap away. Where a default was used, it says so.',
-      out: '“Fridge: 2 h 46 m left”',
+      out: '“Fridge: 2 h 23 m left”',
     },
   ];
 

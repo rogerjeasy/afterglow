@@ -421,7 +421,7 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
               <Stepper
                 label="Your number on their list"
                 valueText={`No. ${mySlot}`}
-                hint="The person watching adds you under this number. Until QR pairing exists, agree it with them first."
+                hint="The person watching adds you under this number. Pair face to face above, or agree it with them first."
                 decrementDisabled={mySlot <= 0}
                 incrementDisabled={mySlot >= 63}
                 onDecrement={() => {

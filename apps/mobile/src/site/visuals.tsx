@@ -87,29 +87,29 @@ export function HeroPhone(): ReactNode {
               {formatTimer(now - opened + DEMO_ELAPSED_MS)}
             </div>
             <p className="m-0 mt-2.5 text-caption leading-snug text-primary">
-              Dark for your whole street. Two streets east are coming back.
+              41 devices in your cell lost power. This phone did too.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <MiniStone title="Fridge" epitaph="2 h 46 m" dark={0.18} />
-          <MiniStone title="Freezer" epitaph="21 h 15 m" dark={0.04} />
+          <MiniStone title="Fridge" epitaph="2 h 23 m" dark={0.18} />
+          <MiniStone title="Freezer" epitaph="47 h 13 m" dark={0.04} />
         </div>
         <div className="rounded-[18px] border border-hairline bg-surface-2 p-3">
           <div className="text-caption text-secondary">Your people</div>
           <div className="mt-1 flex items-center justify-between gap-2">
-            <span className="clock text-[16px] whitespace-nowrap text-primary">2 of 3 heard</span>
+            <span className="clock text-[16px] whitespace-nowrap text-primary">0 of 5 heard</span>
             <span className="flex gap-1">
-              <GhostGlyph opacity={1} size={20} />
-              <GhostGlyph opacity={1} size={20} />
-              <GhostGlyph opacity={0.35} size={20} />
+              {[0, 1, 2, 3, 4].map((g) => (
+                <GhostGlyph key={g} opacity={0.35} size={20} />
+              ))}
             </span>
           </div>
         </div>
         <div className="rounded-[18px] border border-hairline bg-surface-2 p-3">
           <div className="text-caption text-secondary">Hours of safety</div>
-          <div className="clock mt-1 text-[17px] text-primary">9 h to 13 h</div>
+          <div className="clock mt-1 text-[17px] text-primary">7 h 3 m</div>
         </div>
 
         <div className="-mx-4 mt-1 grid grid-cols-5 border-t border-hairline bg-surface-1 px-1 pt-2 pb-4 text-secondary">

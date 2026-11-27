@@ -18,8 +18,8 @@ const SCIENCE: readonly { title: string; icon: IconName; body: string; source: s
   {
     title: 'Medicines',
     icon: 'pill',
-    body: 'The label is the law. Storage budgets are extracted from label text, checked by a validator against that text, and approved by a licensed pharmacist into a versioned public table. The excursion clock only spends the label’s room-temperature allowance. Not in the table means no clock.',
-    source: 'openFDA storage and handling · pharmacist sign-off',
+    body: 'The label is the law. Storage budgets are extracted from label text, checked by a validator against that text, and approved by a licensed pharmacist into a versioned public table. The excursion clock only spends the label’s room-temperature allowance. Not in the table means no clock, and no table has been signed yet, so today Afterglow shows no medicine clock at all.',
+    source: 'The product label · pharmacist sign-off (no table signed yet)',
   },
   {
     title: 'Hours of safety',
@@ -106,9 +106,9 @@ const SOURCES: readonly { name: string; use: string; where: string }[] = [
     where: 'Cold',
   },
   {
-    name: 'openFDA drug labels',
-    use: 'Storage and handling text behind the medicine table',
-    where: 'Cold',
+    name: 'CDC and US CPSC',
+    use: 'Carbon monoxide and generator checks behind the generator ward',
+    where: 'Plan',
   },
   { name: 'NREL ResStock', use: 'Building thermal constants by archetype', where: 'Plan' },
   {
@@ -118,10 +118,9 @@ const SOURCES: readonly { name: string; use: string; where: string }[] = [
   },
   {
     name: 'OpenStreetMap (Overpass)',
-    use: 'Hospitals, pharmacies, shelters and water points',
+    use: 'Hospitals, pharmacies, shelters, water points and cell towers',
     where: 'Lantern',
   },
-  { name: 'OpenCelliD', use: 'Cell tower positions for the signal finder', where: 'Lantern' },
   { name: 'Afterglow crowd cells', use: 'Mains verdicts from phones, k ≥ 5', where: 'Lantern' },
 ];
 
