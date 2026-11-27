@@ -43,6 +43,26 @@ export interface GridSenseState {
   } | null;
   readonly locating: boolean;
   readonly locationError: string | null;
+  /** What the person last said with "Power just went out" or "Power is back" (CR-17). */
+  readonly person: 'absent' | 'present' | null;
+}
+
+/**
+ * Whether the person's own outage button should become a crowd report (crowd-reports
+ * CR-17). Only on a real change in the same real space: never in the demo, never when
+ * the space just changed (sign-in, lock), and never when the phone's senses already
+ * reported the same verdict, so one device never counts twice.
+ */
+export function personReportFor(x: {
+  readonly wasOutage: boolean;
+  readonly outage: boolean;
+  readonly spaceChanged: boolean;
+  readonly demo: boolean;
+  readonly sensed: fusion.MainsVerdict;
+}): 'absent' | 'present' | null {
+  if (x.demo || x.spaceChanged || x.wasOutage === x.outage) return null;
+  const said = x.outage ? 'absent' : 'present';
+  return x.sensed === said ? null : said;
 }
 
 const KEY = 'afterglow.gridsense.v1';
@@ -110,6 +130,7 @@ function createEngine() {
     lastReport: null,
     locating: false,
     locationError: null,
+    person: null,
   };
   const listeners = new Set<Listener>();
   let hooks: OutageHooks | null = null;
@@ -181,6 +202,30 @@ function createEngine() {
       void sendReport(report).then((sent) =>
         set({ lastReport: { verdict: result.verdict, atMs: Date.now(), sent } }),
       );
+    }, delay);
+  };
+
+  /**
+   * A report from what the person said, not from a sense (CR-17): the same signed,
+   * jittered report with `senses: ['reported']` and a lower confidence. It is one device
+   * in the cell's k >= 5 count like any other, so a lone person can never colour a cell.
+   */
+  const schedulePersonReport = (verdict: 'absent' | 'present'): void => {
+    if (!state.cell) return;
+    if (reportTimer !== null) clearTimeout(reportTimer);
+    const delay = Math.floor(Math.random() * 30_000);
+    reportTimer = setTimeout(() => {
+      reportTimer = null;
+      const cell = state.cell;
+      if (!cell || state.person !== verdict) return;
+      void sendReport({
+        geohash6: cell,
+        minute: Math.floor(Date.now() / MIN),
+        verdict,
+        confidence: 0.5,
+        senses: ['reported'],
+        restoreEdge: verdict === 'present',
+      }).then((sent) => set({ lastReport: { verdict, atMs: Date.now(), sent } }));
     }, delay);
   };
 
@@ -303,10 +348,23 @@ function createEngine() {
       setInterval(() => {
         const r = state.result;
         const last = state.lastReport;
-        if (r.verdict === 'unknown' || !state.cell || reportTimer !== null) return;
+        if (!state.cell || reportTimer !== null) return;
+        if (r.verdict === 'unknown') {
+          // No sense is sure: keep the person's own word on the map while it stands.
+          const p = state.person;
+          if (p === 'absent' && !(last && last.verdict === p && Date.now() - last.atMs < 9 * MIN)) {
+            schedulePersonReport(p);
+          }
+          return;
+        }
         if (last && last.verdict === r.verdict && Date.now() - last.atMs < 9 * MIN) return;
         scheduleReport(r, false);
       }, 10 * MIN);
+    },
+    /** The person pressed "Power just went out" or "Power is back" (CR-17). */
+    reportPerson(verdict: 'absent' | 'present'): void {
+      set({ person: verdict });
+      schedulePersonReport(verdict);
     },
     async listen(): Promise<void> {
       if (state.listening) return;

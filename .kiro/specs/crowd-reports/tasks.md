@@ -10,5 +10,6 @@ Status: `[x]` done, `[ ]` planned. Built 2026-11-26 without new tests at the fou
 - [x] Page policies: location for our own origin only; the public API in the CSP
 - [x] Push for a followed cell: `services/crowd/src/push.ts`, subscribe and unsubscribe routes, table `push_subs`, VAPID in SSM; smoke-tested live (a host outside the push services refused; five dark reports flipped a test cell and the notify run signed and sent, and a dead endpoint was deleted) — CR-12..CR-14
 - [x] Fixed `cellsAround` at the poles (the clamp moved a polar cell off itself), found by the live smoke test
+- [x] People who cannot be sensed join the map with their own word: `personReportFor` and `gridSense.reportPerson`, property-tested (`apps/mobile/src/gridsense/personReport.test.ts`) — CR-17
 - [ ] Light flicker and magnetometer senses (native app)
 - [ ] Attestation of device keys (Play Integrity, App Attest) in the native app

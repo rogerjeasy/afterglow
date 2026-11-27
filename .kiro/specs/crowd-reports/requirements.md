@@ -56,3 +56,13 @@ Until now the crowd map was a seeded simulation. This makes it real: a phone tha
 
 Privacy review, `push_subs`: the push endpoint is a pseudonymous address at the browser's push service, stored with the ~1 km cell it follows. No account, device id or finer position. 30-day TTL renewed only while the app is used; no backups.
 - **CR-15** WHEN a phone subscribes THE SYSTEM SHALL require the same 20-bit proof of work over the endpoint and the day, and SHALL confirm a new subscription with a real notification before storing it, so an address its own push service refuses is never stored (renewals skip the confirmation). THE SYSTEM SHALL NOT cap followers per cell: it SHALL send one page of 500 per run and chain the next run with the cursor, and SHALL delete a subscription on any permanent refusal (4xx other than 429). (Security reviews, 2026-11-26.)
+
+## Long outages stay on the map (2026-11-26)
+
+- **CR-16** WHILE a phone's fused verdict is present or absent and it has shared its area, THE SYSTEM SHALL repeat its report every 10 minutes unless it reported the same verdict in the last 9 minutes, so a cell that counts reports from the last 30 minutes does not fade to unknown during a long outage (resolves the cells spec's open question Q1 for phones that stay sure).
+
+## People who cannot be sensed (2026-11-27, Claude Code)
+
+A browser on an iPhone has no battery events and cannot listen in the background, so its Grid Sense verdict is almost always "unknown" and it never reported. The people most likely to open Afterglow on the web could not light the map at all.
+
+- **CR-17** WHEN a person in a real space (never the demo) presses "Power just went out" or "Power is back", or says it by voice, and has shared their area, THE SYSTEM SHALL send one signed report for that change with `senses: ["reported"]` and confidence 0.5, after a 0 to 30 s jitter. IF the phone's own senses already reported the same verdict, or the change came from a change of space, THEN THE SYSTEM SHALL NOT send it, so one device never counts twice. WHILE the person's "out" stands and no sense is sure, THE SYSTEM SHALL repeat it on the CR-16 heartbeat. A person report is one device in the k ≥ 5 count like any other: a lone person can never colour a cell, and CR-11 still holds (crowd reports never change a phone's own state).

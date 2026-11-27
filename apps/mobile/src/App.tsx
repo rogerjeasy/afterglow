@@ -7,7 +7,7 @@ import { BusinessConsole } from './console/BusinessConsole';
 import { foodIndex } from './data/foodkeeper';
 import { setCommandHandler } from './eyesfree/EyesFreeUI';
 import { announce, currentStatus } from './eyesfree/eyesfree';
-import { gridSense } from './gridsense/engine';
+import { gridSense, personReportFor } from './gridsense/engine';
 import { Wisp, WispFinish } from './guide/Wisp';
 import { readFacts } from './guide/facts';
 import { renderLine } from './guide/render';
@@ -219,6 +219,15 @@ export function App(): ReactNode {
   const spaceKey = `${space.kind}:${space.account?.id ?? ''}`;
   const lastSpace = useRef(spaceKey);
   useEffect(() => {
+    // The person's own "power out" or "power back" joins the crowd map (CR-17).
+    const said = personReportFor({
+      wasOutage: wasOutage.current,
+      outage,
+      spaceChanged: lastSpace.current !== spaceKey,
+      demo: spaceKey.startsWith('demo:'),
+      sensed: gridSense.getState().result.verdict,
+    });
+    if (said) gridSense.reportPerson(said);
     const decision = decideMode({
       outage,
       wasOutage: wasOutage.current,
