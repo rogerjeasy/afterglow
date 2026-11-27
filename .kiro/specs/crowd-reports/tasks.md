@@ -1,6 +1,6 @@
 # Crowd reports and the public API — Tasks
 
-Status: `[x]` done, `[ ]` planned. Built 2026-11-26 without new tests at the founder's request; the existing suites, typecheck and lint stay green, and the deployed API was checked end to end.
+Status: `[x]` done, `[ ]` planned. Built 2026-11-26 in Claude Code, and the deployed API was checked end to end; tests added 2026-11-27 (27 tests, ids CR-01, CR-03..CR-06, CR-08..CR-13, CR-15: `packages/core/src/sensing/sensing.property.test.ts` and `services/crowd/src/handler.property.test.ts`, through `handlePublic` with an in-memory store). CR-17 was already property-tested. CR-02, CR-07, CR-14 and CR-16 live in the browser engine, the device key store or infrastructure and have no test yet.
 
 - [x] Grid Sense detectors in the core: charging edge (state machine), mains hum (Goertzel at the 2nd and 3rd harmonics against the 80-200 Hz floor), report validation and cell grids (`packages/core/src/sensing`) — CR-01, CR-03
 - [x] Public API service: day device keys, signed reports, k-anonymous cells, demo scope through the same aggregation, OpenStreetMap places and Open-Meteo weather behind cell-centre proxies (`services/crowd`) — CR-02..CR-06

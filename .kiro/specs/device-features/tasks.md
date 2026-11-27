@@ -1,6 +1,6 @@
 # Device features — Tasks
 
-Built 2026-11-26 without new tests at the founder's request; existing suites, typecheck, lint and the 135 browser tests stay green. The acoustic path was checked offline by decoding synthesised noisy transmissions (all four tone and speed settings decoded, three repeats agreeing).
+Built 2026-11-26 in Claude Code; tests added 2026-11-27 (31 tests, ids DF-06..DF-09, DF-11, DF-12, DF-14, DF-18..DF-21: `packages/core/src/heliograph/acoustic.property.test.ts`, `apps/mobile/src/eyesfree/eyesfree.test.ts`, `seance/pairing.test.ts`, `notify/notify.test.ts`, `pwa.test.ts`). DF-01..DF-05, DF-10, DF-13, DF-15..DF-17 are screen behaviour (light, disclosures, the 90 s listen limit, the pairing confirmation, the scanner and the QR drawing) and have no test yet. The DF-14 properties found two bugs in `cleanName`, fixed the same day (`docs/kiro/pbt-catches.md`). The medical device profiles in `plan/devices.ts` belong to EN-06 and are tested there (`pwa.test.ts`). The acoustic path was checked offline by decoding synthesised noisy transmissions (all four tone and speed settings decoded, three repeats agreeing).
 
 - [x] `light/LightMode.tsx`: red levels, beacon, white escape with readaptation clock, SOS, wake lock — DF-01..DF-05
 - [x] `eyesfree/eyesfree.ts`, `voice.ts`, `EyesFreeUI.tsx`: prefs, speech, haptic grammar, push-to-talk commands; announcements wired in `App.tsx`; settings on You — DF-06..DF-10

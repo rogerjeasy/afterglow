@@ -134,6 +134,54 @@
         "requestBody": { "content": { "application/x-www-form-urlencoded": { "schema": { "type": "object", "properties": { "Body": { "type": "string" } } } } } },
         "responses": { "200": { "description": "TwiML", "content": { "text/xml": {} } } }
       }
+    },
+    "/v1/history": {
+      "get": {
+        "summary": "Outage history of a region of cells",
+        "description": "Each cell's published state per 5-minute window, summarised over 1 to 30 days: dark minutes, known minutes, outages, the longest, and dark minutes per UTC day. Only states published under the k = 5 rule are ever recorded; unknown is never recorded, and a gap in reports is never counted as an outage.",
+        "parameters": [
+          { "$ref": "#/components/parameters/Cell" },
+          { "name": "span", "in": "query", "description": "The region is span × span cells around the cell.", "schema": { "type": "integer", "minimum": 1, "maximum": 7, "default": 3 } },
+          { "name": "days", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 30, "default": 7 } }
+        ],
+        "responses": {
+          "200": { "description": "The region's history, cached 5 minutes" },
+          "400": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/advisories": {
+      "get": {
+        "summary": "Public advisories for a cell (Beacon)",
+        "description": "Advisories a Beacon member (a local authority or relief organisation) published to this cell, kept 3 days.",
+        "parameters": [{ "$ref": "#/components/parameters/Cell" }],
+        "responses": {
+          "200": { "description": "The cell's advisories, cached 1 minute" },
+          "400": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/sites": {
+      "get": {
+        "summary": "Public status of businesses around a cell (Business)",
+        "description": "Sites in the 3 × 3 cells around the cell that published their status (open or closed; mains, backup or no power; a short note) in the last 24 hours.",
+        "parameters": [{ "$ref": "#/components/parameters/Cell" }],
+        "responses": {
+          "200": { "description": "The sites, cached 1 minute" },
+          "400": { "$ref": "#/components/responses/Refused" }
+        }
+      }
+    },
+    "/v1/ask": {
+      "post": {
+        "summary": "Ask the guidance library",
+        "description": "The question (up to 300 characters) is matched against the cited guidance library; the answer is the library's own passages and sources. A model may restate the passages; any restatement with a number that is not in the passages is dropped, and questions outside the library never reach the model. Rate-limited per requester bucket.",
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["question"], "properties": { "question": { "type": "string", "maxLength": 300 } } } } } },
+        "responses": {
+          "200": { "description": "{ kind: 'outside' } or { kind: 'answer', guideId, title, passages, sources, phrased }" },
+          "400": { "$ref": "#/components/responses/Refused" }
+        }
+      }
     }
   },
   "components": {

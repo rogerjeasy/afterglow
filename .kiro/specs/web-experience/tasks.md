@@ -1,6 +1,6 @@
 # Web experience — Tasks
 
-Status: `[x]` done, `[ ]` planned.
+Status: `[x]` done, `[ ]` planned. Tests added 2026-11-27 (10 tests, ids WX-01, WX-02: `src/router.test.ts`, `src/styles/theme.test.ts`); WX-03..WX-07 are layout and motion, checked in the browser, and WX-08 is the Playwright pixel scan. The WX-01 property found that `#/constructor` (any name an object inherits) threw before the first render; fixed the same day (`docs/kiro/pbt-catches.md`).
 
 - [x] 1. History router, legacy-link redirect, BASE-aware links — _WX-01_ — `src/router.tsx`, `src/main.tsx`
 - [x] 2. Tailwind v4 theme from semantic tokens only; fonts self-hosted — _WX-02, WX-03_ — `src/styles/tailwind.css`

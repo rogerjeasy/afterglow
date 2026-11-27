@@ -121,8 +121,11 @@ function parse(body: string | null): Record<string, unknown> | null {
 /** Printable, single-spaced, bounded: it may be shown to the public. */
 export function cleanText(x: unknown, max: number): string | null {
   if (typeof x !== 'string') return null;
+  // Whitespace (tabs and line breaks are control characters too) becomes a space
+  // before the remaining control characters go, so words are never glued together.
   const t = x
     .normalize('NFKC')
+    .replace(/\s+/g, ' ')
     .replace(/[\p{C}<>]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();

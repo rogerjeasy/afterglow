@@ -87,7 +87,9 @@ export function redirectLegacy(): void {
       beacon: '/app/beacon',
       welcome: '/app/welcome',
     };
-    window.history.replaceState(null, '', `${href(map[name] ?? '/app')}${search}`);
+    // Own keys only: "#/constructor" must not find a property of the object itself.
+    const to = Object.hasOwn(map, name) ? (map[name] as string) : '/app';
+    window.history.replaceState(null, '', `${href(to)}${search}`);
     return;
   }
   // Deep links for the tour and a blackout in progress open the product, not the site.

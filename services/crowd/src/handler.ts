@@ -196,9 +196,12 @@ async function areaStatus(deps: PublicDeps, g: string, nowS: number): Promise<Ar
  * was given: no invented hours, temperatures or doses (GL-07).
  */
 export function groundedNumbers(text: string, passages: readonly string[]): boolean {
-  const source = passages.join(' ');
-  const nums = text.match(/\d+(?:[.,]\d+)?/g) ?? [];
-  return nums.every((n) => source.includes(n));
+  // Digits of any script (a reply in Arabic may write ٤٨), compared as whole numbers:
+  // "2" is not in a passage that says "28".
+  const NUM = /\p{Nd}+(?:[.,]\p{Nd}+)?/gu;
+  const source = new Set(passages.join(' ').match(NUM) ?? []);
+  const nums = text.match(NUM) ?? [];
+  return nums.every((n) => source.has(n));
 }
 
 /** A subscription's id: not reversible to its endpoint, the same for every cell. */

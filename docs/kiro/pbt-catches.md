@@ -277,3 +277,108 @@ tour step 5 in night: 1 pixel at r=166, ceiling red.700 = 165   (after a first f
 **Fix:** the bubble keeps the `hairline` border it had before. Ceiling-tone colours stay on opaque, unanimated strokes.
 
 **What was wrong:** the design change, not the rule or the scan.
+
+---
+
+## 2026-11-27 · GL-07 · the Ask phrasing check let invented numbers through
+
+**Requirement:** GL-07 (drop any phrasing containing a number that is not in the passages).
+
+**Property:** `GL-07 a phrasing that introduces any number not in the passages is rejected` (`services/crowd/src/handler.property.test.ts`), with numbers written in ASCII and in six other scripts' digits.
+
+**Shrunken counterexamples:**
+```
+passages [" 0.0 h."],  phrasing " about 0 hours."   → accepted
+passages [],           phrasing " about ٠ hours."   → accepted
+```
+Through `POST /v1/ask` the same property shrank to the insulin answer with the phrasing "It is fine for 0 hours." (the passages say 15, 30, 28 and so on).
+
+**Root cause (implementation bug):** `groundedNumbers` checked each number with `source.includes(n)`, a substring test on the joined passages, so "0" passed next to "30", "2" next to "28" and "4" next to "48": exactly the invented hours and doses the check exists to stop. Separately, it matched numbers with `\d`, which is ASCII only, so a reply written with Arabic-Indic, Devanagari or full-width digits carried no numbers at all as far as the check could see.
+
+**Fix:** numbers are matched with `\p{Nd}` (any script's digits) and compared as whole tokens against the set of numbers in the passages. A number in another script than the passages' is dropped, which fails closed. The two counterexamples are named regression tests. Number words ("forty-eight") are still not checked; the model is told to add no number, and that limit stands.
+
+**What was wrong:** the implementation. The requirement was right; the live smoke test only ever saw phrasings that reused the passages' numbers.
+
+---
+
+## 2026-11-27 · BC-04 · a fridge going from too warm straight to too cold was one "too warm" excursion
+
+**Requirement:** BC-04 (each fridge's excursions outside its range, in the cold-chain report).
+
+**Property:** `BC-04 every out-of-range reading lies in exactly one excursion of its own direction, and in-range readings in none` (`apps/mobile/src/console/coldchain.test.ts`).
+
+**Shrunken counterexample:**
+```
+range 2–8 °C, readings [ 9 °C at minute 0, 0 °C at minute 1 ]
+→ one excursion { direction: "warm", worstC: 0, endMs: null }
+```
+The report would have printed "too warm, worst 0 °C" for a fridge that had overheated and then frozen.
+
+**Root cause (implementation bug):** `summariseFridges` kept an open excursion until a reading came back in range. A reading out of range on the other side was folded into it: its direction stayed "warm" and `worstC` took `Math.min`, the cold rule, so the worst reading came from the wrong side and the freeze was never reported as its own excursion.
+
+**Fix:** a reading out of range on the other side closes the open excursion at that reading and opens a new one in the other direction. The counterexample is a named regression test.
+
+**What was wrong:** the implementation. A freeze after an overheat matters for vaccines (freezing destroys some of them), so the report must show both.
+
+---
+
+## 2026-11-27 · BC-05 / DF-14 · a tab or a line break glued two words together
+
+**Requirement:** BC-05 (public texts printable, single-spaced and bounded) and DF-14 (the name on a pairing link).
+
+**Properties:** `BC-05 cleanText keeps words apart: any run of whitespace between words becomes one space` (`services/console/src/console.property.test.ts`) and `DF-14 a name keeps its words apart: any whitespace between them becomes one space` (`apps/mobile/src/seance/pairing.test.ts`).
+
+**Shrunken counterexamples:**
+```
+cleanText(".\tA ")  → ".A"     (expected ". A")
+cleanName("a\tA ")  → "aA"     (expected "a A")
+```
+
+**Root cause (implementation bug):** both functions removed `\p{C}` before collapsing whitespace. Tab, line feed and carriage return are control characters as well as whitespace, so they were deleted instead of becoming a space. A Beacon advisory typed on two lines ("Water at the school.↵Open until 18:00") was published as "school.Open".
+
+**Fix:** whitespace becomes a single space first, then the remaining control characters and angle brackets go, then whitespace is collapsed once more. The counterexamples are named regression tests.
+
+**What was wrong:** the implementation: the order of two replacements.
+
+---
+
+## 2026-11-27 · DF-14 · the 40-character cut of a name could split an emoji or end on a space
+
+**Requirement:** DF-14 (pairing links carry the person's number and name; nothing passes through a server).
+
+**Properties:** `DF-14 a pairing link reads back as the same number and name, with the offer only in the hash` and `DF-14 a name lands on someone else's list printable, single-spaced and at most 40 characters`, with long names that put a space or an emoji near the cut.
+
+**Shrunken counterexamples:**
+```
+pairLink / parsePair, slot 0, name "AAAAaaAaAAaAAAAAAAaaaaaAAAaaaAAaAaaAaA 😀" (38 letters, space, emoji)
+→ read back with "�" where the emoji was
+cleanName("aAaAAAaAaaaAAAaAAaaAaaAAaaaAAaAAaAaaAaA x") (39 letters, " x")
+→ ends in a space; cleaning it again gives a different name
+```
+
+**Root cause (implementation bug):** `cleanName` trimmed and then cut with `slice(0, 40)`, which counts UTF-16 units. An emoji across the cut left half of a surrogate pair, which the link encoder turns into U+FFFD, so the receiver saw a different name than the sender showed; a cut just after a space left a trailing space, so the name was not stable under its own cleaning.
+
+**Fix:** cut by code points (`[...t].slice(0, 40)`) and trim after the cut. Regression tests keep both counterexamples.
+
+**What was wrong:** the implementation. Cosmetic in effect, but the name is the one thing a pairing shows the other person.
+
+---
+
+## 2026-11-27 · WX-01 · a legacy link to #/constructor threw before the first render
+
+**Requirement:** WX-01 (a legacy `#/<tab>` link is replaced by its `/app/...` path before the first render).
+
+**Property:** `WX-01 an unknown #/ name opens the product, never a crash` (`apps/mobile/src/router.test.ts`), whose names include those a plain object answers for itself.
+
+**Shrunken counterexample:**
+```
+base "/", location "/#/constructor"
+→ TypeError: to.startsWith is not a function
+```
+`#/toString`, `#/hasOwnProperty` and `#/__proto__` did the same.
+
+**Root cause (implementation bug):** `redirectLegacy` looked the tab up with `map[name] ?? '/app'` on an object literal, so an inherited property (a function, or `Object.prototype`) was taken for a route and `href()` threw on it. `main.tsx` calls `redirectLegacy()` before React mounts, so such a link left a blank page.
+
+**Fix:** only own keys count (`Object.hasOwn(map, name)`); anything else opens `/app`. The four names are a regression test.
+
+**What was wrong:** the implementation. Low risk (nobody links to `#/constructor` by accident), but a URL should never be able to stop the app from starting.

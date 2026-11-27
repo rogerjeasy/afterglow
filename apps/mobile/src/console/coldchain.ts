@@ -3,9 +3,10 @@ import type { Fridge, LogEntry, Site } from './api';
 /**
  * Cold-chain (product description 7.14 "cold-chain compliance", consoles BC-04): from
  * the readings staff log, each fridge's excursions outside its range — starting at the
- * first reading out of range and ending at the next reading back in range (or still
- * open) — and the generator's log. Nothing is interpolated: an excursion's length is
- * bounded by the readings that were actually taken, and the report says so.
+ * first reading out of range and ending at the next reading back in range, or out of
+ * range on the other side (or still open) — and the generator's log. Nothing is
+ * interpolated: an excursion's length is bounded by the readings that were actually
+ * taken, and the report says so.
  */
 
 export interface Excursion {
@@ -43,6 +44,11 @@ export function summariseFridges(
     for (const r of rs) {
       const out = r.tempC > f.maxC ? 'warm' : r.tempC < f.minC ? 'cold' : null;
       if (out) {
+        // Straight from too warm to too cold (or back): one excursion ends, the other begins.
+        if (open && open.direction !== out) {
+          excursions.push({ fridgeId: f.id, ...open, endMs: r.atMs });
+          open = null;
+        }
         if (!open) open = { startMs: r.atMs, worstC: r.tempC, direction: out };
         else
           open.worstC =

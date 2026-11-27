@@ -18,12 +18,16 @@ export const MAX_NAME = 40;
 
 export function cleanName(raw: string): string {
   // Printable text only, single spaces, bounded: it lands on someone else's list.
-  return raw
+  // Whitespace (tabs and line breaks are control characters too) becomes a space first,
+  // so words are never glued together.
+  const t = raw
     .normalize('NFKC')
+    .replace(/\s+/g, ' ')
     .replace(/[\p{C}<>]/gu, '')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, MAX_NAME);
+    .trim();
+  // Cut by characters, never inside one (no half emoji), and never end on a space.
+  return [...t].slice(0, MAX_NAME).join('').trim();
 }
 
 export function getMyName(): string {

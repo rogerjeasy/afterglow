@@ -1,6 +1,6 @@
 # History, reports and the trust centre — Tasks
 
-Built 2026-11-26 without new tests at the founder's request; all existing suites (core 304, app 147, browser 135 and the rest) stay green. Checked in the browser: an outage started and ended on the Hearth appears on You with its report.
+Built 2026-11-26 in Claude Code; tests added 2026-11-27 (12 tests: 6 in `packages/core/src/household/history.property.test.ts`, 6 in `apps/mobile/src/history/history.test.tsx`; ids HR-01..HR-07). Checked in the browser: an outage started and ended on the Hearth appears on You with its report.
 
 - [x] Optional `endedAtMs` on outage events; optional `atMs` and `reason` on removals, validated when present (old logs stay valid) — HR-02, HR-03
 - [x] `packages/core/src/household/history.ts`: `outageReports`, `historySummary` — HR-01, HR-04
