@@ -121,9 +121,12 @@ export function aggregateCell(
     return base('unknown', deviceCount);
   }
 
-  // Restoration (CE-05): only if the cell was dark and >= k distinct restore edges
-  // occurred within the restore window.
-  if (context.priorState === 'dark') {
+  // Restoration (CE-05): only if the cell was dark, or partly dark (mixed), and >= k
+  // distinct restore edges occurred within the restore window. Restores trickle in, so a
+  // dark cell is often `mixed` for a minute before k edges arrive; gating on `dark` alone
+  // skipped `comingBack` whenever that happened (pbt-catches 2026-11-27, SIM-04). A lit
+  // cell still never comes back.
+  if (context.priorState === 'dark' || context.priorState === 'mixed') {
     const restoreInWindow = countRestoreInWindow(distinctReports);
     if (restoreInWindow >= k) {
       return base('comingBack', deviceCount);

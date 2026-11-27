@@ -141,9 +141,34 @@ describe('Cells windowing properties', () => {
   // CE-12: a cell that was never dark cannot come back.
   it('CE-12 a cell that was not dark does not come back', () => {
     const edges = devices(6).map((d) => mk(d, 100, 'present', true));
-    for (const prior of [undefined, 'lit', 'unknown', 'mixed'] as const) {
+    for (const prior of [undefined, 'lit', 'unknown'] as const) {
       expect(cellStateAt(CELL, edges, 102, prior).state).toBe('lit');
     }
+  });
+
+  // pbt-catches 2026-11-27 (SIM-04): restores trickle in, so a dark cell is briefly
+  // `mixed` before k restore edges arrive. A partly dark cell can come back.
+  it('CE-12 a partly dark (mixed) cell comes back once k devices report a restore edge', () => {
+    const edges = devices(6).map((d) => mk(d, 100, 'present', true));
+    expect(cellStateAt(CELL, edges, 102, 'mixed').state).toBe('comingBack');
+  });
+
+  it('CE-13 a dark cell whose restores trickle in still passes through coming back', () => {
+    const ds = devices(8);
+    const reports: CellReport[] = [
+      ...ds.map((d) => mk(d, 20, 'absent')),
+      // Re-confirmed while the verdict holds (CR-16), so the dark is not forgotten.
+      ...ds.map((d) => mk(d, 45, 'absent')),
+      // Two phones see the power first: the cell is mixed, not yet k restore edges.
+      ...ds.slice(0, 2).map((d) => mk(d, 60, 'present', true)),
+      // A minute later the rest follow.
+      ...ds.slice(2).map((d) => mk(d, 61, 'present', true)),
+    ];
+    const states: string[] = [];
+    for (const s of cellTimeline(CELL, reports, 30, 70, 1)) {
+      if (states[states.length - 1] !== s.state) states.push(s.state);
+    }
+    expect(states).toEqual(['dark', 'mixed', 'comingBack']);
   });
 
   // Q1: with change-only reports a held verdict is forgotten after 30 minutes. Fail closed.

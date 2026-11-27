@@ -396,3 +396,28 @@ base "/", location "/#/constructor"
 **Fix:** the browser tests render text the way a phone does (`--disable-lcd-text` in `apps/mobile/playwright.config.ts`). The hue rule itself was not loosened. CI is green on Ubuntu, with all 75 amber scans and all red scans passing.
 
 **What was wrong:** the test environment. The finding is still useful: on a Linux or Windows desktop browser with sub-pixel smoothing, amber text edges are slightly greener than the amber ramp. Every offender the scanner reported was a hue failure ("not amber"), none a brightness one.
+
+---
+
+## 2026-11-27 · SIM-04 / CE-05 · a dark cell whose restores trickled in never showed "coming back"
+
+**Requirement:** SIM-04 (the user's cell runs lit, dark, coming back, lit through the real core), CE-05 (restoration).
+
+**Property:** `SIM-04 the user cell goes lit, dark, coming back, lit through the real core`, 10 random neighbourhood seeds per run.
+
+**How it surfaced:** one CI run on Ubuntu failed it; every local run and the next CI run passed. The log carried the fast-check seed and the counterexample, and the failure reproduced locally on the first try.
+
+**Shrunken counterexample:**
+```
+seed 1872461 → states ['lit', 'dark', 'lit']   (expected ['lit', 'dark', 'comingBack', 'lit'])
+user cell ke7f9v, 41 devices, power back at minute 160
+minute by minute: 155 dark · 160 mixed · 160 mixed · 160 lit
+```
+
+**Root cause (requirement and implementation):** `comingBack` was allowed only when the previous state was exactly `dark`. When fewer than k = 5 phones report the restore in the first minute, the cell is first `mixed` (some phones back, the rest still out), and from `mixed` the rule could never say "coming back". So the map skipped the state whenever restores trickled in, which is how real restores arrive. The live API had the same flaw: it derives the prior state from five minutes earlier. The existing CE-12 test even asserted that a prior `mixed` with six restore edges stays `lit`: the test encoded the gap. The push alert was not affected, because `mixed` is never stored as the last pushed state.
+
+**Fix:** a cell that was dark or partly dark (`mixed`) comes back when at least k distinct devices report a restore edge. A lit, unknown or new cell still never comes back. CE-05 amended to say so.
+
+**Tests added:** `CE-12 a partly dark (mixed) cell comes back once k devices report a restore edge`, `CE-13 a dark cell whose restores trickle in still passes through coming back` (both fail on the old rule), and `SIM-04 regression: seed 1872461 passes through coming back`.
+
+**What was wrong:** the requirement, and the test written from it. Ten random seeds a run had found it about once in many runs; a flaky red is a finding, not noise.

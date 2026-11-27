@@ -55,8 +55,8 @@ The Cells module is the privacy-critical heart of the Ember Map. It encodes loca
 **User story:** As a neighbour, I want the map to show "coming back" when phones start charging again, often before the utility says so.
 
 **Acceptance criteria (EARS):**
-- WHEN a cell is currently dark and at least k distinct devices report a restore edge within a 10-minute span THE SYSTEM SHALL set `state = comingBack`.
-- THE SYSTEM SHALL NOT declare `comingBack` for a cell that was not dark.
+- WHEN a cell is currently dark, or partly dark (`mixed`), and at least k distinct devices report a restore edge within a 10-minute span THE SYSTEM SHALL set `state = comingBack`. (Amended 2026-11-27: restores trickle in, so a dark cell is often `mixed` for a minute before the k-th edge; see `docs/kiro/pbt-catches.md`.)
+- THE SYSTEM SHALL NOT declare `comingBack` for a cell that was lit, unknown or had no prior state.
 - THE SYSTEM SHALL NOT declare `comingBack` below k distinct restore-edge devices.
 
 ### CE-06 — Geohash round-trips and neighbours are correct

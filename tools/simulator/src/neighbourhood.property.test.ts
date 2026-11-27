@@ -113,6 +113,14 @@ describe('Simulator properties', () => {
     );
   });
 
+  // pbt-catches 2026-11-27: on CI this seed's restores trickled in, the cell went
+  // dark → mixed → lit, and the core could not say "coming back" from mixed.
+  it('SIM-04 regression: seed 1872461 passes through coming back', () => {
+    const n = buildNeighbourhood(config(1872461));
+    const { states } = journey(n, n.userCell);
+    expect(states.filter((s) => s !== 'mixed')).toEqual(['lit', 'dark', 'comingBack', 'lit']);
+  });
+
   it('SIM-04 a sparse cell is only ever unknown, and a lit cell never goes dark', () => {
     fc.assert(
       fc.property(seedArb, (seed) => {
