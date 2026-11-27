@@ -382,3 +382,17 @@ base "/", location "/#/constructor"
 **Fix:** only own keys count (`Object.hasOwn(map, name)`); anything else opens `/app`. The four names are a regression test.
 
 **What was wrong:** the implementation. Low risk (nobody links to `#/constructor` by accident), but a URL should never be able to stop the app from starting.
+
+---
+
+## 2026-11-27 · NS-21 · Linux CI found amber pixels greener than amber, on every screen
+
+**Requirement:** NS-21 (every route in amber stays within its mode's ceiling and the amber hue).
+
+**How it surfaced:** the amber pixel scan passed all 75 routes locally on macOS and failed 75 of 75 on the first CI run on Ubuntu. The scanner's first offenders were pixels such as `(13,16,0)`, `(0,4,0)` and `(31,21,0)` at the edges of glyphs: greener than any colour in the amber ramp (maximum G/R 0.6).
+
+**Root cause (test environment, not the product):** desktop Chromium on Linux smooths text with sub-pixel (LCD) anti-aliasing, which mixes each colour channel separately at glyph edges and paints coloured fringes. With pure red the fringe cannot leave the hue, because red text has no green to spread; amber has, so its fringes were greener than amber. macOS Chromium uses greyscale smoothing, so the local run never showed it. Phones also smooth in greyscale, so no person would ever see these pixels.
+
+**Fix:** the browser tests render text the way a phone does (`--disable-lcd-text` in `apps/mobile/playwright.config.ts`). The hue rule itself was not loosened. CI is green on Ubuntu, with all 75 amber scans and all red scans passing.
+
+**What was wrong:** the test environment. The finding is still useful: on a Linux or Windows desktop browser with sub-pixel smoothing, amber text edges are slightly greener than the amber ramp. That does not affect the luminance ceiling, which every pixel still met.
