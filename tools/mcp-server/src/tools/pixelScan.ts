@@ -42,8 +42,25 @@ export type PngScan =
 
 const hex2 = (n: number): string => n.toString(16).padStart(2, '0').toUpperCase();
 
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/** Width and height from a PNG's IHDR chunk (always the first chunk), or null. */
+export function pngSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 24 || PNG_SIGNATURE.some((v, i) => bytes[i] !== v)) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (String.fromCharCode(...bytes.subarray(12, 16)) !== 'IHDR') return null;
+  return { width: view.getUint32(16), height: view.getUint32(20) };
+}
+
 /** Scan PNG bytes. Pure apart from decoding; never throws. */
 export function scanPng(bytes: Uint8Array, mode: LuminanceMode, maxOffenders: number): PngScan {
+  // Read the size from the IHDR header before decoding, so a small file that inflates to
+  // billions of pixels (a decompression bomb) is refused without allocating them.
+  const header = pngSize(bytes);
+  if (!header) return { refused: true, reason: 'Not a readable PNG; not judged.' };
+  if (header.width * header.height > MAX_PIXELS) {
+    return { refused: true, reason: `Refused: more than ${MAX_PIXELS} pixels.` };
+  }
   let png: PNG;
   try {
     png = PNG.sync.read(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));

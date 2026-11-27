@@ -1,7 +1,7 @@
 import { ceilingRed, scanRgba } from '@afterglow/design-system';
 import { PNG } from 'pngjs';
 import { describe, expect, it } from 'vitest';
-import { scanPng } from './pixelScan.js';
+import { pngSize, scanPng } from './pixelScan.js';
 
 type Px = [number, number, number];
 
@@ -78,5 +78,23 @@ describe('pixel_scan_png', () => {
       const r = scanPng(bytes, 'night', 5);
       expect('refused' in r).toBe(true);
     }
+  });
+});
+
+describe('MCP-04 a decompression bomb is refused before decoding', () => {
+  it('MCP-04 a header claiming 100000 x 100000 pixels is refused from the header alone', () => {
+    const bytes = new Uint8Array(33);
+    bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+    bytes.set(
+      [...'IHDR'].map((c) => c.charCodeAt(0)),
+      12,
+    );
+    const view = new DataView(bytes.buffer);
+    view.setUint32(16, 100_000);
+    view.setUint32(20, 100_000);
+    expect(pngSize(bytes)).toEqual({ width: 100_000, height: 100_000 });
+    const r = scanPng(bytes, 'night', 5);
+    expect(r).toMatchObject({ refused: true });
+    expect('reason' in r && r.reason).toContain('pixels');
   });
 });

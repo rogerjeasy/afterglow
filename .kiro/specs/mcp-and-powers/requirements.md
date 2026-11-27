@@ -36,6 +36,7 @@ Agents working on Afterglow, and on any other dark-room interface, should check 
 ### MCP-04 — pixel_scan_png uses the existing scanner
 - WHEN `pixel_scan_png` is called with a PNG inside the workspace and a mode THE SYSTEM SHALL decode it and return the design-system `scanRgba` verdict, its offender count and brightest red channel, and the worst offending pixels (coordinates, colour, reason, how far past the rule) up to a cap.
 - IF the bytes are not a readable PNG THEN THE SYSTEM SHALL refuse it.
+- IF the PNG header declares more than 40 million pixels THEN THE SYSTEM SHALL refuse it from the header, before decoding, so a small compressed file cannot make it allocate gigabytes. (Security review, 2026-11-27.)
 
 ### MCP-05 — Read-only and deterministic
 - THE SYSTEM SHALL declare every tool `readOnlyHint: true` and `openWorldHint: false`, SHALL NOT write files, call a model or use the network, and SHALL return the same result for the same input and files.
