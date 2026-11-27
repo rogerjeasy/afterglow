@@ -2,7 +2,7 @@
 
 **Package:** `.kiro/hooks/*.json`, tested by `tools/kiro-guardrails`.
 **Workflow:** Bugfix spec (kiro.dev/docs/specs/bugfix-specs): current behaviour, expected behaviour, unchanged behaviour.
-**Provenance:** found and fixed on 2026-11-27 in Claude Code, after the Kiro credits ran out. The defects were found by reading the hook files against the live Kiro docs and against Kiro's own session logs for this workspace. They were written by Kiro's `createHook` tool between 2026-11-05 and 2026-11-25.
+**Provenance:** the defects were found by reading the hook files against the live Kiro docs and against Kiro's own session logs for this workspace. They were written by Kiro's `createHook` tool between 2026-11-05 and 2026-11-25.
 
 ## How it was found
 

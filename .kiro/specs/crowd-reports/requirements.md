@@ -61,7 +61,7 @@ Privacy review, `push_subs`: the push endpoint is a pseudonymous address at the 
 
 - **CR-16** WHILE a phone's fused verdict is present or absent and it has shared its area, THE SYSTEM SHALL repeat its report every 10 minutes unless it reported the same verdict in the last 9 minutes, so a cell that counts reports from the last 30 minutes does not fade to unknown during a long outage (resolves the cells spec's open question Q1 for phones that stay sure).
 
-## People who cannot be sensed (2026-11-27, Claude Code)
+## People who cannot be sensed
 
 A browser on an iPhone has no battery events and cannot listen in the background, so its Grid Sense verdict is almost always "unknown" and it never reported. The people most likely to open Afterglow on the web could not light the map at all.
 

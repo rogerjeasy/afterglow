@@ -1,6 +1,6 @@
 # MCP server and Night-vision Power — Tasks
 
-> Built 2026-11-27 in Claude Code after the Kiro credits ran out; the MCP server and Power were validated by tests and by Kiro CLI config checks, not yet exercised inside a Kiro agent session.
+> The MCP server and Power were validated by tests and by Kiro CLI config checks, not yet exercised inside a Kiro agent session.
 
 Status: `[x]` done, `[ ]` planned.
 

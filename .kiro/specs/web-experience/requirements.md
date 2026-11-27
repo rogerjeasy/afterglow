@@ -42,7 +42,7 @@ Until now Afterglow was one 520 px phone column behind `#/` routes, and a first 
 ### WX-08 — The pixel scan covers the front door
 - The public routes and the sign-in pages SHALL pass the same luminance pixel scan as the product routes (NS-10, NS-11).
 
-### WX-09 — A short front door and a small menu (2026-11-27, Claude Code)
+### WX-09 — A short front door and a small menu
 **User story:** As someone who has never heard of Afterglow, I want to see what it is, what it answers and how to try it, without reading the whole product description first.
 - THE SYSTEM SHALL offer three pages in the site header (Features, How it works, Science & privacy), plus Sign in and Open the app. Organisations and Pricing SHALL stay one tap away: in the phone menu's second group and in the footer.
 - THE SYSTEM SHALL tell the homepage in at most six sections, with no section repeating a page that already exists: the hero, the data sources, the questions people have in the dark (each answered by its tab, with a live miniature), the night-vision demo, three links to the deeper pages, and Wisp's tour.

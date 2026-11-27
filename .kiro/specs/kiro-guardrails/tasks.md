@@ -1,6 +1,6 @@
 # Kiro guardrails — Tasks
 
-Status: `[x]` done, `[ ]` planned. Done 2026-11-27 in Claude Code (Kiro credits exhausted).
+Status: `[x]` done, `[ ]` planned.
 
 - [x] 1. Write the harness that runs a hook as Kiro does (`tools/kiro-guardrails/src/hooks.ts`) — _KG-01..KG-09_
 - [x] 2. Write the schema and selector checks and confirm they fail on the old hooks (24 failures) — _KG-01, KG-02, KG-03_

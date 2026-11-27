@@ -1,6 +1,6 @@
 # MCP server and Night-vision Power — Requirements
 
-> Built 2026-11-27 in Claude Code after the Kiro credits ran out; the MCP server and Power were validated by tests and by Kiro CLI config checks, not yet exercised inside a Kiro agent session.
+> The MCP server and Power were validated by tests and by Kiro CLI config checks, not yet exercised inside a Kiro agent session.
 
 **Module:** `tools/mcp-server` (package `@afterglow/mcp-server`), `.kiro/settings/mcp.json`, `.kiro/agents/night-watch.json` and `powers/night-vision/`.
 **Workflow:** Requirements-First. The tools add no new maths: every number comes from `packages/design-system` or `packages/core`, and these requirements say how it is served.

@@ -8,4 +8,4 @@ Product description 7.18 (a curated, cited library, readable in the Night Shell 
 - **GL-04** IF no passage matches THEN THE SYSTEM SHALL say the question is outside the library and SHALL NOT answer it.
 - **GL-05** THE SYSTEM SHALL read any guide or answer aloud on request, naming its sources.
 - **GL-06** THE SYSTEM SHALL say the library is guidance, not medical advice.
-- **GL-08** WHERE no pharmacist-approved table is loaded, THE SYSTEM SHALL show the library's insulin guide, with its FDA sources, folded under the medicine refusal, and SHALL NOT turn it into a clock. (2026-11-27, Claude Code.)
+- **GL-08** WHERE no pharmacist-approved table is loaded, THE SYSTEM SHALL show the library's insulin guide, with its FDA sources, folded under the medicine refusal, and SHALL NOT turn it into a clock.
