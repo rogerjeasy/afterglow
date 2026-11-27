@@ -12,7 +12,7 @@ The numbers come from `tools/kiro-guardrails/scripts/kiro-session-evidence.py`, 
 | Why | the plan: build spec-first in Kiro | the Kiro credits were used up on 2026-11-25 |
 | Commits | 106 | 67 so far |
 | Lines added (excluding the lockfile and the FoodKeeper data) | about 40,900 | about 26,300 so far |
-| Specs started | 17 of 29 | 12 of 29 |
+| Specs started | 17 of 30 | 13 of 30 |
 
 The product, architecture and design documents in `docs/` were written on 2026-11-03, inside the submission period, outside Kiro and before the first Kiro session. They were the input the specs were written from.
 

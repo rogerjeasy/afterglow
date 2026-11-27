@@ -30,5 +30,5 @@ Status: `[x]` done, `[ ]` planned.
   - _Requirements: TH-05_
 - [ ] 7. Feed FoodKeeper per-food budgets into `discardTime` (the `foodkeeper` module supplies `PerishableItem`s)
   - _Requirements: TH-04_
-- [ ] 8. Learn household tau from measured events and prefer it over defaults
+- [x] 8. Learn household tau from measured events: a thermometer-measured τ per appliance, used only when shorter than the default (field-checks FC-03, FC-07). The building τ is still the archetype band
   - _Requirements: TH-07_

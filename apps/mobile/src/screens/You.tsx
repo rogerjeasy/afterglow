@@ -185,6 +185,15 @@ export function You({
           <div className="flex min-w-0 flex-col gap-8">
             {children}
             {space.kind === 'account' ? <ConsolesSection signedIn={space.cloud !== null} /> : null}
+            <Section title="Field checks">
+              <p className="m-0 text-label text-secondary">
+                Test Afterglow against a real thermometer and two real phones: a fridge unplugged on
+                purpose, a night with the heating off, Séance at a measured distance.
+              </p>
+              <div>
+                <Button onClick={() => navigate('/app/field')}>Open field checks</Button>
+              </div>
+            </Section>
             <TrustCentre />
           </div>
           <div className="flex min-w-0 flex-col gap-8">

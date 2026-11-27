@@ -433,4 +433,46 @@ describe('Household properties', () => {
     expect(set.appliances[0]?.ambientIsDefault).toBe(false);
     expect(set.appliances[0]?.ambientC).toBe(30);
   });
+
+  // FC-07 (field-checks): a thermometer-measured time constant reaches the live clock,
+  // and only ever to shorten it (FC-03).
+  it('FC-07 a measured time constant can shorten the fridge window but never lengthen it', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom('fridge', 'fridgeFreezerCombo', 'freezer', 'chestFreezer', 'coolerBox'),
+        fc.constantFrom('full', 'half'),
+        fc.integer({ min: 10, max: 40 }),
+        fc.double({ min: 1, max: 100_000, noNaN: true }),
+        (cls, fullness, ambientC, measuredTauMinutes) => {
+          const window = (extra: Record<string, unknown>): number | null => {
+            const view = buildHouseholdView(
+              EventLog.from([
+                ev(E.applianceSet, fridgePayload({ class: cls, fullness, ambientC, ...extra }), 1),
+              ]),
+            );
+            return assessAppliance(view, INDEX, 'fridge', OUTAGE_AT)?.windowMinutes ?? null;
+          };
+          const plain = window({});
+          const measured = window({ measuredTauMinutes });
+          if (plain === null) return;
+          expect(measured).not.toBeNull();
+          expect(measured as number).toBeLessThanOrEqual(plain + 1e-9);
+        },
+      ),
+    );
+  });
+
+  it('FC-07 a measured time constant that is not a positive number is ignored with the event', () => {
+    for (const bad of [0, -5, Number.NaN, Number.POSITIVE_INFINITY, 1e9, '3000']) {
+      const view = buildHouseholdView(
+        EventLog.from([ev(E.applianceSet, fridgePayload({ measuredTauMinutes: bad }), 1)]),
+      );
+      expect(view.appliances).toHaveLength(0);
+    }
+    const ok = buildHouseholdView(
+      EventLog.from([ev(E.applianceSet, fridgePayload({ measuredTauMinutes: 900 }), 1)]),
+    );
+    expect(ok.appliances[0]?.measuredTauMinutes).toBe(900);
+    expect(compartmentModel(ok, 'fridge')?.usedDefaultTau).toBe(false);
+  });
 });

@@ -24,6 +24,7 @@ import {
   validUntil,
   whText,
 } from '../plan/present';
+import { navigate } from '../router';
 import { ScheduleSection } from '../schedule/ScheduleSection';
 import { Page, PageHeader, Panel } from '../ui/page';
 import { HomeSetup } from './HomeSetup';
@@ -259,6 +260,13 @@ export function Plan({ nowMs }: { nowMs: number }): ReactNode {
                 An indoor-temperature estimate from the building's heat-loss time constant. Warming
                 centres and where to go are not shown yet.
               </Notice>
+              {view.outageStartedAtMs === null ? (
+                <div>
+                  <Button onClick={() => navigate('/app/field')}>
+                    Check it against a thermometer tonight
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </Panel>
         ) : null}

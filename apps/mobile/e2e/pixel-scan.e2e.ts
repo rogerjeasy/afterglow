@@ -73,6 +73,55 @@ interface Scenario {
   readonly name: string;
   readonly url: string;
   readonly seed?: boolean;
+  /** Field-check runs with readings, so the charts and dots are scanned too (FC-09). */
+  readonly fieldRuns?: boolean;
+}
+
+/** A finished fridge run, an open night run and a Séance count, all with data. */
+function seededFieldRuns(nowMs: number) {
+  const start = nowMs - 5 * 60 * MIN;
+  return {
+    runs: [
+      {
+        id: 'cold-e2e',
+        kind: 'cold',
+        startedAtMs: start,
+        applianceId: 'a1',
+        applianceName: 'Fridge',
+        applianceClass: 'fridge',
+        fullness: 'full',
+        ambientC: 24,
+        startC: 3.2,
+        readings: [60, 120, 180, 240].map((m, i) => ({ atMs: start + m * MIN, c: 3.6 + i * 0.5 })),
+        endedAtMs: start + 250 * MIN,
+      },
+      {
+        id: 'home-e2e',
+        kind: 'home',
+        startedAtMs: start,
+        archetype: null,
+        mode: 'cold',
+        thresholdC: 15,
+        outdoorC: 2,
+        startC: 20,
+        readings: [60, 120, 240].map((m, i) => ({ atMs: start + m * MIN, c: 19.2 - i * 0.8 })),
+        endedAtMs: null,
+      },
+      {
+        id: 'seance-e2e',
+        kind: 'seance',
+        startedAtMs: start,
+        distanceM: 3,
+        setting: 'indoors, lights off',
+        profile: 'standard',
+        trials: [
+          { sent: 'SAFE', outcome: 'read', seconds: 28, atMs: start + MIN },
+          { sent: 'SAFE', outcome: 'refused', seconds: null, atMs: start + 2 * MIN },
+        ],
+        endedAtMs: null,
+      },
+    ],
+  };
 }
 
 const SCENARIOS: readonly Scenario[] = [
@@ -102,6 +151,9 @@ const SCENARIOS: readonly Scenario[] = [
   { name: 'not found page', url: '/nowhere-at-all' },
   { name: 'sign in', url: '/signin' },
   { name: 'sign up', url: '/signup' },
+  // FC-09: field checks, empty and with readings drawn.
+  { name: 'field checks, empty', url: '/app/field' },
+  { name: 'field checks, with readings', url: '/app/field', seed: true, fieldRuns: true },
 ];
 
 async function run(page: Page, scenario: Scenario, mode: LuminanceMode, hue: Hue): Promise<void> {
@@ -111,6 +163,14 @@ async function run(page: Page, scenario: Scenario, mode: LuminanceMode, hue: Hue
       window.localStorage.setItem('afterglow.household.events.v1', json);
       window.localStorage.setItem('afterglow.household.epoch.v1', 'dev-e2e');
     }, JSON.stringify(events));
+  }
+  if (scenario.fieldRuns) {
+    await page.addInitScript(
+      (json) => {
+        window.localStorage.setItem('afterglow.fieldcheck.v1', json);
+      },
+      JSON.stringify(seededFieldRuns(Date.now())),
+    );
   }
   if (hue === 'amber') {
     await page.addInitScript(() => window.localStorage.setItem('afterglow.hue.v1', 'amber'));

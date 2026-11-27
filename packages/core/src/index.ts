@@ -13,3 +13,4 @@ export * as restoration from './restoration/index.js';
 export * as alerts from './alerts/index.js';
 export * as sensing from './sensing/index.js';
 export * as guidance from './guidance/index.js';
+export * as fieldcheck from './fieldcheck/index.js';

@@ -65,6 +65,8 @@ export function applianceSources(a: household.ApplianceAssessment, modelVersion:
   }
   if (a.model.usedDefaultTau) defaults.push('time constant');
   if (defaults.length > 0) out.push(`defaults: ${defaults.join(', ')}`);
+  // FC-07: a measured value is named too, so it is never silent either.
+  if (!a.model.usedDefaultTau) out.push('time constant: measured with your thermometer');
   return out;
 }
 

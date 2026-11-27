@@ -1,0 +1,21 @@
+export {
+  type Reading,
+  type ComparedReading,
+  type Comparison,
+  type TauFit,
+  type TauSource,
+  READING_MIN_C,
+  READING_MAX_C,
+  FIT_MIN_READINGS,
+  FIT_MIN_SPAN_MINUTES,
+  FIT_MIN_CHANGE_C,
+  isUsableReading,
+  usableReadings,
+  compareReadings,
+  insideBand,
+  fitTau,
+  measuredCrossing,
+  safeTau,
+  modelledCrossing,
+} from './thermometer.js';
+export { type Trial, type TrialOutcome, type Tally, tallyTrials } from './seance.js';

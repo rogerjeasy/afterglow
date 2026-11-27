@@ -23,6 +23,7 @@ import {
   Stepper,
 } from '../night-shell/controls';
 import { Tombstone } from '../night-shell/costume';
+import { navigate } from '../router';
 import { cx } from '../ui/kit';
 import { Page, PageHeader } from '../ui/page';
 import { Medicines } from './Medicines';
@@ -319,10 +320,25 @@ export function Cold({
                         ? `${formatDuration(selected.model.doorMinutes)} of door time counted this outage. `
                         : 'Openings count during an outage. '}
                       Cautious estimate, not measured: each minute open closes 2% of the gap to room
-                      temperature, so the clocks only ever get shorter. A thermometer will replace
-                      it.
+                      temperature, so the clocks only ever get shorter.
                     </div>
                   </div>
+
+                  {/* A field check is a calm-day job: offered with the power on, never in the dark. */}
+                  {view.outageStartedAtMs === null ? (
+                    <div>
+                      <div className="text-label text-secondary">Have a fridge thermometer?</div>
+                      <div className="mt-1 text-caption text-secondary">
+                        Unplug it for a few hours on a calm day and check my numbers against yours.
+                        What you measure can only make this clock shorter.
+                      </div>
+                      <div className="mt-2">
+                        <Button onClick={() => navigate('/app/field')}>
+                          Check it against a thermometer
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </Section>
             </>

@@ -27,6 +27,7 @@ export const TAB_PATH: Record<TabId, string> = {
   alerts: '/app/alerts',
   business: '/app/business',
   beacon: '/app/beacon',
+  field: '/app/field',
 };
 
 export function tabFromPath(path: string): TabId {
@@ -39,6 +40,7 @@ export function tabFromPath(path: string): TabId {
     case 'alerts':
     case 'business':
     case 'beacon':
+    case 'field':
       return seg;
     case 'account':
     case 'you':
@@ -79,6 +81,7 @@ export const TAB_TITLE: Record<TabId, string> = {
   alerts: 'Alerts',
   business: 'Business',
   beacon: 'Beacon',
+  field: 'Field checks',
 };
 
 function SideLink({
@@ -250,6 +253,11 @@ export function AppShell({
             <SideLink
               item={{ id: 'you', icon: 'settings', label: 'You', hint: 'Account and privacy' }}
               active={tab === 'you'}
+              onGo={onGo}
+            />
+            <SideLink
+              item={{ id: 'field', icon: 'check', label: 'Field checks', hint: 'Test it yourself' }}
+              active={tab === 'field'}
               onGo={onGo}
             />
             {signedIn ? (

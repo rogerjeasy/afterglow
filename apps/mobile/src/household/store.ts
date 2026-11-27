@@ -38,6 +38,12 @@ export interface HouseholdStore {
   subscribe(listener: () => void): () => void;
   addAppliance(input: ApplianceInput): string;
   updateAppliance(id: string, input: ApplianceInput): void;
+  /**
+   * Keep (or clear, with null) a time constant measured with a thermometer for this
+   * appliance (field-checks FC-07). Editing the appliance's setup clears it, since the
+   * measurement belongs to the setup it was made with.
+   */
+  setMeasuredTau(applianceId: string, tauMinutes: number | null): void;
   removeAppliance(id: string): void;
   addItem(applianceId: string, productId: number): string;
   removeItem(itemId: string, reason?: household.RemovalReason): void;
@@ -171,6 +177,19 @@ export function createHouseholdStore(deps: StoreDeps): HouseholdStore {
     },
     updateAppliance(id, input) {
       append(E.applianceSet, appliancePayload(id, input));
+    },
+    setMeasuredTau(applianceId, tauMinutes) {
+      const a = state.view.appliances.find((x) => x.id === applianceId);
+      if (!a) return;
+      append(E.applianceSet, {
+        ...appliancePayload(applianceId, {
+          name: a.name,
+          class: a.class,
+          fullness: a.fullness,
+          ambientC: a.ambientIsDefault ? null : a.ambientC,
+        }),
+        measuredTauMinutes: tauMinutes,
+      });
     },
     removeAppliance(id) {
       append(E.applianceRemoved, { applianceId: id });

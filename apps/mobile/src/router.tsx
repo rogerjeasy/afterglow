@@ -85,6 +85,7 @@ export function redirectLegacy(): void {
       alerts: '/app/alerts',
       business: '/app/business',
       beacon: '/app/beacon',
+      field: '/app/field',
       welcome: '/app/welcome',
     };
     // Own keys only: "#/constructor" must not find a property of the object itself.

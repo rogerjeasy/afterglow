@@ -55,7 +55,14 @@ export function compartmentModel(
 ): CompartmentModel | undefined {
   const appliance = view.appliances.find((a) => a.id === applianceId);
   if (!appliance) return undefined;
-  const base = compartmentFor(appliance.class, appliance.fullness, appliance.ambientC);
+  // FC-03, FC-07: a thermometer-measured time constant is used only when it makes the
+  // clock shorter than the class default. A slower measured fridge keeps the default.
+  const defaults = compartmentFor(appliance.class, appliance.fullness, appliance.ambientC);
+  const measured = appliance.measuredTauMinutes;
+  const base =
+    measured !== undefined && measured < defaults.state.tauMinutes
+      ? compartmentFor(appliance.class, appliance.fullness, appliance.ambientC, measured)
+      : defaults;
   // Door openings only count during the current outage.
   const since = view.outageStartedAtMs;
   const openings =

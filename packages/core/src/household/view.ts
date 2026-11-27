@@ -39,6 +39,8 @@ export interface Appliance {
   readonly ambientC: number;
   /** True when the user never set a room temperature and the 22 C reference is in use (HH-07). */
   readonly ambientIsDefault: boolean;
+  /** A thermometer-measured time constant in minutes (FC-07); absent when none was measured. */
+  readonly measuredTauMinutes?: number;
 }
 export interface FoodItem {
   readonly id: string;
@@ -157,6 +159,9 @@ function step(state: Internal, event: AfterglowEvent): Internal {
         fullness: p.fullness,
         ambientC: p.ambientC ?? DEFAULT_AMBIENT_C,
         ambientIsDefault: p.ambientC === null,
+        ...(typeof p.measuredTauMinutes === 'number'
+          ? { measuredTauMinutes: p.measuredTauMinutes }
+          : {}),
       };
       return { ...state, appliances: put(state.appliances, p.applianceId, event, appliance) };
     }

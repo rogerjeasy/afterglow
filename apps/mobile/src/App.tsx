@@ -33,6 +33,7 @@ import { readFlag, shouldOnboard, writeFlag } from './onboarding/logic';
 import { navigate, useLocation } from './router';
 import { Alerts } from './screens/Alerts';
 import { Cold } from './screens/Cold';
+import { FieldChecks } from './screens/FieldChecks';
 import { Hearth } from './screens/Hearth';
 import { Lantern } from './screens/Lantern';
 import { Onboarding } from './screens/Onboarding';
@@ -356,6 +357,8 @@ export function App(): ReactNode {
         <Cold nowMs={nowMs} selectedId={coldSelected} onSelect={setColdSelected} />
       ) : tab === 'alerts' ? (
         <Alerts list={alertList} outage={outage} />
+      ) : tab === 'field' ? (
+        <FieldChecks nowMs={nowMs} />
       ) : tab === 'business' || tab === 'beacon' ? (
         // The consoles are wider pages for a desk as much as a phone (7.14, 7.16).
         <Page>{tab === 'business' ? <BusinessConsole /> : <BeaconConsole />}</Page>

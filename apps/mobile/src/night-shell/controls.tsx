@@ -276,7 +276,8 @@ export type TabId =
   | 'you'
   | 'alerts'
   | 'business'
-  | 'beacon';
+  | 'beacon'
+  | 'field';
 
 function Glyph({ children }: { children: ReactNode }): ReactNode {
   return (

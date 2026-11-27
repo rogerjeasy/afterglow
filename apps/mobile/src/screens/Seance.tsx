@@ -15,6 +15,7 @@ import {
 } from '../night-shell/controls';
 import { GhostGlyph } from '../night-shell/costume';
 import { token } from '../night-shell/theme';
+import { navigate } from '../router';
 import { CarePanel, checkInLine } from '../seance/CarePanel';
 import { Lamp } from '../seance/Lamp';
 import { PairConfirm, PairSection, useOfferFromHash } from '../seance/PairSection';
@@ -657,6 +658,21 @@ export function Seance({ nowMs }: { nowMs: number }): ReactNode {
                   <SourceChip label="simulated camera (demo)" />
                 </div>
               ) : null}
+
+              {/* A field test is a calm-day job: offered with the power on, never in the dark. */}
+              {outage ? null : (
+                <div className="flex flex-col gap-2 border-t border-hairline pt-4">
+                  <div className="text-caption text-secondary">
+                    Testing with a second phone? Count how often a message gets through at each
+                    distance.
+                  </div>
+                  <div>
+                    <Button size="sm" variant="ghost" onClick={() => navigate('/app/field')}>
+                      Field test at a distance
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </Section>
         </div>

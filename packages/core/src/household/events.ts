@@ -56,6 +56,12 @@ export interface AppliancePayload {
   readonly fullness: Fullness;
   /** Room temperature; null means "not set" and the 22 C reference is used and labelled. */
   readonly ambientC: number | null;
+  /**
+   * A time constant measured with a thermometer (field-checks FC-07), in minutes. Absent or
+   * null on older logs and when nothing was measured. The core uses it only when it makes the
+   * clock shorter than the class default (FC-03).
+   */
+  readonly measuredTauMinutes?: number | null;
 }
 export interface ApplianceRemovedPayload {
   readonly applianceId: string;
@@ -167,9 +173,17 @@ export function isAppliancePayload(x: unknown): x is AppliancePayload {
     typeof x.class === 'string' &&
     APPLIANCE_CLASSES.has(x.class) &&
     (x.fullness === 'full' || x.fullness === 'half') &&
-    (x.ambientC === null || isTemp(x.ambientC))
+    (x.ambientC === null || isTemp(x.ambientC)) &&
+    (x.measuredTauMinutes === undefined ||
+      x.measuredTauMinutes === null ||
+      (typeof x.measuredTauMinutes === 'number' &&
+        Number.isFinite(x.measuredTauMinutes) &&
+        x.measuredTauMinutes > 0 &&
+        x.measuredTauMinutes <= MAX_MEASURED_TAU_MINUTES))
   );
 }
+/** A measured time constant longer than this (about 70 days) is a typing mistake (FC-07). */
+export const MAX_MEASURED_TAU_MINUTES = 100_000;
 export function isApplianceRemovedPayload(x: unknown): x is ApplianceRemovedPayload {
   return isRecord(x) && isId(x.applianceId);
 }
