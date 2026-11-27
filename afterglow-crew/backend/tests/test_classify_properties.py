@@ -1,4 +1,4 @@
-"""Properties of the night watch's judgement (CA-01 to CA-05, CA-12).
+"""Properties of the night watch's judgement (CW-01 to CW-05, CW-12).
 
 Hypothesis plays the part fast-check plays for the TypeScript core.
 """
@@ -85,7 +85,7 @@ def with_outcomes(name: str, outcomes: list[str], tests=None) -> CheckResult:
     )
 
 
-# ------------------------------------------------------------------ CA-01
+# ------------------------------------------------------------------ CW-01
 
 
 @SETTINGS
@@ -118,7 +118,7 @@ def test_CA01_pass_and_unknown_is_unknown_and_fail_wins_over_unknown():
     assert check_outcome(with_outcomes("t", ["unknown", "unknown"])) == "unknown"
 
 
-# ------------------------------------------------------------------ CA-02
+# ------------------------------------------------------------------ CW-02
 
 
 @SETTINGS
@@ -138,7 +138,7 @@ def test_CA02_flaky_is_reported_even_if_the_previous_run_was_also_flaky():
     assert f.kind == "flaky"
 
 
-# ------------------------------------------------------------------ CA-03
+# ------------------------------------------------------------------ CW-03
 
 
 @SETTINGS
@@ -176,7 +176,7 @@ def test_CA03_the_smaller_count_is_used_so_a_lucky_repeat_cannot_hide_a_drop():
     assert classify(prev, [c])[0].kind == "tests dropped"
 
 
-# ------------------------------------------------------------------ CA-04
+# ------------------------------------------------------------------ CW-04
 
 
 @SETTINGS
@@ -255,7 +255,7 @@ def test_CA04_the_transitions_in_one_table():
     assert kinds == {"other": "steady", "t": "new failure"}
 
 
-# ------------------------------------------------------------------ CA-05
+# ------------------------------------------------------------------ CW-05
 
 
 @SETTINGS
@@ -314,7 +314,7 @@ def test_CA05_uncommitted_changes_are_said_plainly():
     assert text is not None and "(uncommitted changes)" in text
 
 
-# ------------------------------------------------------------------ record parsing (CA-08)
+# ------------------------------------------------------------------ record parsing (CW-08)
 
 
 @SETTINGS
@@ -360,7 +360,7 @@ def test_CA08_extra_fields_wrong_types_and_versions_are_refused():
             parse_run(bad)
 
 
-# ------------------------------------------------------------------ digest (CA-12)
+# ------------------------------------------------------------------ digest (CW-12)
 
 NOW = datetime(2026, 11, 25, 12, 0, tzinfo=timezone.utc)
 

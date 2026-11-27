@@ -1,4 +1,4 @@
-"""Deciding what changed between two runs (CA-01 to CA-04).
+"""Deciding what changed between two runs (CW-01 to CW-04).
 
 Deterministic and order-independent. No model is consulted: whether something regressed is a
 verdict, and verdicts are code with citable inputs.
@@ -12,11 +12,11 @@ from .model import REGRESSION_KINDS, CheckOutcome, CheckResult, Finding, Run
 
 
 def check_outcome(c: CheckResult) -> CheckOutcome:
-    """One word for a check across its repeats. Unknown is never promoted to pass (CA-01)."""
+    """One word for a check across its repeats. Unknown is never promoted to pass (CW-01)."""
     outcomes = {r.outcome for r in c.repeats}
     has_pass, has_fail, has_unknown = "pass" in outcomes, "fail" in outcomes, "unknown" in outcomes
     if has_pass and has_fail:
-        return "flaky"  # CA-02: sometimes passing is itself the finding
+        return "flaky"  # CW-02: sometimes passing is itself the finding
     if has_fail:
         return "fail"
     if has_unknown:
@@ -25,7 +25,7 @@ def check_outcome(c: CheckResult) -> CheckOutcome:
 
 
 def count_tests(c: CheckResult) -> int | None:
-    """The tests a check counted, or None when any repeat could not be read (CA-03).
+    """The tests a check counted, or None when any repeat could not be read (CW-03).
 
     Repeats may count differently when a suite is flaky; the smaller count is used, so a drop is
     never hidden by a lucky repeat.
@@ -37,7 +37,7 @@ def count_tests(c: CheckResult) -> int | None:
 
 
 def run_passed(checks: Iterable[CheckResult]) -> bool:
-    """A run passes only when every check passed in every repeat (CA-01). No checks is not a pass."""
+    """A run passes only when every check passed in every repeat (CW-01). No checks is not a pass."""
     items = list(checks)
     return bool(items) and all(check_outcome(c) == "pass" for c in items)
 
@@ -66,7 +66,7 @@ def _evidence(c: CheckResult, kind: str, prev: CheckResult | None) -> str:
 
 
 def classify(previous: Run | None, current: Iterable[CheckResult]) -> tuple[Finding, ...]:
-    """One finding per check, plus one per check that disappeared (CA-04).
+    """One finding per check, plus one per check that disappeared (CW-04).
 
     The order the checks arrive in never changes the answer.
     """
@@ -90,7 +90,7 @@ def classify(previous: Run | None, current: Iterable[CheckResult]) -> tuple[Find
             kind = "recovered"
         else:
             now, before = count_tests(c), count_tests(p) if p is not None else None
-            # CA-03: infer a drop only when both counts were read.
+            # CW-03: infer a drop only when both counts were read.
             kind = "tests dropped" if now is not None and before is not None and now < before else "steady"
         out.append(Finding(check=name, kind=kind, evidence=_evidence(c, kind, p)))
 

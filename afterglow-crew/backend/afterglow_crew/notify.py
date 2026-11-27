@@ -1,4 +1,4 @@
-"""What to say, and when to say nothing (CA-05)."""
+"""What to say, and when to say nothing (CW-05)."""
 
 from __future__ import annotations
 

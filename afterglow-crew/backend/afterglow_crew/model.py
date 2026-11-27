@@ -1,4 +1,4 @@
-"""Records of runs, checks and repeats (CA-01, CA-04).
+"""Records of runs, checks and repeats (CW-01, CW-04).
 
 Plain dataclasses and a strict parser. Anything read from disk is untrusted: a record
 that does not have exactly the expected fields and types is refused, never repaired.

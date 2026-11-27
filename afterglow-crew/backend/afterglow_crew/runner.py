@@ -1,4 +1,4 @@
-"""Running the project's own checks, safely (CA-01, CA-06).
+"""Running the project's own checks, safely (CW-01, CW-06).
 
 Only commands from `checks.json` run, only if they pass a positive allow-list, never through a
 shell, with a hard timeout and bounded output. A check that cannot be judged is `unknown`.
@@ -48,7 +48,7 @@ _EXEC_TOOLS = frozenset({"turbo", "playwright", "vitest", "tsc", "biome"})
 
 
 def validate_command(command: str) -> list[str]:
-    """Split a command into argv, or refuse it (CA-06). Never returns something a shell could expand."""
+    """Split a command into argv, or refuse it (CW-06). Never returns something a shell could expand."""
     if not isinstance(command, str) or not command.strip() or len(command) > 300:
         raise CommandRefused("A command must be non-empty text of at most 300 characters.")
     tokens = command.split()
@@ -122,7 +122,7 @@ _PW_SKIPPED = re.compile(r"(\d+)\s+(?:skipped|did not run)\b")
 
 
 def parse_tests(parser: str | None, output: str) -> int | None:
-    """The number of tests a run counted, or None when it cannot be read (CA-03). Never guesses."""
+    """The number of tests a run counted, or None when it cannot be read (CW-03). Never guesses."""
     if parser is None:
         return None
     text = _ANSI.sub("", output)
@@ -205,7 +205,7 @@ def real_executor(argv: list[str], cwd: Path, timeout_s: int) -> ExecResult:
 
 
 def judge(result: ExecResult, parser: str | None) -> tuple[Outcome, int | None]:
-    """One repeat's outcome and test count. Unknown unless there is a clear answer (CA-01)."""
+    """One repeat's outcome and test count. Unknown unless there is a clear answer (CW-01)."""
     if not result.started or result.timed_out or result.exit_code is None:
         return "unknown", None
     tests = parse_tests(parser, result.output)

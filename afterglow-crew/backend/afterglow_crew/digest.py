@@ -1,4 +1,4 @@
-"""A weekly view of what the stored runs show (CA-12). Measured, or silent."""
+"""A weekly view of what the stored runs show (CW-12). Measured, or silent."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Properties of the runner (CA-01, CA-03, CA-06, CA-09).
+"""Properties of the runner (CW-01, CW-03, CW-06, CW-09).
 
 The runner is the one part that touches the outside world, so it is tested against hostile input and a
 real hung process, not only against fakes.
@@ -44,7 +44,7 @@ GOOD = [
 ]
 
 
-# ------------------------------------------------------------------ CA-06
+# ------------------------------------------------------------------ CW-06
 
 
 @pytest.mark.parametrize("cmd", GOOD)
@@ -182,7 +182,7 @@ def test_tail_is_bounded_and_never_throws(text):
     assert len(tail_of(text)) <= 2000
 
 
-# ------------------------------------------------------------------ CA-03 parsing
+# ------------------------------------------------------------------ CW-03 parsing
 
 
 def test_CA03_vitest_counts_are_read_and_summed_across_packages():
@@ -216,7 +216,7 @@ def test_CA03_parsing_arbitrary_text_never_throws(text):
         assert n is None or n >= 0
 
 
-# ------------------------------------------------------------------ CA-01 judging
+# ------------------------------------------------------------------ CW-01 judging
 
 
 def res(code, *, timed_out=False, started=True, output=""):
