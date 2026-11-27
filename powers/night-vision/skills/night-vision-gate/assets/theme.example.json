@@ -1,0 +1,49 @@
+{
+  "$description": "A minimal night-vision theme in the shape token_audit reads. Raw hex lives only in `ramp`; components use the `semantic` names. Every ramp step is pure red, so the red-only rule holds by construction.",
+  "ramp": {
+    "red.000": "#000000",
+    "red.010": "#100000",
+    "red.050": "#2A0000",
+    "red.200": "#560000",
+    "red.400": "#780000",
+    "red.600": "#910000",
+    "red.700": "#A50000",
+    "red.800": "#B70000",
+    "red.900": "#EB0000",
+    "red.1000": "#FF0000"
+  },
+  "textCeiling": {
+    "night": "red.700",
+    "dusk": "red.800",
+    "ember": "red.1000"
+  },
+  "semantic": {
+    "night": {
+      "bg": "red.000",
+      "surface.1": "red.010",
+      "hairline": "red.050",
+      "text.secondary": "red.400",
+      "text.primary": "red.600",
+      "text.emphasis": "red.700",
+      "focus.ring": "red.700"
+    },
+    "dusk": {
+      "bg": "red.000",
+      "surface.1": "red.010",
+      "hairline": "red.050",
+      "text.secondary": "red.800",
+      "text.primary": "red.800",
+      "text.emphasis": "red.800",
+      "focus.ring": "red.800"
+    },
+    "ember": {
+      "bg": "red.000",
+      "surface.1": "red.010",
+      "hairline": "red.200",
+      "text.secondary": "red.900",
+      "text.primary": "red.900",
+      "text.emphasis": "red.1000",
+      "focus.ring": "red.1000"
+    }
+  }
+}

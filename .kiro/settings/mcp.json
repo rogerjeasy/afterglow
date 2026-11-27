@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "afterglow": {
+      "command": "node",
+      "args": ["tools/mcp-server/dist/index.mjs"],
+      "disabled": false,
+      "autoApprove": [
+        "luminance_check",
+        "token_audit",
+        "pixel_scan_png",
+        "food_verdict",
+        "heliograph_encode"
+      ],
+      "disabledTools": []
+    }
+  }
+}

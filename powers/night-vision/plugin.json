@@ -1,0 +1,28 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "night-vision",
+  "version": "0.1.0",
+  "description": "Keep a dark interface usable without wrecking night vision: red-only colours on pure black, a luminance ceiling per mode, and deterministic MCP tools that check colours, theme tokens and PNG screenshots against that ceiling.",
+  "author": {
+    "name": "Afterglow contributors",
+    "url": "https://github.com/rogerjeasy/afterglow"
+  },
+  "keywords": [
+    "night vision",
+    "night mode",
+    "red light",
+    "red-only",
+    "dark room",
+    "luminance",
+    "luminance ceiling",
+    "brightness budget",
+    "contrast on black",
+    "wcag luminance",
+    "theme tokens",
+    "pixel scan",
+    "astronomy ui",
+    "cockpit ui"
+  ],
+  "repository": "https://github.com/rogerjeasy/afterglow",
+  "license": "Apache-2.0"
+}

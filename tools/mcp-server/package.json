@@ -1,0 +1,33 @@
+{
+  "name": "@afterglow/mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Afterglow MCP server (stdio): the night-vision luminance gate, the FoodKeeper verdict and the Heliograph encoder, served from the deterministic core to Kiro agents.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "afterglow-mcp": "./dist/index.mjs"
+  },
+  "scripts": {
+    "build": "node scripts/bundle.mjs",
+    "start": "node dist/index.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src scripts"
+  },
+  "dependencies": {
+    "@afterglow/core": "workspace:*",
+    "@afterglow/design-system": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "pngjs": "7.0.0",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "22",
+    "@types/pngjs": "6.0.5",
+    "esbuild": "0.24.0",
+    "fast-check": "3.23.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}

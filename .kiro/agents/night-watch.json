@@ -2,10 +2,22 @@
   "name": "night-watch",
   "description": "Read-only reviewer and the judge stage of review loops: rejects non-red pixels, unsourced numbers, verdict-path AI and missing states.",
   "prompt": "file://./prompts/night-watch.md",
+  "mcpServers": {
+    "afterglow": {
+      "command": "node",
+      "args": [
+        "tools/mcp-server/dist/index.mjs"
+      ],
+      "timeout": 60000
+    }
+  },
   "model": "claude-opus-5.5",
   "tools": [
     "read",
-    "shell"
+    "shell",
+    "@afterglow/luminance_check",
+    "@afterglow/token_audit",
+    "@afterglow/pixel_scan_png"
   ],
   "includeMcpJson": false,
   "includePowers": false,
@@ -92,6 +104,15 @@
           "git log*",
           "git show*",
           "git branch --list*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "mcp",
+        "match": [
+          "afterglow/luminance_check",
+          "afterglow/token_audit",
+          "afterglow/pixel_scan_png"
         ],
         "effect": "allow"
       },
