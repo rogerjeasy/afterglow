@@ -53,7 +53,7 @@ The fusion module and tokens are not demo artifacts; they are the first two real
 
 **Open question blocking a real crowd map (Q1):** change-only reports and a 30-minute window cannot hold a long outage. Needs a privacy review. See `.kiro/specs/cells/requirements.md`.
 
-**Known gaps to close next (in order of value):** CI has never run on GitHub; core is not yet run on Hermes (0.1; Node and Chromium are done); the responsive/overflow pass and the 200% text and 320 px pixel-scan variants (0.6); no `trust anchor` is pinned and no table exists until the `afterglow-formulary` repo and its review pipeline are built (separate repo); a service-worker cache so the table works offline; `heliograph` (1.8).
+**Known gaps to close next (in order of value):** core is not yet run on Hermes (0.1; Node and Chromium are done); the responsive/overflow pass and the 200% text and 320 px pixel-scan variants (0.6); no `trust anchor` is pinned and no table exists until the `afterglow-formulary` repo and its review pipeline are built (separate repo); a service-worker cache so the table works offline; `heliograph` (1.8).
 
 ---
 
@@ -76,7 +76,7 @@ Close the gaps the current scaffold left before the core grows.
 - [x] **0.2 Shared types package / core barrel.** Establish `packages/core` module layout (`events`, `cells`, `schedule`, `thermal`, `foodkeeper`, `formulary`, `energy`, `heliograph`, `acoustic`, `alerts`, `policy`, `fusion`) with a stable public surface and per-module property-test convention.
 - [x] **0.3 `AGENTS.md`** at repo root — the universal contract (deterministic core, fail closed, no raw media, k ≥ 5, no light mode).
 - [~] **0.4 `.kiroignore`** — the workspace write-deny rule blocks agent writes to it, so a human adds it. Content is staged in `docs/kiro/kiroignore.proposed`; adopt with `cp docs/kiro/kiroignore.proposed .kiroignore`.
-- [~] **0.5 CI pipeline** — `ci.yml` (lint, typecheck, property suite, build, and a `pixel-scan` Playwright job) and `deploy-pages.yml` written; not yet run on GitHub. The scan itself runs locally: 25 browser tests green (NS-10..NS-12).
+- [x] **0.5 CI pipeline** — `ci.yml` (lint, typecheck, property suite, build, and a `pixel-scan` Playwright job) runs on every push since the repository went public on 2026-11-27 (it was blocked by an Actions billing limit while private). The web app deploys to Vercel from `main`; `deploy-pages.yml` is kept as a manual alternative. The scan itself runs locally: 25 browser tests green (NS-10..NS-12).
 - [ ] **0.6 Responsive/overflow pass** on the app shell (close the "nothing overflows" design rule).
 
 ---
