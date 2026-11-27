@@ -19,7 +19,7 @@ Status: `[x]` done, `[ ]` planned.
 - [x] 11. Web camera adapter (`getUserMedia`, 8 x 6 grid, numbers only; HL-16), tracker (`trackSeries`, HL-13) and rolling reader (HL-15), verified against a real Chromium fake-camera video. Still to do: VisionCamera on native
 - [ ] 12. Recorded fixtures at 5 to 40 m (needs a device and a dark room) to confirm the simulator's noise model
 - [x] 13. Fast profile (10 symbols per second, 6.4 s per frame) chosen by measured camera speed (HL-12). Still to measure on real phones: rolling-shutter and exposure behaviour at 40 to 60 fps, which decides whether the 40 fps limit should move
-- [x] 14. Séance screen: ghost board, add people, send with the screen lamp, watch with the camera, every state designed (`apps/mobile/src/screens/Seance.tsx`). Still to do: QR pairing, animated ghost solidify, haptics, Hearth "I'm safe" one-tap, BLE and sound channels
+- [x] 14. Séance screen: ghost board, add people, send with the screen lamp, watch with the camera, every state designed (`apps/mobile/src/screens/Seance.tsx`); the animated ghost solidify is night-shell NS-23. Still to do: haptics, Hearth "I'm safe" one-tap, BLE and sound channels
 - [x] 15. Architecture section 6, design section 11.5 and the product spec corrected for frame timing, profiles and the 6-bit slot
 
 ## Séance slice (this commit group)

@@ -170,8 +170,6 @@ The screens were correct but read like an engineering console: model ids and sen
 
 ## Amber variant (NS-18..NS-22)
 
-Added 2026-11-27 in Claude Code (Kiro credits exhausted).
-
 Design 3.4 promises an Amber variant for protanopia (about one man in a hundred sees deep red as very dark), at the same luminance tiers, chosen in Settings, with red the default. The ramp existed in `theme.night.json` but nothing resolved to it and nothing let a person choose it. These requirements make the promise true.
 
 ### NS-18 — Amber stays under the same ceilings
@@ -222,3 +220,15 @@ Design 3.4 promises an Amber variant for protanopia (about one man in a hundred 
 - **The central tension** (design §3.1): a red under the 8% Night ceiling can reach at most 2.6:1 on black, below WCAG AA. Resolved by shipping three modes — Night is a disclosed instrument mode; Dusk meets AA large text; Ember meets AA normal text. NS-03 and NS-06 encode both halves of this.
 - **Text tokens vs non-text tokens:** only text/icon tokens are bound by the text ceiling (NS-03). Dimmer reds are reserved for non-text elements (hairlines, muted rules), where WCAG's 3:1 non-text rule applies. The `TEXT_TOKENS` list fixes which tokens the ceiling check covers.
 - **Amber scope:** the amber ramp exists for protanopia at identical luminance stops but is a different hue, so NS-02 (red-dominance) is asserted only on the red ramp. NS-18..NS-22 give amber its own guards: the same ceilings, its own hue rule, and a scan of every route.
+
+## The ghost turns solid (NS-23)
+
+### NS-23 — A ghost materialises once, when someone is heard from
+**User story:** As someone waiting in the dark for word from my mother, I want the moment she checks in to be unmistakable, without the screen getting brighter or busier the rest of the night.
+
+**Acceptance criteria (EARS):**
+- WHEN a person's ghost changes from faint (not heard from) to solid while it is on screen THE SYSTEM SHALL play one materialise moment of at most 900 ms: the ghost rises and settles, its fill fades in, and one ring ripples outward and fades.
+- THE SYSTEM SHALL NOT play it on first render, so a list that opens already solid stays still, and SHALL NOT loop it; the Hearth candle stays the only ambient loop (rule 7).
+- THE SYSTEM SHALL animate only `transform` and `opacity`, and SHALL draw every frame from the `text.emphasis`, `nontext.muted` and `bg` tokens, so no frame can pass the active mode's ceiling.
+- WHILE reduced motion is requested THE SYSTEM SHALL drop the rise and the ring and keep only a short fade of the fill, which explains the change.
+- The same glyph is the guide, Wisp, so the tour's last step ("I'm solid now") uses the same moment.

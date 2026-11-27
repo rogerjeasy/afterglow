@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Sources } from './components';
 import { token } from './theme';
 
@@ -255,6 +255,9 @@ export function Candle({
  * opaque in the muted tone: two translucent layers in the ceiling colour can blend
  * one step above the night-vision ceiling (see pbt-catches, 2026-11-26).
  */
+/** How long a ghost takes to turn solid (the signature motion budget, design 8). */
+const MATERIALISE_MS = 900;
+
 export function GhostGlyph({
   opacity,
   size = 28,
@@ -266,6 +269,22 @@ export function GhostGlyph({
   /** A HELP: the outline takes the emphasis tone. */
   loud?: boolean;
 }): ReactNode {
+  // A ghost that was faint and is now solid has just been heard from: it materialises
+  // once (rises, fills in, a ring ripples out). It never plays on first render, so a
+  // list that opens already solid stays still.
+  const solid = opacity >= 1;
+  const wasSolid = useRef(solid);
+  const [materialising, setMaterialising] = useState(false);
+  useEffect(() => {
+    const turnedSolid = solid && !wasSolid.current;
+    wasSolid.current = solid;
+    if (!turnedSolid) return;
+    setMaterialising(true);
+    const id = window.setTimeout(() => setMaterialising(false), MATERIALISE_MS);
+    return () => window.clearTimeout(id);
+  }, [solid]);
+
+  const body = 'M8 24a16 16 0 0 1 32 0v26l-5.33-4-5.34 4-5.33-4-5.33 4-5.34-4L8 50z';
   return (
     <svg
       aria-hidden="true"
@@ -274,24 +293,41 @@ export function GhostGlyph({
       height={(size * 56) / 48}
       style={{ display: 'block', flex: 'none', overflow: 'visible' }}
     >
-      <path
-        d="M8 24a16 16 0 0 1 32 0v26l-5.33-4-5.34 4-5.33-4-5.33 4-5.34-4L8 50z"
-        fill={token('text.emphasis')}
-        fillOpacity={opacity}
-        stroke={loud ? token('text.emphasis') : token('nontext.muted')}
-        strokeWidth={loud ? 3 : 2}
-        strokeLinejoin="round"
-        style={{ transition: 'fill-opacity 280ms ease-out' }}
-      />
-      <ellipse cx="18" cy="25" rx="3" ry="4.2" fill={token('bg')} />
-      <ellipse cx="30" cy="25" rx="3" ry="4.2" fill={token('bg')} />
-      <path
-        d="M20 35q4 3 8 0"
-        fill="none"
-        stroke={token('bg')}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
+      {materialising ? (
+        <ellipse
+          className="ghost-ripple"
+          cx="24"
+          cy="32"
+          rx="22"
+          ry="26"
+          fill="none"
+          stroke={token('text.emphasis')}
+          strokeWidth={2}
+        />
+      ) : null}
+      <g className={materialising ? 'ghost-materialise' : undefined}>
+        <path
+          d={body}
+          fill={token('text.emphasis')}
+          fillOpacity={materialising ? 0.35 : opacity}
+          stroke={loud ? token('text.emphasis') : token('nontext.muted')}
+          strokeWidth={loud ? 3 : 2}
+          strokeLinejoin="round"
+          style={{ transition: 'fill-opacity 280ms ease-out' }}
+        />
+        {materialising ? (
+          <path className="ghost-fill-in" d={body} fill={token('text.emphasis')} />
+        ) : null}
+        <ellipse cx="18" cy="25" rx="3" ry="4.2" fill={token('bg')} />
+        <ellipse cx="30" cy="25" rx="3" ry="4.2" fill={token('bg')} />
+        <path
+          d="M20 35q4 3 8 0"
+          fill="none"
+          stroke={token('bg')}
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </g>
     </svg>
   );
 }

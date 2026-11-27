@@ -66,7 +66,6 @@ Tasks map to requirement ids. Property tests are the definition of done (`tech.m
 - Results: 3 pure tests (`src/night-shell/designPass.property.test.ts`) and 6 browser tests (`e2e/design-pass.e2e.ts`). NS-14 found a model id (`foodkeeper-v128`) in Cold's explanatory paragraph, now behind its source control. Four older browser tests asserted visible source labels; they now open the control and check the same labels, and that the closed control still names a default.
 
 ## Amber variant (NS-18..NS-22)
-Added 2026-11-27 in Claude Code (Kiro credits exhausted).
 - [x] `theme.night.json`: amber ramp keyed by the luminance tier it matches (`amber.000` .. `amber.950`) and an `amberFor` map from every red step; `amber.700` and `amber.800` set one red unit under the old `#784300` / `#864B00`, which sat just over the Night and Dusk ceilings (NS-18, NS-19)
 - [x] `tokens.ts`: `Hue`, `HUES`, `amberFor`, `ceilingHex`, and `resolveToken(mode, token, hue)` (NS-18)
 - [x] Property tests NS-18..NS-21 in `packages/design-system/src/amber.property.test.ts`
@@ -75,3 +74,9 @@ Added 2026-11-27 in Claude Code (Kiro credits exhausted).
 - [x] "Colour" setting on You (`night-shell/HueSettings.tsx`); the light's labels follow the colour; one line on the Science page says where to switch (NS-22)
 - [x] Browser tests: every pixel-scan route in amber in all three modes, an amber probe, and the persistence and first-frame test `e2e/hue.e2e.ts` (NS-21, NS-22)
 - [x] Design doc 3.4 and 4.3 updated with the corrected amber values
+
+## The ghost turns solid (NS-23)
+- [x] `GhostGlyph` (`apps/mobile/src/night-shell/costume.tsx`) remembers whether it was solid and, on the change from faint to solid, renders the rise, the fill fade and one ripple for 900 ms, then the still glyph (NS-23)
+- [x] `.ghost-materialise`, `.ghost-fill-in` and `.ghost-ripple` in `apps/mobile/src/styles/tailwind.css`, with the reduced-motion rule: fade only (NS-23)
+- [x] Used wherever a ghost is drawn: the Séance board, the Hearth people tile and Wisp
+- [ ] Haptic pairing on the solidify frame (needs the native shell; the web has no reliable haptics)
